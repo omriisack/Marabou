@@ -16,7 +16,6 @@
 #ifndef __Tableau_h__
 #define __Tableau_h__
 
-#include "BoundManager.h"
 #include "IBasisFactorization.h"
 #include "ITableau.h"
 #include "MString.h"
@@ -26,7 +25,6 @@
 #include "SparseMatrix.h"
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
-#include "BoundsExplainer.h"
 
 #define TABLEAU_LOG( x, ... ) LOG( GlobalConfiguration::TABLEAU_LOGGING, "Tableau: %s\n", x )
 
@@ -114,7 +112,7 @@ public:
     /*
       Get the assignment of a variable, either basic or non-basic
     */
-    double getValue( unsigned variable ) const;
+    double getValue( unsigned variable );
 
     /*
       Given an index of a non-basic variable in the range [0,n-m),
@@ -455,29 +453,6 @@ public:
      */
     unsigned getVariableAfterMerging( unsigned variable ) const;
 
-    /*
-       Hook that is invoked after Context pop, to update context independent
-       data. After backtracking assignments satisfy bounds, but the
-       basic/non-basic status may be out of date, so it is recomputed.
-     */
-    void postContextPopHook() { computeBasicStatus(); };
-
-    /*
-     * Returns the content of the object containing all explanations for variable bounds in the tableau.
-     */
-	BoundsExplainer* getAllBoundsExplanations() const;
-
-	void setAllBoundsExplanations( BoundsExplainer* boundsExplanations );
-
-	/*
-	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
-	 */
-	void tightenUpperBoundNaively( unsigned variable, double value );
-
-	/*
-	 * Tighten a lower bound without checking it is indeed tightening, and without notifying watchers
-	 */
-	void tightenLowerBoundNaively( unsigned variable, double value );
 private:
     /*
       Variable watchers
@@ -575,12 +550,6 @@ private:
     double *_upperBounds;
 
     /*
-       BoundManager object stores bounds of all variables.
-       NOT YET IN USE
-     */
-    BoundManager *_boundManager;
-
-    /*
       Whether all variables have valid bounds (l <= u).
     */
     bool _boundsValid;
@@ -672,71 +641,12 @@ private:
     void verifyInvariants();
 
     static String basicStatusToString( unsigned status );
-
+    
     /*
-      Finds a row with its basic variable either too high or too low,
-      puts it in  the input parameter, and returns the corresponding basic status
-      If none found return TABLEAU::BETWEEN
+    * Finds a row with its basic variable either too high or too low.
+    * Puts it in  the input parameter.
     */
-    BasicStatus getInfeasibleRow( TableauRow& row );
-
-    /*
-     Returns a variable with infeasible bounds, if exists
-     Otherwise returns -1
-   */
-    int getInfeasibleVar() const;
-
-	/*
- 	* Checks that the slack of a given row lhs is empty
-	* TODO delete function when completing
- 	*/
-	bool checkCostFunctionSlack();
-
-    /*
-    * Computes the bound imposed by row rhs
-    */
-    double computeRowBound(const TableauRow& row, bool isUpper ) const;
-
-	/*
-	* Computes the bound imposed by row on a variable
-	*/
-	double computeSparseRowBound( const SparseUnsortedList& row, bool isUpper, unsigned var) const;
-
-    /*
-      Returns the bounds explanation of a variable in the tableau
-    */
-	const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const;
-
-    /*
-     Update a bound explanation according to a row in the Tableau
-    */
-    void updateExplanation( const TableauRow& row, bool isUpper ) const;
-
-    /*
-    Update a bound explanation of a specific var in a row
-   */
-    void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const;
-
-    /*
-     Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
-    */
-    void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const;
-
-    /*
-     * Resets a bound explanation
-     */
-	void resetExplanation ( unsigned var, bool isUpper ) const;
-
-	/*
- 	* Artificially updates an explanation, without using the recursive rule
- 	*/
-	void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const;
-
-	/*
-     * Explainer of all bounds
-    */
-    BoundsExplainer *_boundsExplainer;
-
+    void Tableau::getInfeasibleRow(TableauRow* row);
 };
 
 #endif // __Tableau_h__

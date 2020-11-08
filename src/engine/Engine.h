@@ -29,7 +29,6 @@
 #include "GurobiWrapper.h"
 #include "IEngine.h"
 #include "InputQuery.h"
-#include "LinearExpression.h"
 #include "Map.h"
 #include "MILPEncoder.h"
 #include "Options.h"
@@ -39,13 +38,9 @@
 #include "SmtCore.h"
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
-#include "UNSATCertificate.h"
-#include "SumOfInfeasibilitiesManager.h"
 #include "SymbolicBoundTighteningType.h"
-#include "SmtLibWriter.h"
 
 #include <atomic>
-#include <assert.h>
 
 #ifdef _WIN32
 #undef ERROR
@@ -58,12 +53,9 @@ class InputQuery;
 class PiecewiseLinearConstraint;
 class String;
 
-class Engine : public IEngine, public SignalHandler::Signalable {
+class Engine : public IEngine, public SignalHandler::Signalable
+{
 public:
-    enum {
-          MICROSECONDS_TO_SECONDS = 1000000,
-    };
-
     Engine();
     ~Engine();
 
@@ -74,25 +66,12 @@ public:
     bool solve( unsigned timeoutInSeconds = 0 );
 
     /*
-      Minimize the cost function with respect to the current set of linear constraints.
-    */
-    void minimizeHeuristicCost( const LinearExpression &heuristicCost );
-
-    /*
-      Compute the cost function with the current assignment.
-    */
-    double computeHeuristicCost( const LinearExpression &heuristicCost );
-
-    /*
       Process the input query and pass the needed information to the
       underlying tableau. Return false if query is found to be infeasible,
       true otherwise.
      */
     bool processInputQuery( InputQuery &inputQuery );
     bool processInputQuery( InputQuery &inputQuery, bool preprocess );
-
-    InputQuery prepareSnCInputQuery( );
-    void exportInputQueryWithError( String errorMessage );
 
     /*
       If the query is feasiable and has been successfully solved, this
@@ -145,11 +124,6 @@ public:
     void applySplit( const PiecewiseLinearCaseSplit &split );
 
     /*
-      Hook invoked after context pop to update context independent data.
-    */
-    void postContextPopHook() { _tableau->postContextPopHook(); };
-
-    /*
       Reset the state of the engine, before solving a new query
       (as part of DnC mode).
     */
@@ -184,7 +158,7 @@ public:
     /*
       Pick the piecewise linear constraint for splitting
     */
-    PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy strategy );
+    PiecewiseLinearConstraint *pickSplitPLConstraint();
 
     /*
       Call-back from QueryDividers
@@ -200,64 +174,7 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
-    /*
-       Register initial split when in SnC mode
-     */
-    void applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId );
-
-	/*
-	 * Update the ground bounds
-	 */
-    void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel );
-    void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel );
-
-	/*
- 	* Return all ground bounds as a vector
- 	*/
-	const std::vector<double>& getGroundBounds( bool isUpper ) const;
-
-	/*
- 	* Return all decision levels of the ground bounds as a vector
- 	*/
-	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const;
-
-	/*
- 	* Sets all decision levels of the ground bounds as a vector
- 	*/
-	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const;
-
-    /*
-     * Get the current pointer of the UNSAT certificate
-     */
-    CertificateNode* getUNSATCertificateCurrentPointer() const;
-
-    /*
-  	* Set the current pointer of the UNSAT certificate
-  	*/
-	void setUNSATCertificateCurrentPointer( CertificateNode* node );
-
-	/*
-     * Get the pointer to the root of the UNSAT certificate
-     */
-	CertificateNode* getUNSATCertificateRoot() const;
-
-	/*
-	 * Certify the UNSAT certificate
-	 */
-	bool certifyUNSATCertificate();
-
-	/*
-	* Returns true iff the value can be the tightest bound of a variable
-	 */
-	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
-
-	/*
-	* Computes the decision level of an explanations
-	*/
-	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
-
 private:
-
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
         STRONG_RESTORATION_NEEDED = 1,
@@ -291,11 +208,6 @@ private:
       The existing piecewise-linear constraints.
     */
     List<PiecewiseLinearConstraint *> _plConstraints;
-
-    /*
-      The existing transcendental constraints.
-    */
-    List<TranscendentalConstraint *> _tsConstraints;
 
     /*
       Piecewise linear constraints that are currently violated.
@@ -425,6 +337,11 @@ private:
     unsigned long long _lastIterationWithProgress;
 
     /*
+      Strategy used for internal splitting
+    */
+    DivideStrategy _splittingStrategy;
+
+    /*
       Type of symbolic bound tightening
     */
     SymbolicBoundTighteningType _symbolicBoundTighteningType;
@@ -450,13 +367,8 @@ private:
     std::unique_ptr<MILPEncoder> _milpEncoder;
 
     /*
-      Manager of the SoI cost function.
-    */
-    std::unique_ptr<SumOfInfeasibilitiesManager> _soiManager;
-
-    /*
       Stored options
-      Do this since Options object is not thread safe and
+      Do this since Options object is not thread safe and 
       there is a chance that multiple Engine object be accessing the Options object.
     */
     unsigned _simulationSize;
@@ -465,25 +377,10 @@ private:
     MILPSolverBoundTighteningType _milpSolverBoundTighteningType;
 
     /*
-      SnC Split
-     */
-    bool _sncMode;
-    PiecewiseLinearCaseSplit _sncSplit;
-
-    /*
-      Query Identifier
-     */
-    String _queryId;
-
-    LinearExpression _heuristicCost;
-
-    /*
       Perform a simplex step: compute the cost function, pick the
       entering and leaving variables and perform a pivot.
-      Return true only if the current assignment is optimal
-      with respect to _heuristicCost.
     */
-    bool performSimplexStep();
+    void performSimplexStep();
 
     /*
       Perform a constraint-fixing step: select a violated piece-wise
@@ -550,40 +447,10 @@ private:
     void mainLoopStatistics();
 
     /*
-      Perform bound tightening after performing a case split.
-    */
-    void performBoundTighteningAfterCaseSplit();
-
-    /*
-      Called after a satisfying assignment is found for the linear constraints.
-      Now we try to satisfy the piecewise linear constraints with
-      "local" search (either with Reluplex-styled constraint fixing
-      or SoI-based stochastic search).
-
-      The method also has the side effect of making progress towards the
-      branching condition.
-
-      Return true iff a true satisfying assignment is found.
-    */
-    bool adjustAssignmentToSatisfyNonLinearConstraints();
-
-    /*
-      Perform precision restoration if needed. Return true iff precision
-      restoration is performed.
-    */
-    bool performPrecisionRestorationIfNeeded();
-
-    /*
       Check if the current degradation is high
     */
     bool shouldCheckDegradation();
     bool highDegradation();
-
-    /*
-      Handle malformed basis exception. Return false if unable to restore
-      precision.
-    */
-    bool handleMalformedBasisException();
 
     /*
       Perform bound tightening on the constraint matrix A.
@@ -668,7 +535,7 @@ private:
 
     /*
       Call MILP bound tightening for a single layer.
-    */
+    */    
     void performMILPSolverBoundedTighteningForSingleLayer( unsigned targetIndex );
 
     /*
@@ -676,11 +543,6 @@ private:
       to handle case splits
     */
     void updateDirections();
-
-    /*
-      Decide which branch heuristics to use.
-    */
-    void decideBranchingHeuristics();
 
     /*
       Among the earliest K ReLUs, pick the one with Polarity closest to 0.
@@ -708,120 +570,9 @@ private:
     */
     void extractSolutionFromGurobi( InputQuery &inputQuery );
 
-    /*
-      Perform SoI-based stochastic local search
+    /*Prints coefficents of Simplex equations that witness UNSAT
     */
-    bool performDeepSoILocalSearch();
-
-    /*
-      Update the pseudo impact of the PLConstraints according to the cost of the
-      phase patterns. For example, if the minimum of the last accepted phase
-      pattern is 0.5, the minimum of the last proposed phase pattern is 0.2.
-      And the two phase patterns differ by the cost term of a PLConstaint f.
-      Then the Pseudo Impact of f is updated by |0.5 - 0.2| using exponential
-      moving average.
-    */
-    void updatePseudoImpactWithSoICosts( double costOfLastAcceptedPhasePattern,
-                                         double costOfProposedPhasePattern );
-
-
-    /*
-     Prints coefficients of Simplex equations that witness UNSAT
-    */
-    void printBoundsExplanation( unsigned var );
-
-    /*
-     Updates bounds after deducing Simplex infeasibility
-    */
-    int explainFailureWithTableau();
-
-    std::vector<std::vector<double>> _initialTableau;
-    std::vector<double> _groundUpperBounds;
-    std::vector<double> _groundLowerBounds;
-    std::vector<unsigned> _upperDecisionLevels;
-	std::vector<unsigned> _lowerDecisionLevels;
-    CertificateNode* _UNSATCertificate;
-	CertificateNode* _UNSATCertificateCurrentPointer;
-	SmtLibWriter _smtWriter;
-
-    /*
-     Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
-     Asserts the computed bound is epsilon close to the real one.
-    */
-	bool certifyInfeasibility( const unsigned var ) const;
-
-    /*
-     Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
-    */
-    double getExplainedBound( unsigned var,  bool isUpper ) const;
-
-	/*
-	 Validates that explanations epsilon close to real bounds of a given var
-	 Separately for tightenings and actual bounds
-	 Returns true iff both bounds are epsilon close to their explanations
-	*/
-    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
-
-	/*
-     Validates that all explanations epsilon close to real bounds
-     Separately for tightenings and actual bounds
-     Returns true iff all bounds are epsilon-close to their explanations
-    */
-    bool validateAllBounds( double epsilon, double M ) const;
-
-    /*
-     * Finds the variable causing failure and updates its bounds explanations
-     */
-    void explainSimplexFailure();
-
-    /*
-     * Sanity check for ground bounds
-     */
-    void checkGroundBounds() const;
-
-	/*
-	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
-	 */
-	int explainFailureWithCostFunction();
-
-	/*
- 	* Updates explanations of the first infeasible basic var by cost function;
- 	*/
-	int updateFirstInfeasibleBasic();
-
-	/*
-	 * Updates an explanation of a bound according to a row, and checks for an explained contradiction.
-	 * If found, return true.
-	 * If not, revert and return false
-	 */
-	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
-	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
-
-	/*
-	 * Delegates leaves with certification error to SMTLIB format
-	 */
-	void markLeafToDelegate();
-
-	/*
-	 * Writes the details of a contradiction to the UNSAT certificate
- 	*/
-	void writeContradictionToCertificate( unsigned infVar );
-
-	/*
- 	* Computes jump level based on decision levels of UNSAT certificate for the leaf
- 	*/
-	unsigned computeJumpLevel( unsigned infVar );
-
-	/*
- 	* Earses all UNSAT certificate info between current leaf and jump level.
-	 * Moves pointer to correct place and sets the relevant contradction
- 	*/
-	void performJumpForUNSATCertificate( unsigned jumpSize );
-
-	/*
-	 * Applies all bound tightenings without further notifying
-	 */
-	void naivelyApplyAllTightenings();
+    void Engine::printSimplexUNSATCertificate();
 };
 
 #endif // __Engine_h__

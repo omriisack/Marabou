@@ -53,7 +53,6 @@ Tableau::Tableau()
     , _nonBasicAssignment( NULL )
     , _lowerBounds( NULL )
     , _upperBounds( NULL )
-    , _boundManager( nullptr )
     , _boundsValid( true )
     , _basicAssignment( NULL )
     , _basicStatus( NULL )
@@ -61,7 +60,6 @@ Tableau::Tableau()
     , _statistics( NULL )
     , _costFunctionManager( NULL )
     , _rhsIsAllZeros( true )
-    , _boundsExplainer( NULL )
 {
 }
 
@@ -209,12 +207,6 @@ void Tableau::freeMemoryIfNeeded()
         delete[] _workN;
         _workN = NULL;
     }
-
-    if ( _boundsExplainer )
-    {
-        delete _boundsExplainer;
-		_boundsExplainer = NULL;
-    }
 }
 
 void Tableau::setDimensions( unsigned m, unsigned n )
@@ -320,20 +312,7 @@ void Tableau::setDimensions( unsigned m, unsigned n )
         throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 
     if ( _statistics )
-    {
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_M, _m );
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
-    }
-
-    if( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-    	if( _boundsExplainer )
-			delete _boundsExplainer;
-
-		_boundsExplainer = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
-		if ( !_boundsExplainer )
-			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
-	}
+        _statistics->setCurrentTableauDimension( _m, _n );
 }
 
 void Tableau::setConstraintMatrix( const double *A )
@@ -491,10 +470,7 @@ void Tableau::computeBasicStatus( unsigned basicIndex )
 void Tableau::setLowerBound( unsigned variable, double value )
 {
     ASSERT( variable < _n );
-    if ( _boundManager !=  nullptr )
-        _boundManager->setLowerBound( variable, value );
-    else
-        _lowerBounds[variable] = value;
+    _lowerBounds[variable] = value;
     notifyLowerBound( variable, value );
     checkBoundsValid( variable );
 }
@@ -502,10 +478,7 @@ void Tableau::setLowerBound( unsigned variable, double value )
 void Tableau::setUpperBound( unsigned variable, double value )
 {
     ASSERT( variable < _n );
-    if ( _boundManager !=  nullptr )
-        _boundManager->setUpperBound( variable, value );
-    else
-        _upperBounds[variable] = value;
+    _upperBounds[variable] = value;
     notifyUpperBound( variable, value );
     checkBoundsValid( variable );
 }
@@ -513,15 +486,13 @@ void Tableau::setUpperBound( unsigned variable, double value )
 double Tableau::getLowerBound( unsigned variable ) const
 {
     ASSERT( variable < _n );
-    return ( _boundManager != nullptr ) ? _boundManager->getLowerBound( variable )
-                                        : _lowerBounds[variable];
+    return _lowerBounds[variable];
 }
 
 double Tableau::getUpperBound( unsigned variable ) const
 {
     ASSERT( variable < _n );
-    return ( _boundManager != nullptr ) ? _boundManager->getUpperBound( variable )
-                                        : _upperBounds[variable];
+    return _upperBounds[variable];
 }
 
 const double *Tableau::getLowerBounds() const
@@ -534,7 +505,7 @@ const double *Tableau::getUpperBounds() const
     return _upperBounds;
 }
 
-double Tableau::getValue( unsigned variable ) const
+double Tableau::getValue( unsigned variable )
 {
     /*
       If this variable has been merged into another,
@@ -751,7 +722,7 @@ void Tableau::performPivot()
     if ( _leavingVariable == _m )
     {
         if ( _statistics )
-            _statistics->incLongAttribute( Statistics::NUM_TABLEAU_BOUND_HOPPING );
+            _statistics->incNumTableauBoundHopping();
 
         double enteringReducedCost = _costFunctionManager->getCostFunction()[_enteringVariable];
 
@@ -778,7 +749,7 @@ void Tableau::performPivot()
     if ( _statistics )
     {
         pivotStart = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::NUM_TABLEAU_PIVOTS );
+        _statistics->incNumTableauPivots();
     }
 
     unsigned currentBasic = _basicIndexToVariable[_leavingVariable];
@@ -823,7 +794,7 @@ void Tableau::performPivot()
 
     // Check if the pivot is degenerate and update statistics
     if ( FloatUtils::isZero( _changeRatio ) && _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_TABLEAU_DEGENERATE_PIVOTS );
+        _statistics->incNumTableauDegeneratePivots();
 
     // Update the basis factorization. The column corresponding to the
     // leaving variable is the one that has changed
@@ -834,7 +805,7 @@ void Tableau::performPivot()
     if ( _statistics )
     {
         struct timespec pivotEnd = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::TIME_PIVOTS_MICRO, TimeUtils::timePassed( pivotStart, pivotEnd ) );
+        _statistics->addTimePivots( TimeUtils::timePassed( pivotStart, pivotEnd ) );
     }
 }
 
@@ -844,9 +815,9 @@ void Tableau::performDegeneratePivot()
     if ( _statistics )
     {
         pivotStart = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::NUM_TABLEAU_PIVOTS );
-        _statistics->incLongAttribute( Statistics::NUM_TABLEAU_DEGENERATE_PIVOTS );
-        _statistics->incLongAttribute( Statistics::NUM_TABLEAU_DEGENERATE_PIVOTS_BY_REQUEST );
+        _statistics->incNumTableauPivots();
+        _statistics->incNumTableauDegeneratePivots();
+        _statistics->incNumTableauDegeneratePivotsByRequest();
     }
 
     ASSERT( _enteringVariable < _n - _m );
@@ -883,7 +854,7 @@ void Tableau::performDegeneratePivot()
     if ( _statistics )
     {
         struct timespec pivotEnd = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::TIME_PIVOTS_MICRO, TimeUtils::timePassed( pivotStart, pivotEnd ) );
+        _statistics->addTimePivots( TimeUtils::timePassed( pivotStart, pivotEnd ) );
     }
 }
 
@@ -906,12 +877,7 @@ double Tableau::ratioConstraintPerBasic( unsigned basicIndex, double coefficient
     {
         // Basic variable is decreasing
         double actualLowerBound;
-        if ( isOptimizing() )
-        {
-            ASSERT( !existsBasicOutOfBounds() );
-            actualLowerBound = _lowerBounds[basic];
-        }
-        else if ( basicCost > 0 )
+        if ( basicCost > 0 )
         {
             actualLowerBound = _upperBounds[basic];
         }
@@ -944,12 +910,7 @@ double Tableau::ratioConstraintPerBasic( unsigned basicIndex, double coefficient
     {
         // Basic variable is increasing
         double actualUpperBound;
-        if ( isOptimizing() )
-        {
-            ASSERT( !existsBasicOutOfBounds() );
-            actualUpperBound = _upperBounds[basic];
-        }
-        else if ( basicCost < 0 )
+        if ( basicCost < 0 )
         {
             actualUpperBound = _lowerBounds[basic];
         }
@@ -1147,12 +1108,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic decreases, basic increases
                 double actualUpperBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualUpperBound = _upperBounds[basic];
-                }
-                else if ( basicCost > 0 )
+                if ( basicCost > 0 )
                     continue;
                 else if ( basicCost < 0 )
                     actualUpperBound = _lowerBounds[basic];
@@ -1171,12 +1127,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic decreases, basic decreases
                 double actualLowerBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualLowerBound = _lowerBounds[basic];
-                }
-                else if ( basicCost < 0 )
+                if ( basicCost < 0 )
                     continue;
                 else if ( basicCost > 0 )
                     actualLowerBound = _upperBounds[basic];
@@ -1221,12 +1172,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic increases, basic decreases
                 double actualLowerBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualLowerBound = _lowerBounds[basic];
-                }
-                else if ( basicCost < 0 )
+                if ( basicCost < 0 )
                     continue;
                 else if ( basicCost > 0 )
                     actualLowerBound = _upperBounds[basic];
@@ -1245,12 +1191,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic increases, basic increases
                 double actualUpperBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualUpperBound = _upperBounds[basic];
-                }
-                else if ( basicCost > 0 )
+                if ( basicCost > 0 )
                     continue;
                 else if ( basicCost < 0 )
                     actualUpperBound = _lowerBounds[basic];
@@ -1318,12 +1259,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic decreases, basic increases
                 double actualUpperBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualUpperBound = _upperBounds[basic];
-                }
-                else if ( basicCost > 0 )
+                if ( basicCost > 0 )
                     continue;
                 else if ( basicCost < 0 )
                     actualUpperBound = _lowerBounds[basic];
@@ -1336,12 +1272,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic decreases, basic decreases
                 double actualLowerBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualLowerBound = _lowerBounds[basic];
-                }
-                else if ( basicCost < 0 )
+                if ( basicCost < 0 )
                     continue;
                 else if ( basicCost > 0 )
                     actualLowerBound = _upperBounds[basic];
@@ -1389,12 +1320,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic increases, basic decreases
                 double actualLowerBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualLowerBound = _lowerBounds[basic];
-                }
-                else if ( basicCost < 0 )
+                if ( basicCost < 0 )
                     continue;
                 else if ( basicCost > 0 )
                     actualLowerBound = _upperBounds[basic];
@@ -1407,12 +1333,7 @@ void Tableau::harrisRatioTest( double *changeColumn )
             {
                 // Nonbasic decreases, basic decreases
                 double actualUpperBound;
-                if ( isOptimizing() )
-                {
-                    ASSERT( !existsBasicOutOfBounds() );
-                    actualUpperBound = _upperBounds[basic];
-                }
-                else if ( basicCost > 0 )
+                if ( basicCost > 0 )
                     continue;
                 else if ( basicCost < 0 )
                     actualUpperBound = _lowerBounds[basic];
@@ -1705,12 +1626,6 @@ void Tableau::storeState( TableauState &state ) const
 
     // Store the merged variables
     state._mergedVariables = _mergedVariables;
-
-    // Store bounds explanations
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-		*state._boundsExplainer = *_boundsExplainer;
-	}
 }
 
 void Tableau::restoreState( const TableauState &state )
@@ -1753,27 +1668,15 @@ void Tableau::restoreState( const TableauState &state )
     // Restore the _boundsValid indicator
     _boundsValid = state._boundsValid;
 
-    // Restore the merged variables
+    // Restore the merged varaibles
     _mergedVariables = state._mergedVariables;
-
-    // Restore bounds explanations
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-		*_boundsExplainer = *state._boundsExplainer;
-    	ASSERT( _boundsExplainer->getRowsNum() == _m );
-		ASSERT( _boundsExplainer->getVarsNum() == _n );
-	}
-
 
     computeAssignment();
     _costFunctionManager->initialize();
     computeCostFunction();
 
     if ( _statistics )
-    {
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_M, _m );
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
-    }
+        _statistics->setCurrentTableauDimension( _m, _n );
 }
 
 void Tableau::checkBoundsValid()
@@ -1849,7 +1752,7 @@ void Tableau::tightenLowerBound( unsigned variable, double value )
         return;
 
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
+        _statistics->incNumTightenedBounds();
 
     setLowerBound( variable, value );
 
@@ -1864,7 +1767,7 @@ void Tableau::tightenUpperBound( unsigned variable, double value )
         return;
 
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
+        _statistics->incNumTightenedBounds();
 
     setUpperBound( variable, value );
 
@@ -1898,7 +1801,7 @@ unsigned Tableau::addEquation( const Equation &equation )
     _denseA[(auxVariable * _m) + _m - 1] = 1;
     _A->addLastRow( _workN );
 
-     // Invalidate the cost function, so that it is recomputed in the next iteration.
+    // Invalidate the cost function, so that it is recomputed in the next iteration.
     _costFunctionManager->invalidateCostFunction();
 
     // All variables except the new one have finite bounds. Use this to compute
@@ -2166,13 +2069,9 @@ void Tableau::addRow()
 
     if ( _statistics )
     {
-        _statistics->incLongAttribute( Statistics::NUM_ADDED_ROWS );
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_M, _m );
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
+        _statistics->incNumAddedRows();
+        _statistics->setCurrentTableauDimension( _m, _n );
     }
-
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		_boundsExplainer->addVariable();
 }
 
 void Tableau::registerToWatchVariable( VariableWatcher *watcher, unsigned variable )
@@ -2628,7 +2527,7 @@ void Tableau::mergeColumns( unsigned x1, unsigned x2 )
     computeCostFunction();
 
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_MERGED_COLUMNS );
+        _statistics->incNumMergedColumns();
 }
 
 bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficient, double &inverseCoefficient )
@@ -2681,182 +2580,25 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
     return true;
 }
 
-ITableau::BasicStatus Tableau::getInfeasibleRow( TableauRow& row )
+
+//Omri's Addition
+void Tableau::getInfeasibleRow(TableauRow* row) 
 {
-	unsigned basicVar;
-    for ( unsigned i = 0; i < _m; ++i )
-	{
-		basicVar = _basicIndexToVariable[i];
-        if ( FloatUtils::lt( _basicAssignment[i], _lowerBounds[basicVar] )  )
-		{
-     		Tableau::getTableauRow( i, &row );
-            if ( computeRowBound( row, true ) < _lowerBounds[basicVar]  )
-                return Tableau::BELOW_LB;
-        }
-        else if ( FloatUtils::gt( _basicAssignment[i], _upperBounds[basicVar] ) )
-		{
-			Tableau::getTableauRow( i, &row );
-			if ( computeRowBound( row, false ) > _upperBounds[basicVar] )
-				return Tableau::ABOVE_UB;
-		}
-    }
-	return Tableau::BETWEEN;
-}
-
-bool Tableau::checkCostFunctionSlack()
-{
-	const double *_costFunction = _costFunctionManager->getCostFunction();
-	for ( unsigned i = 0; i < _n - _m; ++i )
-	{
-		double coefficient = _costFunction[i];
-		if ( FloatUtils::isZero( coefficient ) )
-			continue;
-		unsigned var = nonBasicIndexToVariable( i );
-		// As far as I understand cost function always above ub.
-		if  ( FloatUtils::isPositive( coefficient ) &&  !( FloatUtils::areEqual( getValue( var ), _lowerBounds[var] ) ) )
-			printf("var %d is coefficient is %.10lf, value %.10lf ub %.10lf lb %.10lf\n", var, coefficient, getValue(var), _upperBounds[var], _lowerBounds[var]);
-
-
-		// Cases slack vas should be pressed against upper bounds
-		if ( FloatUtils::isNegative( coefficient ) && !( FloatUtils::areEqual( getValue( var ), _upperBounds[var] ) ) )
-			printf("var %d is coefficient is %.10lf, value %.10lf ub %.10lf lb %.10lf\n", var, coefficient, getValue(var), _upperBounds[var], _lowerBounds[var]);
-	}
-	return true;
-}
-
-int Tableau::getInfeasibleVar() const
-{
-    for ( unsigned i = 0; i < _n; ++i )
-        if ( _lowerBounds[i] > _upperBounds[i] )
-            return ( int ) i;
-    return -1;
-}
-
-const std::vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
-{
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-    return _boundsExplainer->getExplanation( variable, isUpper );
-}
-
-void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
-{
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplainer->updateBoundExplanation( row, isUpper );
-}
-
-void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
-{
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplainer->updateBoundExplanation( row, isUpper, var );
-}
-
-void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
-{
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplainer->updateBoundExplanationSparse( row, isUpper, var );
-}
-
-double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
-{
-    double bound = 0, multiplier;
-    unsigned var;
-    for ( unsigned i = 0; i < row._size; ++i )
+    double result = 0;
+    for (unsigned i = 0; i < _m; ++i)
     {
-        var = row._row[i]._var;
-        if ( FloatUtils::isZero( row[i] ) )
-            continue;
-
-        multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
-        multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
-        bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
+        if (basicTooLow(i))
+        {
+            Tableau::getTableauRow(i, row);
+        }
+        else if (basicTooHigh(i))
+        {
+            printf("%d\n", i);
+            Tableau::getTableauRow(i, row);
+        }
     }
-
-	bound += row._scalar;
-    return bound;
 }
 
-double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
-{
-	ASSERT( !row.empty() && var < _n );
-	unsigned curVar;
-	double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
-	for ( const auto& entry : row )
-		if ( entry._index == var )
-		{
-			ci = entry._value;
-			break;
-		}
-
-	ASSERT( !FloatUtils::isZero( ci ) );
-
-	for ( const auto& entry : row )
-	{
-		curVar = entry._index;
-		curVal = entry._value;
-
-		if ( FloatUtils::isZero( curVal ) || curVar == var )
-			continue;
-
-		realCoefficient = curVal / -ci;
-
-		if ( FloatUtils::isZero( realCoefficient ) )
-			continue;
-
-		multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ? _upperBounds[curVar] : _lowerBounds[curVar];
-		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
-		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
-	}
-
-	return bound;
-}
-
-void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
-{
-	_boundsExplainer->resetExplanation( var, isUpper );
-}
-
-void Tableau::injectExplanation( const std::vector<double>& expl, const unsigned var, const bool isUpper ) const
-{
-	ASSERT( expl.size() == _m || expl.empty() );
-	_boundsExplainer->injectExplanation( expl, var, isUpper );
-}
-
-BoundsExplainer* Tableau::getAllBoundsExplanations() const
-{
-	return _boundsExplainer;
-}
-
-void Tableau::setAllBoundsExplanations( BoundsExplainer* boundsExplanations )
-{
-	*_boundsExplainer = *boundsExplanations;
-}
-
-
-void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
-{
-	ASSERT( variable < _n );
-
-	if ( _statistics )
-		_statistics->incNumTightenedBounds();
-
-	_upperBounds[variable] = value;
-	checkBoundsValid( variable );
-
-	updateVariableToComplyWithUpperBoundUpdate( variable, value );
-}
-
-void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
-{
-	ASSERT( variable < _n );
-
-	if ( _statistics )
-		_statistics->incNumTightenedBounds();
-
-	_lowerBounds[variable] = value;
-	checkBoundsValid( variable );
-
-	updateVariableToComplyWithLowerBoundUpdate( variable, value );
-}
 
 //
 // Local Variables:
