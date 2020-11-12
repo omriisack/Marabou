@@ -30,37 +30,29 @@
 #include "Preprocessor.h"
 #include "TableauRow.h"
 #include "TimeUtils.h"
-#include "Vector.h"
-
-#include <random>
 
 Engine::Engine()
-    : _rowBoundTightener( *_tableau )
-    , _smtCore( this )
-    , _numPlConstraintsDisabledByValidSplits( 0 )
-    , _preprocessingEnabled( false )
-    , _initialStateStored( false )
-    , _work( NULL )
-    , _basisRestorationRequired( Engine::RESTORATION_NOT_NEEDED )
-    , _basisRestorationPerformed( Engine::NO_RESTORATION_PERFORMED )
-    , _costFunctionManager( _tableau )
-    , _quitRequested( false )
-    , _exitCode( Engine::NOT_DONE )
-    , _constraintBoundTightener( *_tableau )
-    , _numVisitedStatesAtPreviousRestoration( 0 )
-    , _networkLevelReasoner( NULL )
-    , _verbosity( Options::get()->getInt( Options::VERBOSITY ) )
-    , _lastNumVisitedStates( 0 )
-    , _lastIterationWithProgress( 0 )
-    , _splittingStrategy( Options::get()->getDivideStrategy() )
-    , _symbolicBoundTighteningType( Options::get()->getSymbolicBoundTighteningType() )
-    , _solveWithMILP( Options::get()->getBool( Options::SOLVE_WITH_MILP ) )
-    , _gurobi( nullptr )
-    , _milpEncoder( nullptr )
-    , _simulationSize( Options::get()->getInt( Options::NUMBER_OF_SIMULATIONS ) )
-    , _isGurobyEnabled( Options::get()->gurobiEnabled() )
-    , _isSkipLpTighteningAfterSplit( Options::get()->getBool( Options::SKIP_LP_TIGHTENING_AFTER_SPLIT ) )
-    , _milpSolverBoundTighteningType( Options::get()->getMILPSolverBoundTighteningType() )
+    : _rowBoundTightener(*_tableau)
+    , _smtCore(this)
+    , _numPlConstraintsDisabledByValidSplits(0)
+    , _preprocessingEnabled(false)
+    , _initialStateStored(false)
+    , _work(NULL)
+    , _basisRestorationRequired(Engine::RESTORATION_NOT_NEEDED)
+    , _basisRestorationPerformed(Engine::NO_RESTORATION_PERFORMED)
+    , _costFunctionManager(_tableau)
+    , _quitRequested(false)
+    , _exitCode(Engine::NOT_DONE)
+    , _constraintBoundTightener(*_tableau)
+    , _numVisitedStatesAtPreviousRestoration(0)
+    , _networkLevelReasoner(NULL)
+    , _verbosity(Options::get()->getInt(Options::VERBOSITY))
+    , _lastNumVisitedStates(0)
+    , _lastIterationWithProgress(0)
+    , _splittingStrategy(Options::get()->getDivideStrategy())
+    , _solveWithMILP(Options::get()->getBool(Options::SOLVE_WITH_MILP))
+    , _gurobi(nullptr)
+    , _milpEncoder(nullptr)
 {
     _smtCore.setStatistics(&_statistics);
     _tableau->setStatistics(&_statistics);
@@ -315,8 +307,6 @@ bool Engine::solve(unsigned timeoutInSeconds)
                     printf("\nEngine::solve: unsat query\n");
                     _statistics.print();
                 }
-                //Should consider the case of bound-tightening UNSAT
-                printSimplexUNSATCertificate();
                 _exitCode = Engine::UNSAT;
                 return false;
             }
@@ -2304,16 +2294,18 @@ void Engine::printSimplexUNSATCertificate()
         coeff[i] = 0;
 
     TableauRow row = TableauRow(n);
-    _tableau->getInfeasibleRow(&row);
-    row.dump();
+    int success = _tableau->getInfeasibleRow(&row);
 
-    for (int i = 0; i < row._size; ++i)
-        if (row._row[i]._var >= n - m) // If var was part of original basis, store the relevant coefficient
-            coeff[row._row[i]._var - n + m] = row._row[i]._coefficient;
+    if (success) {
+        for (int i = 0; i < row._size; ++i)
+            if (row._row[i]._var >= n - m) // If var was part of original basis, store the relevant coefficient
+                coeff[row._row[i]._var - n + m] = row._row[i]._coefficient;
 
-    if (row._lhs >= n - m) //If the lhs was part of original basis, its coefficient is -1
-        coeff[row._lhs - n + m] = -1;
-
-    for (int i = 0; i < m; ++i)
-        printf("%.2lf ,", coeff[i]);
+        if (row._lhs >= n - m) //If the lhs was part of original basis, its coefficient is -1
+            coeff[row._lhs - n + m] = -1;
+        printf("The coefficents witness infeasibility are:\n");
+        for (int i = 0; i < m; ++i)
+            printf("%.2lf ,", coeff[i]);
+    }
+   
 }
