@@ -18,6 +18,7 @@
 
 #include "List.h"
 #include "Set.h"
+#include "BoundsExplanator.h"
 
 class EntrySelectionStrategy;
 class Equation;
@@ -182,6 +183,8 @@ public:
     
     
     virtual int getInfeasibleRow(TableauRow* row) = 0 ;
+    virtual int getInfeasibleVar() = 0;
+    virtual SingleVarBoundsExplanator& ExplainBound(unsigned variable) = 0 ;
 
 };
 

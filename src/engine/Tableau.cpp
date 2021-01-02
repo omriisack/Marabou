@@ -2602,6 +2602,23 @@ int Tableau::getInfeasibleRow(TableauRow* row)
 }
 
 
+int Tableau::getInfeasibleVar()
+{
+    for (unsigned i = 0; i < _n; ++i )
+    {
+    /* Include when debugging:
+       TODO erase when done
+    
+        if(basicOutOfBounds(i))
+            if (_lowerBounds[i] == _upperBounds[i] )
+                return i;
+       */
+        if (_lowerBounds[i] > _upperBounds[i])
+            return i;
+    }
+    return -1;
+}
+
 //
 // Local Variables:
 // compile-command: "make -C ../.. "
