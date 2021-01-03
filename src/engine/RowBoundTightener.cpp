@@ -371,6 +371,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             _tableau.updateExplanation( row, false );
         setLowerBound( y, lowerBound);
         _tightenedLower[y] = true;
+        _tableau.updateExplanation( row, false );
         ++result;
     }
 
@@ -380,6 +381,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             _tableau.updateExplanation( row, true );
         setUpperBound( y, upperBound);
         _tightenedUpper[y] = true;
+        _tableau.updateExplanation( row, true );
         ++result;
     }
 
@@ -461,6 +463,8 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
                 _tableau.updateExplanation( row, false, xi );
             setLowerBound( xi, lowerBound);
             _tightenedLower[xi] = true;
+            _tableau.updateExplanation( row, false );  // Is it the right bound to update?
+            //TODO maybe create a new row with x_i as lhs?
             ++result;
         }
 
@@ -470,6 +474,8 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
                 _tableau.updateExplanation( row, true, xi );
             setUpperBound( xi, upperBound);
             _tightenedUpper[xi] = true;
+            _tableau.updateExplanation( row, true );  // Is it the right bound to update?
+            //TODO maybe create a new row with x_i as lhs?
             ++result;
         }
 
@@ -639,6 +645,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
                 _tableau.updateExplanation( *sparseRow, false, index );
             _lowerBounds[index] = lowerBound;
             _tightenedLower[index] = true;
+            _tableau.updateExplanation( row, false ); 
             ++result;
         }
 
@@ -648,6 +655,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
                 _tableau.updateExplanation( *sparseRow, true, index );
             _upperBounds[index] = upperBound;
             _tightenedUpper[index] = true;
+            _tableau.updateExplanation( row, true );
             ++result;
         }
 

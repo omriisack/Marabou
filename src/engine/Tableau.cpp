@@ -60,6 +60,7 @@ Tableau::Tableau()
     , _statistics( NULL )
     , _costFunctionManager( NULL )
     , _rhsIsAllZeros( true )
+    , _boundsExplanator( NULL )
 {
 }
 
@@ -207,6 +208,12 @@ void Tableau::freeMemoryIfNeeded()
         delete[] _workN;
         _workN = NULL;
     }
+
+    if (_boundsExplanator)
+    {
+        _boundsExplanator->~BoundsExplanator();
+        _boundsExplanator = NULL;
+    }
 }
 
 void Tableau::setDimensions( unsigned m, unsigned n )
@@ -313,6 +320,8 @@ void Tableau::setDimensions( unsigned m, unsigned n )
 
     if ( _statistics )
         _statistics->setCurrentTableauDimension( _m, _n );
+    if(GlobalConfiguration::PROOF_CERTIFICATE)
+        _boundsExplanator = new BoundsExplanator(n, m);  // Reset whenever new dimensions are set.
 }
 
 void Tableau::setConstraintMatrix( const double *A )
@@ -1723,6 +1732,14 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
+
+    // Update only for a basic var
+    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
+    {
+        TableauRow row = TableauRow( _n );
+        getTableauRow( _variableToIndex[variable], &row );
+        _boundsExplanator->updateBoundExplanation( row, false );
+    }
 }
 
 void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, double value )
@@ -1741,6 +1758,15 @@ void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, dou
         computeBasicStatus( index );
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
+    }
+
+ 
+    // Update only for a basic var
+    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
+    {
+        TableauRow row = TableauRow( _n );
+        getTableauRow( _variableToIndex[variable], &row );
+        _boundsExplanator->updateBoundExplanation( row, true );
     }
 }
 
@@ -2580,43 +2606,49 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
     return true;
 }
 
-
-//Omri's Addition
-int Tableau::getInfeasibleRow(TableauRow* row) 
+// TODO erase
+int Tableau::getInfeasibleRow( TableauRow* row ) 
 {
-    double result = 0;
-    for (unsigned i = 0; i < _m; ++i)
+    for ( unsigned i = 0; i < _m; ++i )
     {
-        if (basicTooLow(i))
+        if (basicOutOfBounds( i ))
         {
-            Tableau::getTableauRow(i, row);
-            return 1;
-        }
-        else if (basicTooHigh(i))
-        {
-            Tableau::getTableauRow(i, row);
-            return 1;
+            Tableau::getTableauRow( i, row );
+            return i;
         }
     }
-    return 0;
+    return -1;
 }
-
 
 int Tableau::getInfeasibleVar()
 {
-    for (unsigned i = 0; i < _n; ++i )
-    {
-    /* Include when debugging:
-       TODO erase when done
-    
-        if(basicOutOfBounds(i))
-            if (_lowerBounds[i] == _upperBounds[i] )
-                return i;
-       */
+    for (unsigned i = 0; i < _n; ++i)
         if (_lowerBounds[i] > _upperBounds[i])
             return i;
+ 
+    // In case of infeasibility dicovered by assignment 
+    // Assumption - this method is called after UNSAT is detected.
+    TableauRow row = TableauRow( _n );
+    for (unsigned i = 0; i < _m; ++i)
+    {
+        if (basicOutOfBounds( i ))
+        {
+            Tableau::getTableauRow( i, &row );
+            return row._lhs;
+        }
     }
     return -1;
+}
+
+SingleVarBoundsExplanator& Tableau::ExplainBound( unsigned variable )
+{
+    ASSERT(variable < _n);
+    return _boundsExplanator->returnWholeVarExplanation( variable );
+}
+
+void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
+{
+    _boundsExplanator->updateBoundExplanation( row, isUpper );
 }
 
 //
