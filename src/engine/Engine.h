@@ -571,14 +571,38 @@ private:
     void extractSolutionFromGurobi( InputQuery &inputQuery );
 
     /*
-      Prints coefficents of Simplex equations that witness UNSAT
-    */
-    void Engine::printSimplexUNSATCertificate();
-
-    /*
      Prints coefficents of Simplex equations that witness UNSAT
     */
     void Engine::printInfeasibilityCertificate();
+
+    /*
+     Updates bounds after deducing Simplex unfeasibility
+    */
+    void Engine::simplexBoundsUpdate();
+
+    std::vector<std::vector<double>> _initialTableau;
+    std::vector<double> _initialLowerBounds;
+    std::vector<double> _initialUpperBounds;
+
+    /*
+     Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
+     Asserts the computed bound is epsilon close to the real one.
+    */
+    bool Engine::certifyInfeasibility( const double epsilon ) const;
+
+    /*
+     Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
+     
+    */
+    double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const;
+
+
+    /*
+     Validates that all explanations epsilon close to real bounds
+     Separately for tightenings and actual bounds
+     TODO erase upon completion?
+    */
+    void Engine::validateAllBounds( const double epsilon ) const;
 };
 
 #endif // __Engine_h__

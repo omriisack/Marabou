@@ -22,25 +22,23 @@ SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
 {
 }
 
-SingleVarBoundsExplanator::~SingleVarBoundsExplanator()
-{
-	_upper.clear();
-	_lower.clear();
-}
-
 void SingleVarBoundsExplanator::getVarBoundExplanation( std::vector<double>& bound, const bool isUpper ) const
 {
-	ASSERT( bound.size() == _length )
+	ASSERT( bound.size() == _length );
+
+	const std::vector<double>& temp = isUpper? _upper : _lower;
 	for ( unsigned i = 0; i < _length; ++i )
-		bound[i] = isUpper ? _upper[i] : _lower[i];
+		bound[i] = temp[i];
 }
 
 
-void SingleVarBoundsExplanator::updateVarBoundExplanation( std::vector<double>& newBound, const bool isUpper )
+void SingleVarBoundsExplanator::updateVarBoundExplanation( const std::vector<double>& newBound, const bool isUpper )
 {
-	ASSERT(newBound.size() == _length)
+	ASSERT( newBound.size() == _length )
+
+	std::vector<double>& temp = isUpper? _upper : _lower;
 	for ( unsigned i = 0; i < _length; ++i )
-		isUpper ? _upper[i] = newBound[i] : _lower[i] = newBound[i];
+		temp[i] = newBound[i];
 }
 
 
@@ -51,11 +49,6 @@ BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsN
 	,_bounds( varsNum, SingleVarBoundsExplanator( rowsNum ) )
 {
 
-}
-
-BoundsExplanator::~BoundsExplanator()
-{
-	_bounds.clear(); //TODO verify memory management
 }
 
 void BoundsExplanator::getOneBoundExplanation( std::vector<double>& bound, const unsigned var, const bool isUpper ) const
@@ -72,21 +65,21 @@ SingleVarBoundsExplanator& BoundsExplanator::returnWholeVarExplanation( const un
 void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper )
 {
 	bool tempUpper;
-	int curCoefficient, var = row._lhs;  // The var to be updated is the lhs of the row
+	unsigned var = row._lhs;  // The var to be updated is the lhs of the row
+	double curCoefficient;
 	ASSERT( var < _varsNum ); 
-
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> tempBound = std::vector<double>( _rowsNum, 0 );
 
-	for ( unsigned i = 0; i < _varsNum; ++i )
+	for ( unsigned i = 0; i < row._size; ++i )
 	{
 		curCoefficient = row._row[i]._coefficient;
-		if ( !curCoefficient ) //If coefficeint is zero then nothing to add to the sum
+		if ( !curCoefficient ) // If coefficient is zero then nothing to add to the sum
 			continue;
 
 		tempUpper = curCoefficient < 0 ? !isUpper : isUpper; // If coefficient is negative, then replace kind of bound
-		getOneBoundExplanation( tempBound,row._row[i]._var, tempUpper ); 
+		getOneBoundExplanation( tempBound, row._row[i]._var, tempUpper ); 
 		addVecTimesScalar( sum, tempBound, curCoefficient );
 	}
 
@@ -99,23 +92,103 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	sum.clear();
 }
 
-void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, std::vector<double>& input, const double scalar )
+void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned varIndex )
 {
-	ASSERT( sum.size() == _rowsNum && input.size() == _rowsNum )
+	unsigned var = row._row[varIndex]._var;
+	ASSERT( var < _varsNum );
+	if ( var == row._lhs )
+	{
+		updateBoundExplanation( row, isUpper );
+		return;
+	}
+			
+	double ci = row[varIndex]; 
+	ASSERT ( ci );  // Coefficient of var cannot be zero.
+	double coeff = 1 / ci;
+	// Create a new row with var as its lhs
+	TableauRow equiv = TableauRow( row._size );
+	equiv._lhs = var;
+	equiv._scalar = - row._scalar * coeff;
+
+	for ( unsigned i = 0; i < row._size; ++i )
+	{
+	
+		if( row[i] ) // Updates of zero coefficients are unnecessary 
+			{
+				equiv._row[i]._coefficient = - row[i] * coeff; 
+				equiv._row[i]._var = row._row[i]._var;
+			}
+	}
+	// Since the original var is the new lhs, the new var should be replaced with original lhs 
+	equiv._row[varIndex]._coefficient = coeff;
+	equiv._row[varIndex]._var = row._lhs;
+
+	updateBoundExplanation( equiv, isUpper );
+}
+
+void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
+{
+	ASSERT( var < _varsNum );
+	bool tempUpper;
+	double curCoefficient, ci = 0;
+	for ( const auto& entry : row )
+		if ( entry._index == var )
+			ci = entry._value;
+
+	ASSERT( ci );
+
+	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> tempBound = std::vector<double>( _rowsNum, 0 );
+
+	for ( const auto& entry : row )
+	{
+		curCoefficient = entry._value;
+		if ( !curCoefficient || entry._index == var ) // If coefficient is zero then nothing to add to the sum, also skip var
+			continue;
+
+		tempUpper = curCoefficient < 0 ? !isUpper : isUpper; // If coefficient is negative, then replace kind of bound
+		getOneBoundExplanation( tempBound, entry._index, tempUpper );
+		addVecTimesScalar( sum, tempBound, curCoefficient / -ci );
+	}
+
+	extractSparseRowCoefficients( row, rowCoefficients ); // Update according to row coefficients
+	addVecTimesScalar( sum, rowCoefficients, 1 );
+	_bounds[var].updateVarBoundExplanation( sum, isUpper );
+
+	tempBound.clear();
+	rowCoefficients.clear();
+	sum.clear();
+}
+
+
+void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const
+{
+	ASSERT( sum.size() == _rowsNum && input.size() == _rowsNum );
 
 	for ( unsigned i = 0; i < _rowsNum; ++i )
 		sum[i] += scalar * input[i];
 }
 
-void BoundsExplanator::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients )
+void BoundsExplanator::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients ) const
 {
-	ASSERT( coefficients.size() == _rowsNum && row._size == _varsNum )
-
-	//The coefficients of the row m highest-indices vars are the coefficents of coefficients
+	ASSERT( coefficients.size() == _rowsNum && ( row._size == _varsNum  || row._size == _varsNum - _rowsNum ) );
+	//The coefficients of the row m highest-indices vars are the coefficents of slack variables
 	for ( unsigned i = 0; i < row._size; ++i )
 		if ( row._row[i]._var >= _varsNum - _rowsNum )
 			coefficients[row._row[i]._var - _varsNum + _rowsNum] = row._row[i]._coefficient;
 
 	if ( row._lhs >= _varsNum - _rowsNum ) //If the lhs was part of original basis, its coefficient is -1
 		coefficients[row._lhs - _varsNum + _rowsNum] = -1;
+}
+
+
+void BoundsExplanator::extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients ) const
+{
+	ASSERT( coefficients.size() == _rowsNum );
+
+	//The coefficients of the row m highest-indices vars are the coefficents of slack variables
+	for ( const auto& entry : row )
+		if ( entry._index >= _varsNum - _rowsNum )
+				coefficients[entry._index - _varsNum + _rowsNum] = entry._value;
 }

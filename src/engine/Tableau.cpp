@@ -322,6 +322,11 @@ void Tableau::setDimensions( unsigned m, unsigned n )
         _statistics->setCurrentTableauDimension( _m, _n );
     if(GlobalConfiguration::PROOF_CERTIFICATE)
         _boundsExplanator = new BoundsExplanator(n, m);  // Reset whenever new dimensions are set.
+	// Guy: the tableau dimensions can also change in addRow(). The
+	// most elegant way to be informed when this happens is to
+	// register the bound explanator to be a resizeWatcher, via the
+	// registerResizeWatcher mechanism. Then it will be notified
+	// whenever there's a change.
 }
 
 void Tableau::setConstraintMatrix( const double *A )
@@ -1732,7 +1737,7 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-
+    /* TODO erase - since explanations are already updated via rowBoundTightener
     // Update only for a basic var
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
     {
@@ -1740,6 +1745,7 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
         getTableauRow( _variableToIndex[variable], &row );
         _boundsExplanator->updateBoundExplanation( row, false );
     }
+    */
 }
 
 void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, double value )
@@ -1759,8 +1765,7 @@ void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-
- 
+    /* TODO erase - since explanations are already updated via rowBoundTightener
     // Update only for a basic var
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
     {
@@ -1768,6 +1773,7 @@ void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, dou
         getTableauRow( _variableToIndex[variable], &row );
         _boundsExplanator->updateBoundExplanation( row, true );
     }
+    */
 }
 
 void Tableau::tightenLowerBound( unsigned variable, double value )
@@ -2098,6 +2104,9 @@ void Tableau::addRow()
         _statistics->incNumAddedRows();
         _statistics->setCurrentTableauDimension( _m, _n );
     }
+
+    if (GlobalConfiguration::PROOF_CERTIFICATE)
+        _boundsExplanator = new BoundsExplanator(_n, _m); //TODO erase after registration as resizeWatcher
 }
 
 void Tableau::registerToWatchVariable( VariableWatcher *watcher, unsigned variable )
@@ -2606,49 +2615,68 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
     return true;
 }
 
-// TODO erase
-int Tableau::getInfeasibleRow( TableauRow* row ) 
+int Tableau::getInfeasibleRow( TableauRow& row )
 {
     for ( unsigned i = 0; i < _m; ++i )
     {
-        if (basicOutOfBounds( i ))
+        if ( basicOutOfBounds( i )  )
         {
-            Tableau::getTableauRow( i, row );
-            return i;
+            Tableau::getTableauRow( i, &row );
+            if ( ( computeRowBound( row, true ) < _lowerBounds[row._lhs] || computeRowBound( row, false ) > _upperBounds[row._lhs] ) )
+                return i;
         }
     }
     return -1;
 }
 
-int Tableau::getInfeasibleVar()
+int Tableau::getInfeasibleVar() const
 {
     for (unsigned i = 0; i < _n; ++i)
         if (_lowerBounds[i] > _upperBounds[i])
-            return i;
- 
-    // In case of infeasibility dicovered by assignment 
-    // Assumption - this method is called after UNSAT is detected.
-    TableauRow row = TableauRow( _n );
-    for (unsigned i = 0; i < _m; ++i)
-    {
-        if (basicOutOfBounds( i ))
-        {
-            Tableau::getTableauRow( i, &row );
-            return row._lhs;
-        }
-    }
+            return i;  
     return -1;
 }
 
-SingleVarBoundsExplanator& Tableau::ExplainBound( unsigned variable )
+SingleVarBoundsExplanator& Tableau::ExplainBound( const unsigned variable ) const
 {
-    ASSERT(variable < _n);
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
     return _boundsExplanator->returnWholeVarExplanation( variable );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
 {
-    _boundsExplanator->updateBoundExplanation( row, isUpper );
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        _boundsExplanator->updateBoundExplanation( row, isUpper );
+}
+
+void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, unsigned varIndex ) const
+{
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        _boundsExplanator->updateBoundExplanation( row, isUpper, varIndex );
+}
+
+void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, unsigned var ) const
+{
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        _boundsExplanator->updateBoundExplanationSparse( row, isUpper, var );
+}
+
+double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
+{
+    double bound = 0, multiplier;
+    unsigned var;
+    for ( unsigned i = 0; i < row._size; ++i )
+    {
+        var = row._row[i]._var;
+        if( !row[i] )
+            continue;
+
+        multiplier = (isUpper && row[i] > 0) || (!isUpper && row[i] < 0)? _upperBounds[var] : _lowerBounds[var];
+        multiplier *= row[i];
+        bound += multiplier;
+    }
+
+    return bound;
 }
 
 //

@@ -648,20 +648,40 @@ private:
       puts it in  the input parameter, and returns the index of the row
       If none found return -1
     */
-    int Tableau::getInfeasibleRow(TableauRow* row);
+    int Tableau::getInfeasibleRow( TableauRow& row );
 
     /*
      Returns a variable with infeasible bounds, if exists
      Otherwise returns -1
    */
-    int getInfeasibleVar();
+    int getInfeasibleVar() const;
+
+    /*
+    * Computes the upper bound imposed by row rhs
+    * Consider making a static function
+    */
+    double Tableau::computeRowBound(const TableauRow& row, const bool isUpper ) const;
 
     /*
       Returns the bounds explanation of a variable in the tableau
     */
-    SingleVarBoundsExplanator& Tableau::ExplainBound(unsigned variable);
+    SingleVarBoundsExplanator& Tableau::ExplainBound( const unsigned variable ) const;
 
-    void Tableau::updateExplanation(const TableauRow& row, const bool isUpper) const;
+    /*
+     Update a bound explanation according to a row in the Tableau
+    */
+    void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const;
+
+    /*
+    Update a bound explanation of a specific var in a row 
+   */
+    void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, unsigned var ) const;
+
+    /*
+     Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
+    */
+    void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, unsigned varIndex ) const;
+
 
     /*
       Explanator of all bounds 
