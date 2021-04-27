@@ -31,6 +31,7 @@
 #include "TableauRow.h"
 #include "TimeUtils.h"
 
+
 Engine::Engine()
     : _rowBoundTightener( *_tableau )
     , _smtCore( this )
@@ -54,8 +55,7 @@ Engine::Engine()
     , _gurobi( nullptr )
     , _milpEncoder( nullptr )
     , _initialTableau {}
-    , _initialLowerBounds {}
-    , _initialUpperBounds {}
+    , _toggleBounds( 0 )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -313,7 +313,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
                     if ( GlobalConfiguration::PROOF_CERTIFICATE )
                     {
                         // Certification relevant to simplex failure
-                        printInfeasibilityCertificate();
+						printLinearInfeasibilityCertificate();
                         validateAllBounds( 0.0375 );
                         certifyInfeasibility( 0.01 );
                     }     
@@ -785,14 +785,12 @@ double *Engine::createConstraintMatrix()
         unsigned varIndex = 0;
         unsigned count = 0;
 
-        // Store initial bounds
-        _initialLowerBounds = std::vector<double>( n, 0 ); // Where should be cleared?
-        _initialUpperBounds = std::vector<double>( n, 0 );
+        _toggleBounds = ToggleBounds( n );
 
         for ( unsigned i = 0; i < n; ++i )
         {
-            _initialLowerBounds[i] = _preprocessedQuery.getLowerBound( i );
-            _initialUpperBounds[i] = _preprocessedQuery.getUpperBound( i );
+            _toggleBounds.toggleLower( i, _preprocessedQuery.getLowerBound( i ), true );
+			_toggleBounds.toggleUpper( i, _preprocessedQuery.getUpperBound( i ), true );
         }
 
         // Set vector of initial rows
@@ -2327,7 +2325,7 @@ void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
     }
 }
 
-void Engine::printInfeasibilityCertificate()
+void Engine::printLinearInfeasibilityCertificate()
 {
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
     {
@@ -2344,13 +2342,13 @@ void Engine::printInfeasibilityCertificate()
     std::vector<double> expl = std::vector<double>( m, 0 ); 
     certificate.getVarBoundExplanation( expl, true );
 
-    printf( "Upper bound explanataion:\n[" );
+    printf( "Upper bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
         printf( "%.2lf ,", expl[i] );
     printf( "]\n" );
 
     certificate.getVarBoundExplanation( expl, false );
-    printf( "Lower bound explanataion:\n[" );
+    printf( "Lower bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
         printf( "%.2lf ,", expl[i] );
     printf( "]\n" );
@@ -2367,7 +2365,6 @@ void Engine::simplexBoundsUpdate()
    _tableau->getInfeasibleRow( boundUpdateRow );
     unsigned var = boundUpdateRow._lhs;
     double newBound;
-    ASSERT( rowIndex <= _tableau->getM() );
 
     newBound = _tableau->computeRowBound( boundUpdateRow, true );
     if ( newBound < _tableau->getUpperBound( var ) )
@@ -2389,7 +2386,7 @@ void Engine::certifyInfeasibility( const double epsilon ) const
     int var = _tableau->getInfeasibleVar();
     double computedUpper = getExplainedBound( var, true ), computedLower = getExplainedBound( var, false );
 
-    if ( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon || abs( computedLower - _tableau->getLowerBound( var ) ) < epsilon || computedLower <= computedUpper)
+    if ( abs( computedUpper - _tableau->getUpperBound( var ) ) > epsilon || abs( computedLower - _tableau->getLowerBound( var ) ) > epsilon || computedLower <= computedUpper)
     	printf("Certification error.\n");
     //TODO revert upon completion
     //ASSERT( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon );
@@ -2412,12 +2409,12 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
     // If explanation is all zeros, return original bound
     bool allZeros = true;
     for( unsigned i = 0; i < expl.size(); ++i )
-        if ( expl[i] )
+        if ( !FloatUtils::isZero( expl[i] ) )
             allZeros = false;
     if ( allZeros )
-        return isUpper? _initialUpperBounds[var] : _initialLowerBounds[var];
+        return isUpper? _toggleBounds.getUpperBound(var) : _toggleBounds.getLowerBound(var);
 
-    // Create linear combination of originial rows implied from explanation
+    // Create linear combination of original rows implied from explanation
     std::vector<double> explanationRowsCombination = std::vector<double>( n, 0 );
 
     for ( unsigned i = 0; i < m; ++i )
@@ -2443,9 +2440,9 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
     {
         temp = explanationRowsCombination[i];
         if ( isUpper )
-            temp *= explanationRowsCombination[i] > 0 ? _initialUpperBounds[i] : _initialLowerBounds[i];
+            temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getUpperBound(i) : _toggleBounds.getLowerBound(i);
         else
-            temp *= explanationRowsCombination[i] > 0 ? _initialLowerBounds[i] : _initialUpperBounds[i];
+            temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getLowerBound(i) : _toggleBounds.getUpperBound(i);
         derived_bound += temp;
     }
 
