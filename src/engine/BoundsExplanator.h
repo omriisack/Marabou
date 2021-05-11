@@ -18,10 +18,6 @@
 #include "stack"
 #include "assert.h"
 
-struct DynamicBound{
-	std::vector<double> _bound;
-	unsigned _depth;
-};
 
 /*
   A class which encapsulates the bounds explanations of a single variable 
@@ -38,31 +34,27 @@ public:
 	/*
 	  Updates the values of the bound explanation according to newBound 
 	*/
-	void updateVarBoundExplanation( const DynamicBound& newBound, const  bool isUpper );
+	void updateVarBoundExplanation(const std::vector<double>& newBound, const  bool isUpper );
 
 	/*
-	  Returns the recursion depth in which the bound is deduced.
+	 * Updates all coefficients to be in *= alpha
 	 */
-	unsigned getExplanationDepth( const bool isUpper ) const;
+	void multiplyAllCoefficients( const double alpha, const bool isUpper );
 
 	/*
-	 Pops elements from th stacks until element to certain depth is on top
-	 Assuming depths in stack are monotonically increasing
+	 * Deep copy of SingleVarBoundsExplanator
 	 */
-	void popUntilDepth( const unsigned depth);
+	SingleVarBoundsExplanator& operator=(const SingleVarBoundsExplanator& other);
 
-	/*
-	 * Adds a zero vector on top of the relevant stack
-	 */
-	void imposeBound( const unsigned depth, const bool isUpper);
+
 
 	unsigned _upperRecLevel; // For debugging purpose, TODO delete upon completing
 	unsigned _lowerRecLevel;
 
 private:
 	unsigned _length;
-	std::stack<DynamicBound> _lower;
-	std::stack<DynamicBound> _upper;
+	std::vector<double> _lower;
+	std::vector<double> _upper;
 };
 
 
@@ -98,6 +90,17 @@ public:
 	*/
 	void updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var );
 
+	/*
+	 * Copies all elements of other BoundsExplanator
+	 */
+	BoundsExplanator& operator=(const BoundsExplanator& other);
+
+	/*
+	* Multiplies the explanation vector of a var by scalar alpha
+	*/
+	void multiplyExplanationCoefficients( const unsigned var, const double alpha, const bool isUpper );
+
+
 private:
 	unsigned _varsNum;
 	unsigned _rowsNum;
@@ -122,18 +125,6 @@ private:
 	All coefficients are divided by -ci, the coefficient of the lhs in the row, for normalization.   
 	*/
 	void extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients, double ci ) const;
-
-	/*
-	 Pops elements from all explanations stacks until element to certain depth is on top
-	 Assuming depths in stack are monotonically increasing
-	 */
-	void popAllStacksUntilDepth( const unsigned depth);
-
-	/*
-	 Imposes the zero explanation on top of a relevant stack
-	 Can be called when a split is performed
-	 */
-	void imposeNewExplanation( const unsigned index, const unsigned depth, const bool isUpper);
 
 };
 #endif // __BoundsExplanator_h__

@@ -682,11 +682,15 @@ private:
     */
     void updateExplanation( const SparseUnsortedList& row, const bool isUpper, unsigned varIndex ) const;
 
-
     /*
+     * Multiplies the explanation vector of a var by scalar alpha
+     */
+	void multiplyExplanationCoefficients (const unsigned var, const double alpha, const bool isUpper);
+
+	/*
       Explanator of all bounds 
     */
-    BoundsExplanator* _boundsExplanator;
+    BoundsExplanator *_boundsExplanator;
 };
 
 #endif // __Tableau_h__

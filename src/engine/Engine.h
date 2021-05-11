@@ -39,6 +39,7 @@
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
 #include "ToggleBounds.h"
+#include "UNSATCertificate.h"
 
 #include <atomic>
 #include <assert.h>
@@ -583,6 +584,8 @@ private:
 
     std::vector<std::vector<double>> _initialTableau;
     ToggleBounds _toggleBounds;
+	CertificateNode* _UNSATCertificate;
+	CertificateNode* _UNSATCertificateCurrentPointer;
     /*
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
@@ -591,10 +594,19 @@ private:
 
     /*
      Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
-     
     */
     double getExplainedBound( const unsigned var, const bool isUpper ) const;
 
+
+    /*
+     * Returns the coefficient of a var according to its explanation of isUpper bound
+     */
+    double extractVarExplanationCoefficient (const unsigned var, bool isUpper);
+
+    /*
+     * Normalizes all explanations, i.e. making them produce explanation where the coefficient of explained var is 1
+     */
+    void normalizeExplanations();
 
     /*
      Validates that all explanations epsilon close to real bounds

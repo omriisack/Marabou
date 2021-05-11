@@ -56,6 +56,8 @@ Engine::Engine()
     , _milpEncoder( nullptr )
     , _initialTableau {}
     , _toggleBounds( 0 )
+    , _UNSATCertificate( NULL )
+    , _UNSATCertificateCurrentPointer( NULL )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -114,13 +116,12 @@ bool Engine::solve( unsigned timeoutInSeconds )
         _statistics.print();
         printf( "\n---\n" );
     }
-
     applyAllValidConstraintCaseSplits();
 
     bool splitJustPerformed = true;
     struct timespec mainLoopStart = TimeUtils::sampleMicro();
     while ( true )
-    {   
+    {
         struct timespec mainLoopEnd = TimeUtils::sampleMicro();
         _statistics.addTimeMainLoop( TimeUtils::timePassed( mainLoopStart, mainLoopEnd ) );
         mainLoopStart = mainLoopEnd;
@@ -271,7 +272,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
 
             // We have out-of-bounds variables.
             performSimplexStep();
-            continue;
+			continue;
         }
         catch ( const MalformedBasisException & )
         {
@@ -310,13 +311,6 @@ bool Engine::solve( unsigned timeoutInSeconds )
                 {
                     printf( "\nEngine::solve: unsat query\n" );
                     _statistics.print();
-                    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                    {
-                        // Certification relevant to simplex failure
-						printLinearInfeasibilityCertificate();
-                        validateAllBounds( 0.0375 );
-                        certifyInfeasibility( 0.01 );
-                    }     
                 }
                 _exitCode = Engine::UNSAT;
                 return false;
@@ -518,8 +512,13 @@ void Engine::performSimplexStep()
             // Cost function is fresh --- failure is real.
             struct timespec end = TimeUtils::sampleMicro();
             _statistics.addTimeSimplexSteps( TimeUtils::timePassed( start, end ) );
-            if( GlobalConfiguration::PROOF_CERTIFICATE ) 
-                simplexBoundsUpdate();
+            if( GlobalConfiguration::PROOF_CERTIFICATE )
+			{
+				simplexBoundsUpdate();
+				printLinearInfeasibilityCertificate();
+				validateAllBounds( 0.0375 );
+				certifyInfeasibility( 0.01 );
+			}
             throw InfeasibleQueryException();
         }
     }
@@ -559,7 +558,6 @@ void Engine::performSimplexStep()
     _activeEntryStrategy->prePivotHook( _tableau, fakePivot );
     _tableau->performPivot();
     _activeEntryStrategy->postPivotHook( _tableau, fakePivot );
-
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.addTimeSimplexSteps( TimeUtils::timePassed( start, end ) );
 }
@@ -1556,23 +1554,26 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     }
 
     adjustWorkMemorySize();
-
     _rowBoundTightener->resetBounds();
     _constraintBoundTightener->resetBounds();
-
     for ( auto &bound : bounds )
     {
         unsigned variable = _tableau->getVariableAfterMerging( bound._variable );
-
+		//TODO fix BUG when calling from restorePrecision, a bound can be applied twice in targetSplits
         if ( bound._type == Tightening::LB )
         {
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
             _tableau->tightenLowerBound( variable, bound._value );
+			if ( GlobalConfiguration::PROOF_CERTIFICATE )
+				_toggleBounds.toggleLower( variable, bound._value, false );
         }
         else
         {
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
             _tableau->tightenUpperBound( variable, bound._value );
+			if ( GlobalConfiguration::PROOF_CERTIFICATE )
+				_toggleBounds.toggleUpper( variable, bound._value, false );
+
         }
     }
 
@@ -1613,16 +1614,10 @@ void Engine::applyAllConstraintTightenings()
 
 void Engine::applyAllBoundTightenings()
 {
-
-    if ( !GlobalConfiguration::BOUND_TIGHTENING )
-        return;
-
-
     struct timespec start = TimeUtils::sampleMicro();
 
     applyAllRowTightenings();
     applyAllConstraintTightenings();
-
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.addTimeForApplyingStoredTightenings( TimeUtils::timePassed( start, end ) );
 }
@@ -1654,7 +1649,7 @@ bool Engine::applyValidConstraintCaseSplit( PiecewiseLinearConstraint *constrain
         constraint->setActiveConstraint( false );
         PiecewiseLinearCaseSplit validSplit = constraint->getValidCaseSplit();
         _smtCore.recordImpliedValidSplit( validSplit );
-        applySplit( validSplit );
+		applySplit( validSplit );
         ++_numPlConstraintsDisabledByValidSplits;
 
         return true;
@@ -2338,27 +2333,29 @@ void Engine::printLinearInfeasibilityCertificate()
 
     printf( "Found a variable with infeasible bounds: x%d\n", var );
     unsigned m = _tableau->getM();
-    SingleVarBoundsExplanator certificate = *_tableau->ExplainBound( var );
+    SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
+    *certificate = *_tableau->ExplainBound( var );
     std::vector<double> expl = std::vector<double>( m, 0 ); 
-    certificate.getVarBoundExplanation( expl, true );
+    certificate->getVarBoundExplanation( expl, true );
 
     printf( "Upper bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
-        printf( "%.2lf ,", expl[i] );
+        printf( "%.3lf ,", expl[i] );
     printf( "]\n" );
 
-    certificate.getVarBoundExplanation( expl, false );
+    certificate->getVarBoundExplanation( expl, false );
     printf( "Lower bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
-        printf( "%.2lf ,", expl[i] );
+        printf( "%.3lf ,", expl[i] );
     printf( "]\n" );
     expl.clear();
+	delete certificate;
 }
 
 void Engine::simplexBoundsUpdate()
 {
     applyAllRowTightenings();
-    // Failure of a simplex step implies infeasible bounds imposed by the row
+	// Failure of a simplex step implies infeasible bounds imposed by the row
     TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
     // If an infeasible basic is lower than its lower bound, then it cannot be increased.
     // Thus the upper bound imposed by the row is too low
@@ -2385,10 +2382,10 @@ void Engine::certifyInfeasibility( const double epsilon ) const
 {
     int var = _tableau->getInfeasibleVar();
     double computedUpper = getExplainedBound( var, true ), computedLower = getExplainedBound( var, false );
-
-    if ( abs( computedUpper - _tableau->getUpperBound( var ) ) > epsilon || abs( computedLower - _tableau->getLowerBound( var ) ) > epsilon || computedLower <= computedUpper)
-    	printf("Certification error.\n");
-    //TODO revert upon completion
+	// abs( computedUpper - _tableau->getUpperBound( var ) ) > epsilon || abs( computedLower - _tableau->getLowerBound( var ) ) > epsilon ||
+    if (  computedLower <= computedUpper)
+    	printf("Certification error. %.5lf, %.5lf\n", computedUpper - computedLower ,epsilon);
+    //TODO revert upon completing
     //ASSERT( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon );
     //ASSERT( abs( computedLower - _tableau->getLowerBound( var ) ) < epsilon );
 
@@ -2399,12 +2396,13 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
     unsigned n = _tableau->getN(), m = _tableau->getM();
     double derived_bound = 0, scalar = 0, c = 0, temp = 0;
-    SingleVarBoundsExplanator certificate = *_tableau->ExplainBound( var );
+
+	SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
+	*certificate = *_tableau->ExplainBound( var );
 
     // Retrieve bound explanation
     std::vector<double> expl = std::vector<double>( m, 0 );
-    certificate.getVarBoundExplanation( expl, isUpper );
-
+    certificate->getVarBoundExplanation( expl, isUpper );
  
     // If explanation is all zeros, return original bound
     bool allZeros = true;
@@ -2412,7 +2410,7 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
         if ( !FloatUtils::isZero( expl[i] ) )
             allZeros = false;
     if ( allZeros )
-        return isUpper? _toggleBounds.getUpperBound(var) : _toggleBounds.getLowerBound(var);
+        return isUpper? _toggleBounds.getUpperBound( var ) : _toggleBounds.getLowerBound( var );
 
     // Create linear combination of original rows implied from explanation
     std::vector<double> explanationRowsCombination = std::vector<double>( n, 0 );
@@ -2430,27 +2428,76 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
     c = explanationRowsCombination[var];
 
     ASSERT( c );
-    for ( unsigned i = 0; i < n; ++i )
-        explanationRowsCombination[i] /= -c;
-    explanationRowsCombination[var] = 0;
+
+	for ( unsigned i = 0; i < n; ++i )
+		explanationRowsCombination[i] /= -c;
+     explanationRowsCombination[var] = 0;
     scalar /= -c;
 
-    // Set the  bound derived from the linear combination, using original bounds.
+    // Set the bound derived from the linear combination, using original bounds.
     for ( unsigned i = 0; i < n; ++i )
     {
         temp = explanationRowsCombination[i];
-        if ( isUpper )
-            temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getUpperBound(i) : _toggleBounds.getLowerBound(i);
-        else
-            temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getLowerBound(i) : _toggleBounds.getUpperBound(i);
-        derived_bound += temp;
+		if ( !FloatUtils::isZero( temp ) )
+		{
+			if ( isUpper )
+				temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getUpperBound( i ) : _toggleBounds.getLowerBound( i );
+			else
+				temp *= explanationRowsCombination[i] > 0 ? _toggleBounds.getLowerBound( i ) : _toggleBounds.getUpperBound( i );
+			derived_bound += temp;
+		}
     }
 
     derived_bound += scalar;
     explanationRowsCombination.clear();
     expl.clear();
+	delete certificate;
     return derived_bound;
 }
+
+
+double Engine::extractVarExplanationCoefficient ( const unsigned var, bool isUpper )
+{
+	unsigned m = _tableau->getM();
+	double c = 0;
+
+	SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
+	*certificate = *_tableau->ExplainBound( var );
+
+	// Retrieve bound explanation
+	std::vector<double> expl = std::vector<double>( m, 0 );
+	certificate->getVarBoundExplanation( expl, isUpper );
+
+	for ( unsigned i = 0; i < m; ++i )
+		c += _initialTableau[i][var] * expl[i];
+
+	expl.clear();
+	delete certificate;
+	return c;
+}
+
+void Engine::normalizeExplanations()
+{
+	unsigned n = _tableau->getN();
+	double upper, lower;
+	for ( unsigned var = 0; var < n; ++var )
+	{
+		upper = extractVarExplanationCoefficient( var, true );
+		lower = extractVarExplanationCoefficient( var, false );
+		if ( upper && !FloatUtils::isZero( upper - 1 ) )
+		{
+			upper = 1 / upper;
+			_tableau->multiplyExplanationCoefficients( var, upper, true );
+		}
+
+		if ( lower && !FloatUtils::isZero( lower - 1 ) )
+		{
+			lower = 1 / lower;
+			_tableau->multiplyExplanationCoefficients( var, lower, false );
+		}
+	}
+}
+
 
 void Engine::validateAllBounds( const double epsilon ) const
 {
@@ -2462,7 +2509,15 @@ void Engine::validateAllBounds( const double epsilon ) const
             printf( "Var: %d. Computed Upper %.5lf, real %.5lf\n", var, getExplainedBound( var, true ), _tableau->getUpperBound( var ) );
         if ( abs( getExplainedBound( var, false ) - _tableau->getLowerBound( var ) ) > epsilon)
             printf( "Var: %d. Computed Lower  %.5lf, real %.5lf\n", var, getExplainedBound( var, false ), _tableau->getLowerBound( var ) );
+        //TODO revert upon completing
         //ASSERT( abs( getExplainedBound( var, true ) - _tableau->getUpperBound ( var ) ) < epsilon );
         //ASSERT( abs( getExplainedBound( var, false ) - _tableau->getLowerBound( var ) ) < epsilon ); 
     }
+}
+
+
+void Engine::revertOriginalBounds( const PiecewiseLinearCaseSplit& split )
+{
+	for (auto bound : split.getBoundTightenings())
+		_toggleBounds.revertBoundToInput( bound._variable, bound._type == Tightening::UB );
 }

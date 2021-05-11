@@ -18,60 +18,51 @@ SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
 	:_upperRecLevel( 0 )
 	,_lowerRecLevel ( 0 )
 	,_length( length )
-	,_lower( )
-	,_upper( )
+	,_lower( _length, 0 )
+	,_upper( _length, 0)
 {
-	_upper.push(  { std::vector<double>( _length, 0 ), 0 } );
-	_lower.push( { std::vector<double>( _length, 0 ), 0 } );
+}
+
+SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=(const SingleVarBoundsExplanator& other)
+{
+	if (this == &other)
+		return *this;
+
+	assert( _length = other._length );
+	std::copy( other._lower.begin(), other._lower.end(), _lower.begin() );
+	std::copy( other._upper.begin(), other._upper.end(), _upper.begin() );
+	_lowerRecLevel = other._lowerRecLevel;
+	_upperRecLevel = other._upperRecLevel;
+
+	return *this;
 }
 
 void SingleVarBoundsExplanator::getVarBoundExplanation( std::vector<double>& bound, const bool isUpper ) const
 {
 	assert( bound.size() == _length );
+	const std::vector<double>& temp = isUpper? _upper : _lower;
+	std::copy(temp.begin(), temp.end(), bound.begin());
+}
 
-	const std::vector<double>& temp = isUpper? _upper.top()._bound : _lower.top()._bound;
+
+void SingleVarBoundsExplanator::updateVarBoundExplanation(const std::vector<double>& newBound, const bool isUpper )
+{
+	assert( newBound.size() == _length );
+	std::vector<double>& temp = isUpper ? _upper : _lower;
+	for (unsigned i =0; i< _length; ++i)
+		temp[i] = FloatUtils::isZero( newBound[i] ) ? 0 : newBound[i];
+	//std::copy(newBound.begin(), newBound.end(), temp.begin());
+}
+
+
+void SingleVarBoundsExplanator::multiplyAllCoefficients( const double alpha, const bool isUpper)
+{
+	std::vector<double>& temp = isUpper ? _upper : _lower;
 	for ( unsigned i = 0; i < _length; ++i )
-		bound[i] = temp[i];
+		temp[i] *= alpha;
 }
 
-
-void SingleVarBoundsExplanator::updateVarBoundExplanation( const DynamicBound& newBound, const bool isUpper )
-{
-	assert( newBound._bound.size() == _length );
-
-	DynamicBound& temp = isUpper? _upper.top() : _lower.top();
-	if ( newBound._depth > temp._depth )
-	{
-		isUpper? _upper.push(newBound) : _lower.push(newBound);
-		return;
-	}
-	temp._bound = newBound._bound;
-	// Doesn't update depth, so the depth cannot decrease
-	// TODO change to enable deducing bounds independent of the current split
-}
-
-unsigned SingleVarBoundsExplanator::getExplanationDepth(const bool isUpper) const
-{
-	return isUpper? _upper.top()._depth : _lower.top()._depth;
-}
-
-void SingleVarBoundsExplanator::popUntilDepth( const unsigned depth)
-{
-	while(_upper.top()._depth > depth)
-		_upper.pop();
-
-	while(_lower.top()._depth > depth)
-		_lower.pop();
-}
-
-
-void SingleVarBoundsExplanator::imposeBound( const unsigned depth, const bool isUpper)
-{
-	std::stack<DynamicBound>& temp = isUpper? _upper : _lower;
-	temp.push( {std::vector<double>(_length, 0), depth });
-}
-
-/* Functions of BoundsExplanator*/
+/* Functions of BoundsExplanator */
 BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsNum )
 	:_varsNum( varsNum )
 	,_rowsNum( rowsNum )
@@ -79,6 +70,19 @@ BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsN
 {
 
 }
+
+BoundsExplanator& BoundsExplanator::operator=(const BoundsExplanator& other)
+{
+	if (this == &other)
+		return *this;
+
+	assert( _rowsNum == other._rowsNum && _varsNum == other._varsNum );
+	for (unsigned i = 0; i <_varsNum; ++i )
+		_bounds[i] = other._bounds[i];
+
+	return *this;
+}
+
 
 void BoundsExplanator::getOneBoundExplanation( std::vector<double>& bound, const unsigned var, const bool isUpper ) const
 {
@@ -94,7 +98,7 @@ SingleVarBoundsExplanator& BoundsExplanator::returnWholeVarExplanation( const un
 void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper )
 {
 	bool tempUpper;
-	unsigned var = row._lhs, maxLevel = 0, maxDepth = 0, tempLevel,  tempVar;  // The var to be updated is the lhs of the row
+	unsigned var = row._lhs, maxLevel = 0, tempLevel,  tempVar;  // The var to be updated is the lhs of the row
 	double curCoefficient;
 	assert ( var < _varsNum );
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
@@ -112,8 +116,6 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 		getOneBoundExplanation( tempBound, tempVar, tempUpper );
 		addVecTimesScalar( sum, tempBound, curCoefficient );
 
-		if ( maxDepth > _bounds[tempVar].getExplanationDepth( tempUpper ) )
-			maxDepth = _bounds[tempVar].getExplanationDepth( tempUpper );
 
 		// TODO delete when completing
 		tempLevel = tempUpper? _bounds[tempVar]._upperRecLevel : _bounds[tempVar]._lowerRecLevel;
@@ -122,16 +124,14 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	}
 
 	extractRowCoefficients( row, rowCoefficients ); // Update according to row coefficients
-	addVecTimesScalar( sum, rowCoefficients, 1 ); 
-	_bounds[var].updateVarBoundExplanation( { sum, maxDepth }, isUpper );
+	addVecTimesScalar( sum, rowCoefficients, 1 );
+	_bounds[var].updateVarBoundExplanation( sum, isUpper );
 	++maxLevel;
 	if ( isUpper )
 		_bounds[var]._upperRecLevel = maxLevel;
 	else
 		_bounds[var]._lowerRecLevel = maxLevel;
-	printf("Recursion level update: %d  of var %d\n", maxLevel, var);
-
-
+	//printf("Recursion level update: %d  of var %d\n", maxLevel, var); //TODO delete
 	tempBound.clear();
 	rowCoefficients.clear();
 	sum.clear();
@@ -157,13 +157,13 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 
 	for ( unsigned i = 0; i < row._size; ++i )
 	{
-	
-		if( row[i] ) // Updates of zero coefficients are unnecessary 
-			{
-				equiv._row[i]._coefficient = - row[i] * coeff; 
-				equiv._row[i]._var = row._row[i]._var;
-			}
+		if ( row[i] ) // Updates of zero coefficients are unnecessary
+		{
+			equiv._row[i]._coefficient = - row[i] * coeff;
+			equiv._row[i]._var = row._row[i]._var;
+		}
 	}
+
 	// Since the original var is the new lhs, the new var should be replaced with original lhs 
 	equiv._row[varIndex]._coefficient = coeff;
 	equiv._row[varIndex]._var = row._lhs;
@@ -173,15 +173,14 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 
 void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
 {
-	ASSERT( var < _varsNum );
+	assert( var < _varsNum );
 	bool tempUpper;
 	double curCoefficient, ci = 0;
-	unsigned maxDepth = 0;
 	for ( const auto& entry : row )
 		if ( entry._index == var )
 			ci = entry._value;
 
-	ASSERT( ci );
+	assert( ci );
 
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
@@ -194,8 +193,6 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 			continue;
 
 		tempUpper = curCoefficient < 0 ? !isUpper : isUpper; // If coefficient is negative, then replace kind of bound
-		if ( maxDepth > _bounds[entry._index].getExplanationDepth( tempUpper ) )
-			maxDepth = _bounds[entry._index].getExplanationDepth( tempUpper );
 
 		getOneBoundExplanation( tempBound, entry._index, tempUpper );
 		addVecTimesScalar( sum, tempBound, curCoefficient / -ci );
@@ -203,11 +200,17 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 
 	extractSparseRowCoefficients( row, rowCoefficients, ci ); // Update according to row coefficients
 	addVecTimesScalar( sum, rowCoefficients, 1 );
-	_bounds[var].updateVarBoundExplanation( { sum, maxDepth }, isUpper );
+	_bounds[var].updateVarBoundExplanation( sum, isUpper );
 
 	tempBound.clear();
 	rowCoefficients.clear();
 	sum.clear();
+}
+
+
+void BoundsExplanator::multiplyExplanationCoefficients( const unsigned var, const double alpha, const bool isUpper )
+{
+	_bounds[var].multiplyAllCoefficients( alpha, isUpper );
 }
 
 
@@ -240,16 +243,4 @@ void BoundsExplanator::extractSparseRowCoefficients( const SparseUnsortedList& r
 	for ( const auto& entry : row )
 		if ( entry._index >= _varsNum - _rowsNum )
 				coefficients[entry._index - _varsNum + _rowsNum] = entry._value / -ci;
-}
-
-
-void BoundsExplanator::popAllStacksUntilDepth( const unsigned depth)
-{
-	for (SingleVarBoundsExplanator expl : _bounds)
-		expl.popUntilDepth(depth);
-}
-
-void BoundsExplanator::imposeNewExplanation( const unsigned index, const unsigned depth, const bool isUpper)
-{
-	_bounds[index].imposeBound(depth, isUpper);
 }
