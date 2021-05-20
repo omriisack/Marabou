@@ -168,7 +168,7 @@ public:
     }
 
     Map<unsigned, double> nextValues;
-    double getValue( unsigned variable ) const
+    double getValue( unsigned variable )
     {
         TS_ASSERT( nextValues.exists( variable ) );
         return nextValues[variable];
@@ -596,11 +596,9 @@ public:
         return 0;
     }
 
-    void postContextPopHook() {}
-
-	ITableau::BasicStatus getInfeasibleRow( TableauRow& /* row */ )
+    int getInfeasibleRow( TableauRow& /* row */ )
     {
-    	return ITableau::BETWEEN;
+    	return 0;
     }
 
     int getInfeasibleVar() const
@@ -612,12 +610,7 @@ public:
     	return 0;
     }
 
-	double computeSparseRowBound( const SparseUnsortedList& /* row */,  bool /* isUpper */,  unsigned /* var */) const
-	{
-    	return 0;
-	}
-
-	void updateExplanation( const TableauRow& /* row */, const bool /* isUpper */ ) const
+    void updateExplanation( const TableauRow& /* row */, const bool /* isUpper */ ) const
     {
     }
 
@@ -629,43 +622,16 @@ public:
     {
     }
 
-    std::vector<double> _mockExpl = std::vector<double>( 0 );
-    const std::vector<double>& explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
+    SingleVarBoundsExplanator* ExplainBound( const unsigned /* variable */ ) const
     {
-	   return _mockExpl;
+    	return NULL;
     }
 
-	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ ) const
+	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ )
 	{
 	}
 
-	void multiplyExplanationCoefficients ( const unsigned /* var */, const double /* alpha */, const bool /* isUpper */ ) const
-	{
-	}
-
-	void injectExplanation( const std::vector<double>& /* expl */, unsigned /* var */,  bool /*isUpper*/ ) const
-	{
-	}
-
-	bool checkCostFunctionSlack()
-	{
-    	return true;
-	}
-
-	BoundsExplainer* getAllBoundsExplanations() const
-	{
-    	return NULL;
-	}
-
-	void setAllBoundsExplanations(BoundsExplainer* /* boundsExplanations */ )
-	{
-	}
-
-	void tightenUpperBoundNaively( unsigned /* variable */, double /* value */ )
-	{
-	}
-
-	void tightenLowerBoundNaively( unsigned /* variable */, double /* value */ )
+	void multiplyExplanationCoefficients ( const unsigned /* var */, const double /* alpha */, const bool /* isUpper */ )
 	{
 	}
 };

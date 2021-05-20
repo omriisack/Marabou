@@ -21,8 +21,6 @@
 #include "PiecewiseLinearCaseSplit.h"
 #include "PiecewiseLinearConstraint.h"
 
-class String;
-
 class MockEngine : public IEngine
 {
 public:
@@ -33,7 +31,7 @@ public:
 
         lastStoredState = NULL;
     }
-
+    
     ~MockEngine()
     {
     }
@@ -90,8 +88,6 @@ public:
             }
         }
     }
-
-    void postContextPopHook() {};
 
     mutable EngineState *lastStoredState;
     void storeState( EngineState &state, bool /* storeAlsoTableauState */ ) const
@@ -171,7 +167,7 @@ public:
         _constraintsToSplit.append( constraint );
     }
 
-    PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy /**/ )
+    PiecewiseLinearConstraint *pickSplitPLConstraint()
     {
         if ( !_constraintsToSplit.empty() )
         {
@@ -195,68 +191,6 @@ public:
             return NULL;
     }
 
-    void applySnCSplit( PiecewiseLinearCaseSplit /*split*/, String /*queryId*/)
-    {
-    }
-
-	double getExplainedBound( unsigned /* var */,  bool /* isUpper */ ) const
-	{
-    	return 0.0;
-	}
-
-	void updateGroundUpperBound(unsigned /* var */, double /* value */, unsigned /*decision level*/ )
-	{
-	}
-
-	void updateGroundLowerBound(unsigned /*var*/, double /*value*/, unsigned /*decision level*/ )
-	{
-	}
-
-	std::vector<double> _mockDoubleVec;
-	std::vector<unsigned> _mockUnsignedVec;
-	const std::vector<double>& getGroundBounds( bool /* isUpper */ ) const
-	{
-    	return _mockDoubleVec;
-	}
-
-	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
-	{
-		return _mockUnsignedVec;
-	}
-
-	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
-	{
-	}
-
-
-	CertificateNode* getUNSATCertificateCurrentPointer() const
-	{
-		return NULL;
-	}
-
-	void setUNSATCertificateCurrentPointer( CertificateNode* /* node*/ )
-	{
-	}
-
-	CertificateNode* getUNSATCertificateRoot() const
-	{
-		return NULL;
-	}
-
-	bool certifyUNSATCertificate()
-	{
-    	return true;
-	}
-
-	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
-	{
-    	return 0;
-	}
-
-	unsigned computeExplanationDecisionLevel( unsigned /* var */, bool /* isUpper */ ) const
-	{
-		return 0;
-	}
 };
 
 #endif // __MockEngine_h__

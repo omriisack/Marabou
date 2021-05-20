@@ -19,7 +19,6 @@
 #include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
 #include "List.h"
-#include <vector>
 
 #ifdef _WIN32
 #undef ERROR
@@ -29,9 +28,7 @@ class EngineState;
 class Equation;
 class PiecewiseLinearCaseSplit;
 class SmtState;
-class String;
 class PiecewiseLinearConstraint;
-class CertificateNode;
 
 class IEngine
 {
@@ -42,9 +39,8 @@ public:
         UNSAT = 0,
         SAT = 1,
         ERROR = 2,
-        UNKNOWN = 3,
-        TIMEOUT = 4,
-        QUIT_REQUESTED = 5,
+        TIMEOUT = 3,
+        QUIT_REQUESTED = 4,
 
         NOT_DONE = 999,
     };
@@ -53,16 +49,6 @@ public:
       Add equations and apply tightenings from a PL case split.
     */
     virtual void applySplit( const PiecewiseLinearCaseSplit &split ) = 0;
-
-    /*
-      Register initial SnC split
-    */
-    virtual void applySnCSplit( PiecewiseLinearCaseSplit split, String queryId ) = 0;
-
-    /*
-      Hook invoked after context pop to update context independent data.
-    */
-    virtual void postContextPopHook() = 0;
 
     /*
       Methods for storing and restoring the state of the engine.
@@ -102,71 +88,13 @@ public:
     /*
       Pick the piecewise linear constraint for internal splitting
     */
-    virtual PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy
-                                                              strategy ) = 0;
+    virtual PiecewiseLinearConstraint *pickSplitPLConstraint() = 0;
 
     /*
       Pick the piecewise linear constraint for SnC splitting
     */
     virtual PiecewiseLinearConstraint *pickSplitPLConstraintSnC( SnCDivideStrategy
                                                                  strategy ) = 0;
-
-	/*
- 	Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds
-	*/
-	virtual double getExplainedBound( unsigned var,  bool isUpper ) const = 0;
-
-	/*
-	 * Update the ground bounds
-	 */
-	virtual void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel ) = 0;
-	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
-
-	/*
- 	* Return all ground bounds as a vector
- 	*/
-	virtual const std::vector<double>& getGroundBounds( bool isUpper ) const = 0;
-
-	/*
- 	* Return all decision levels of the ground bounds as a vector
- 	*/
-	virtual const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
-
-	/*
- 	* Sets all decision levels of the ground bounds as a vector
- 	*/
-	virtual void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const = 0;
-
-	/*
-	 * Get the current pointer in the UNSAT certificate
-	 */
-	virtual CertificateNode* getUNSATCertificateCurrentPointer() const = 0;
-
-	/*
-	 * Set the current pointer in the UNSAT certificate
-	 */
-	virtual void setUNSATCertificateCurrentPointer( CertificateNode* node ) = 0;
-
-	/*
-	 * Get the root of the UNSAT certificate
-	 */
-	virtual CertificateNode* getUNSATCertificateRoot() const = 0;
-
-	/*
-	 * Certify the UNSAT certificate
-	 */
-	virtual bool certifyUNSATCertificate() = 0;
-
-	/*
-  	 * Returns true iff the value can be the tightest bound of a variable
-   	*/
-	virtual bool isBoundTightest( unsigned var, double value, bool isUpper ) const = 0;
-
-	/*
-	* Computes the decision level of an explanations
-	*/
-	virtual unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const = 0;
-
 };
 
 #endif // __IEngine_h__
