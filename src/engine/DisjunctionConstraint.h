@@ -15,7 +15,7 @@
  ** The constraint introduces identifiers for its PiecewiseLinearCaseSplit
  ** elements.
  **
- ** The constraint is implemented as PiecewiseLinearConstraint
+ ** The constraint is implemented as ContextDependentPiecewiseLinearConstraint
  ** and operates in two modes:
  **   * pre-processing mode, which stores bounds locally, and
  **   * context dependent mode, used during the search.
@@ -29,9 +29,9 @@
 #define __DisjunctionConstraint_h__
 
 #include "Vector.h"
-#include "PiecewiseLinearConstraint.h"
+#include "ContextDependentPiecewiseLinearConstraint.h"
 
-class DisjunctionConstraint : public PiecewiseLinearConstraint
+class DisjunctionConstraint : public ContextDependentPiecewiseLinearConstraint
 {
 public:
     ~DisjunctionConstraint() {};
@@ -47,7 +47,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    PiecewiseLinearConstraint *duplicateConstraint() const override;
+    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.
@@ -158,10 +158,19 @@ public:
     void addAuxiliaryEquations( InputQuery &inputQuery ) override;
 
     /*
+      Ask the piecewise linear constraint to contribute a component to the cost
+      function. If implemented, this component should be empty when the constraint is
+      satisfied or inactive, and should be non-empty otherwise. Minimizing the returned
+      equation should then lead to the constraint being "closer to satisfied".
+    */
+    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const override;
+
+    /*
       Returns string with shape: disjunction, _f, _b
     */
     String serializeToString() const override;
 
+	void registerTighteningEquation( const unsigned n, const unsigned counterpart) const;
 
 private:
     /*

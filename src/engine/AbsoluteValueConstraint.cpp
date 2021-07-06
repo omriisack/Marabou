@@ -13,7 +13,6 @@
  **/
 
 #include "AbsoluteValueConstraint.h"
-
 #include "ConstraintBoundTightener.h"
 #include "Debug.h"
 #include "FloatUtils.h"
@@ -753,3 +752,23 @@ String AbsoluteValueConstraint::phaseToString( PhaseStatus phase )
         return "UNKNOWN";
     }
 };
+
+void AbsoluteValueConstraint::setPhaseStatus( PhaseStatus phaseStatus )
+{
+    _phaseStatus = phaseStatus;
+}
+
+
+void AbsoluteValueConstraint::registerTighteningEquation( const unsigned n, const unsigned counterpart ) const
+{
+	//TODO complete
+	printf( "%d, %d\n", n, counterpart );
+}
+
+//
+// Local Variables:
+// compile-command: "make -C ../.. "
+// tags-file-name: "../../TAGS"
+// c-basic-offset: 4
+// End:
+//

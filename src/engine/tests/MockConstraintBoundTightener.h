@@ -37,14 +37,12 @@ public:
 	bool wasCreated;
 	bool wasDiscarded;
     const ITableau *lastTableau;
-    const IEngine *_engine;
 
-	void mockConstructor( const ITableau &tableau, const IEngine &engine )
+	void mockConstructor( const ITableau &tableau )
 	{
 		TS_ASSERT( !wasCreated );
 		wasCreated = true;
         lastTableau = &tableau;
-        _engine = &engine;
 	}
 
 	void mockDestructor()
@@ -78,50 +76,13 @@ public:
         _tightenings.append( Tightening( variable, bound, Tightening::UB ) );
     }
 
-	void registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& /* row */ )
-	{
-		_tightenings.append( Tightening( variable, bound, Tightening::LB ) );
-	}
-
-	void registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& /* row */ )
-	{
-		_tightenings.append( Tightening( variable, bound, Tightening::UB ) );
-	}
-
     void getConstraintTightenings( List<Tightening> &tightenings ) const
     {
         tightenings = _tightenings;
         _tightenings.clear();
     }
 
-	std::map<unsigned, double> getUGBUpdates() const
-	{
-    	return std::map<unsigned, double>();
-	}
-
-	std::map<unsigned, double> getLGBUpdates() const
-	{
-		return std::map<unsigned, double>();
-	}
-
-	std::list<std::vector<double>> getTableauUpdates() const
-	{
-		return std::list<std::vector<double>>();
-	}
-
-	void clearEngineUpdates(){}
-	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper, const unsigned,
-							  bool, PiecewiseLinearFunctionType /* constraintType */ )
-	{
-		isAffectedBoundUpper ? registerTighterUpperBound(var, value ) : registerTighterLowerBound(var, value );
-    }
-
-	double getUpperBound( unsigned /* var */ ) const
-	{
-		return 0;
-	}
-
-	double getLowerBound( unsigned /* var */ ) const
+	unsigned registerIndicatingRow( TableauRow* /*row */, unsigned /* var */)
 	{
 		return 0;
 	}

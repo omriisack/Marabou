@@ -17,17 +17,15 @@
 #include "FloatUtils.h"
 #include "MarabouError.h"
 #include "Statistics.h"
-#include "UNSATCertificate.h"
 
-
-ConstraintBoundTightener::ConstraintBoundTightener( ITableau &tableau, IEngine &engine )
+ConstraintBoundTightener::ConstraintBoundTightener( const ITableau &tableau )
     : _tableau( tableau )
     , _lowerBounds( NULL )
     , _upperBounds( NULL )
     , _tightenedLower( NULL )
     , _tightenedUpper( NULL )
     , _statistics( NULL )
-    , _engine (engine)
+    , _boundsIndications( 0 )
 {
 }
 
@@ -54,6 +52,16 @@ void ConstraintBoundTightener::setDimensions()
     if ( !_tightenedUpper )
 		throw MarabouError( MarabouError::ALLOCATION_FAILED, "ConstraintBoundTightener::tightenedUpper" );
 
+	for (auto & _boundsIndication : _boundsIndications)
+	{
+		if ( _boundsIndication  )
+		{
+			delete _boundsIndication;
+			_boundsIndication = NULL;
+		}
+	}
+
+	_boundsIndications.resize( _n );
 	resetBounds();
 }
 
@@ -100,6 +108,16 @@ void ConstraintBoundTightener::freeMemoryIfNeeded()
         _tightenedUpper = NULL;
     }
 
+	for (unsigned i = 0 ; i < _boundsIndications.size(); ++i)
+	{
+		if ( _boundsIndications[i] )
+		{
+			delete _boundsIndications[i];
+			_boundsIndications[i] = NULL;
+		}
+	}
+
+	_boundsIndications.clear();
 }
 
 void ConstraintBoundTightener::setStatistics( Statistics *statistics )
@@ -136,6 +154,9 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
     {
         _lowerBounds[variable] = bound;
         _tightenedLower[variable] = true;
+
+       // if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundsIndications[variable] )
+       //	_tableau.updateExplanation( *_boundsIndications[variable], false );
     }
 }
 
@@ -145,33 +166,13 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
     {
         _upperBounds[variable] = bound;
         _tightenedUpper[variable] = true;
+
+		//if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundsIndications[variable] )
+		//	_tableau.updateExplanation( *_boundsIndications[variable], true );
     }
 }
 
-void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
-{
-
-	if ( bound > _lowerBounds[variable] )
-	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, false ) )
-			_tableau.updateExplanation( row, false, variable );
-
-		registerTighterLowerBound( variable, bound );
-	}
-}
-
-void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row )
-{
-	if ( bound < _upperBounds[variable] )
-	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, true ) )
-			_tableau.updateExplanation( row, true, variable );
-
-		registerTighterUpperBound( variable, bound );
-	}
-}
-
-void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightenings( List<Tightening> &tightenings ) const
+void ConstraintBoundTightener::getConstraintTightenings( List<Tightening> &tightenings ) const
 {
     for ( unsigned i = 0; i < _n; ++i )
     {
@@ -183,53 +184,10 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
     }
 }
 
-void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value,
-														 const bool isAffectedBoundUpper,
-														 const unsigned causingVar, bool isCausingBoundUpper,
-														 const PiecewiseLinearFunctionType constraintType )
+unsigned ConstraintBoundTightener::registerIndicatingRow( TableauRow* row, unsigned var )
 {
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
-		return;
-
-	// TODO re-consider design
-	// Register new ground bound, update certificate, and reset explanation
-	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, isCausingBoundUpper );
-	auto* PLCExpl = new PLCExplanation();
-	auto explVec = _tableau.explainBound( causingVar, isCausingBoundUpper );
-
-	PLCExpl->_causingVar = causingVar;
-
-	if ( explVec.empty() )
-		PLCExpl->_explanation = NULL;
-	else
-	{
-		PLCExpl->_explanation = new double[ explVec.size() ];
-		std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
-	}
-
-	PLCExpl->_affectedVar = var;
-	PLCExpl->_bound = value;
-	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;
-	PLCExpl->_isCausingBoundUpper = isCausingBoundUpper;
-	PLCExpl->_constraintType = constraintType;
-	PLCExpl->_decisionLevel = decisionLevel;
-	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
-
-	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel ); // Function resets explanation as well
-	_tableau.resetExplanation( var, isAffectedBoundUpper );
-	isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
-}
-
-double ConstraintBoundTightener::getUpperBound( unsigned var ) const
-{
-	ASSERT( var < _n );
-	return _upperBounds[var];
-}
-
-double ConstraintBoundTightener::getLowerBound( unsigned var ) const
-{
-	ASSERT( var < _n );
-	return _lowerBounds[var];
+	_boundsIndications[var] = row;
+	return 1;
 }
 
 //

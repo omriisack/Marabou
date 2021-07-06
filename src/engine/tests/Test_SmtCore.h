@@ -112,20 +112,9 @@ public:
             return nextSplits;
         }
 
-        List<PhaseStatus> getAllCases() const
-        {
-            return List<PhaseStatus>();
-        }
-
         bool phaseFixed() const
         {
             return true;
-        }
-
-        PiecewiseLinearCaseSplit getCaseSplit( PhaseStatus /*caseId*/ ) const
-        {
-            PiecewiseLinearCaseSplit dontCare;
-            return dontCare;
         }
 
         PiecewiseLinearCaseSplit getValidCaseSplit() const
@@ -134,28 +123,22 @@ public:
             return dontCare;
         }
 
-        PiecewiseLinearCaseSplit getImpliedCaseSplit() const
-        {
-            PiecewiseLinearCaseSplit dontCare;
-            return dontCare;
-        }
+		void updateVariableIndex( unsigned, unsigned )
+		{
+		}
 
-        void updateVariableIndex( unsigned, unsigned )
-        {
-        }
-
-        void eliminateVariable( unsigned, double )
-        {
-        }
+		void eliminateVariable( unsigned, double )
+		{
+		}
 
         bool constraintObsolete() const
         {
             return false;
         }
 
-        void preprocessBounds( unsigned, double, Tightening::BoundType )
-        {
-        }
+		void preprocessBounds( unsigned, double, Tightening::BoundType )
+		{
+		}
 
         void getEntailedTightenings( List<Tightening> & ) const
         {
@@ -170,7 +153,7 @@ public:
             return "";
         }
 
-		 void initTighteningRow( const unsigned /*counterpart*/ )
+		 void registerTighteningEquation( const unsigned /*n*/, const unsigned /*counterpart*/ ) const
 		 {
 		 }
     };

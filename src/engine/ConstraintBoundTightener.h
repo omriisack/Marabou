@@ -16,13 +16,12 @@
 #ifndef __ConstraintBoundTightener_h__
 #define __ConstraintBoundTightener_h__
 
-#include <map>
 #include "IConstraintBoundTightener.h"
 
 class ConstraintBoundTightener : public IConstraintBoundTightener
 {
 public:
-    ConstraintBoundTightener( ITableau &tableau, IEngine &engine );
+    ConstraintBoundTightener( const ITableau &tableau );
     ~ConstraintBoundTightener();
 
     /*
@@ -59,37 +58,21 @@ public:
     void registerTighterLowerBound( unsigned variable, double bound );
     void registerTighterUpperBound( unsigned variable, double bound );
 
-	/*
- 	As previous methods, but with additional Tableau row for explaining the bound tightening.
-	*/
-	void registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row );
-	void registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row );
-
     /*
       Get the tightenings previously registered by the constraints
     */
     void getConstraintTightenings( List<Tightening> &tightenings ) const;
 
-	/*
-	 * Replaces the indicating row by equation which is added to the Tableau
-	 */
-	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper,
-								   const unsigned causingVar, bool isCausingBoundUpper,
-								   PiecewiseLinearFunctionType constraintType );
-
 
 	/*
-	 * Gets the upper bound stored in the CBT
-	 */
-	double getUpperBound(unsigned  var ) const;
+	  This method can be used by clients to tell the bound tightener
+	  about a tighter bound, using a TableauRow to explain the bound derivation
+	*/
+	unsigned registerIndicatingRow( TableauRow* row, unsigned var );
 
-	/*
-     * Gets the lower bound stored in the CBT
-     */
-	double getLowerBound(unsigned  var ) const;
 
 private:
-    ITableau &_tableau;
+    const ITableau &_tableau;
     unsigned _n;
     unsigned _m;
 
@@ -114,8 +97,7 @@ private:
     */
     void freeMemoryIfNeeded();
 
-
-	IEngine &_engine;
+    std::vector<TableauRow*> _boundsIndications;
 };
 
 #endif // __ConstraintBoundTightener_h__

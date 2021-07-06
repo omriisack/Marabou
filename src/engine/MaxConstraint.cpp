@@ -33,7 +33,7 @@
 #endif
 
 MaxConstraint::MaxConstraint( unsigned f, const Set<unsigned> &elements )
-    : PiecewiseLinearConstraint( elements.size() )
+    : ContextDependentPiecewiseLinearConstraint( elements.size() )
     , _f( f )
     , _elements( elements )
     , _initialElements( elements )
@@ -86,7 +86,7 @@ PiecewiseLinearFunctionType MaxConstraint::getType() const
     return PiecewiseLinearFunctionType::MAX;
 }
 
-PiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
+ContextDependentPiecewiseLinearConstraint *MaxConstraint::duplicateConstraint() const
 {
     MaxConstraint *clone = new MaxConstraint( _f, _elements );
     *clone = *this;
@@ -140,7 +140,7 @@ void MaxConstraint::notifyVariableValue( unsigned variable, double value )
 void MaxConstraint::notifyLowerBound( unsigned variable, double value )
 {
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
+        _statistics->incNumBoundNotificationsPlConstraints();
 
     if ( existsLowerBound( variable ) && !FloatUtils::gt( value, getLowerBound( variable ) ) )
         return;
@@ -198,7 +198,7 @@ void MaxConstraint::notifyLowerBound( unsigned variable, double value )
 void MaxConstraint::notifyUpperBound( unsigned variable, double value )
 {
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
+        _statistics->incNumBoundNotificationsPlConstraints();
 
     if ( existsUpperBound( variable ) && !FloatUtils::lt( value, getUpperBound( variable ) ) )
         return;
@@ -413,7 +413,7 @@ bool MaxConstraint::satisfied() const
 
 bool MaxConstraint::isCaseInfeasible( unsigned variable ) const
 {
-    return PiecewiseLinearConstraint::isCaseInfeasible( variableToPhase( variable ) );
+    return ContextDependentPiecewiseLinearConstraint::isCaseInfeasible( variableToPhase( variable ) );
 }
 
 void MaxConstraint::resetMaxIndex()
@@ -512,10 +512,11 @@ List<PiecewiseLinearConstraint::Fix> MaxConstraint::getSmartFixes( ITableau * ) 
 
 List<PhaseStatus> MaxConstraint::getAllCases() const
 {
-    if ( phaseFixed() )
+    if ( _phaseStatus != PHASE_NOT_FIXED )
         throw MarabouError( MarabouError::REQUESTED_CASE_SPLITS_FROM_FIXED_CONSTRAINT );
 
     List<PhaseStatus> cases;
+
     if ( !_elements.exists( _f ) )
     {
         for ( unsigned element : _elements )
@@ -766,68 +767,6 @@ void MaxConstraint::addAuxiliaryEquations( InputQuery &inputQuery )
     }
 }
 
-void MaxConstraint::getCostFunctionComponent( LinearExpression &cost,
-                                              PhaseStatus phase ) const
-{
-    // If the constraint is not active or is fixed, it contributes nothing
-    if( !isActive() || phaseFixed() )
-        return;
-
-    // This should not be called when the linear constraints have
-    // not been satisfied
-    ASSERT( !haveOutOfBoundVariables() );
-
-    // The soundness of the SoI component assumes that the constraints
-    // f >= element is added.
-    DEBUG({
-            for ( const auto &element : _elements )
-            {
-                ASSERT( FloatUtils::gte( _assignment.get( _f ),
-                                         _assignment.get( element ) ) );
-            }
-            if ( _eliminatedVariables )
-                ASSERT( FloatUtils::gte( _assignment.get( _f ),
-                                         _maxValueOfEliminated ) );
-        });
-
-    if ( phase == MAX_PHASE_ELIMINATED )
-    {
-        // The cost term corresponding to this phase is f - maxValueOfEliminated.
-        if ( !cost._addends.exists( _f ) )
-            cost._addends[_f] = 0;
-        cost._addends[_f] = cost._addends[_f] + 1;
-        cost._constant -= _maxValueOfEliminated;
-    }
-    else
-    {
-        unsigned element = phaseToVariable( phase );
-        // The cost term corresponding to this phase is f - element.
-        // If this term can be minimized to 0, the Max constraint must be
-        // satisfied (we have the constraint that f is larger than all elements).
-        if ( !cost._addends.exists( _f ) )
-            cost._addends[_f] = 0;
-        if ( !cost._addends.exists( element ) )
-            cost._addends[element] = 0;
-        cost._addends[_f] = cost._addends[_f] + 1;
-        cost._addends[element] = cost._addends[element] - 1;
-    }
-}
-
-PhaseStatus MaxConstraint::getPhaseStatusInAssignment( const Map<unsigned, double>
-                                                       &assignment ) const
-{
-    auto byAssignment = [&](const unsigned& a, const unsigned& b) {
-                            return assignment[a] < assignment[b];
-                        };
-    unsigned largestVariable =  *std::max_element( _elements.begin(),
-                                                   _elements.end(),
-                                                   byAssignment );
-    if ( FloatUtils::lt( assignment[largestVariable], assignment[_f] ) )
-        return MAX_PHASE_ELIMINATED;
-    else
-        return variableToPhase( largestVariable );
-}
-
 String MaxConstraint::serializeToString() const
 {
     // Output format: max,f,element_1,element_2,element_3,...
@@ -847,19 +786,16 @@ String MaxConstraint::serializeToString() const
     return output;
 }
 
-bool MaxConstraint::haveOutOfBoundVariables() const
+void MaxConstraint::registerTighteningEquation( const unsigned  n, const unsigned counterpart) const
 {
-    double fValue = _assignment.get( _f );
-    if ( FloatUtils::gt( getLowerBound( _f ), fValue ) ||
-         FloatUtils::lt( getUpperBound( _f ), fValue ) )
-        return true;
+	//TODO complete
+	printf( "%d, %d\n", n, counterpart );
 
-    for ( const auto &element : _elements )
-    {
-        double value = _assignment.get( element );
-        if ( FloatUtils::gt( getLowerBound( element ), value ) ||
-             FloatUtils::lt( getUpperBound( element ), value ) )
-        return true;
-    }
-    return false;
 }
+//
+// Local Variables:
+// compile-command: "make -C ../.. "
+// tags-file-name: "../../TAGS"
+// c-basic-offset: 4
+// End:
+//

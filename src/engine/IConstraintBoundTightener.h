@@ -16,13 +16,8 @@
 #ifndef __IConstraintBoundTightener_h__
 #define __IConstraintBoundTightener_h__
 
-#include <map>
 #include "ITableau.h"
 #include "Tightening.h"
-#include "IEngine.h"
-#include "Equation.h"
-#include "PiecewiseLinearFunctionType.h"
-#include "UNSATCertificate.h"
 
 class IConstraintBoundTightener : public ITableau::VariableWatcher, public ITableau::ResizeWatcher
 {
@@ -63,30 +58,12 @@ public:
     virtual void registerTighterLowerBound( unsigned variable, double bound ) = 0;
     virtual void registerTighterUpperBound( unsigned variable, double bound ) = 0;
 
-	/*
- 	As previous methods, but with additional Tableau row for explaining the bound tightening.
-	*/
-	virtual void registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row ) = 0;
-	virtual void registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row ) = 0;
-
     /*
       Get the tightenings previously registered by the constraints
     */
     virtual void getConstraintTightenings( List<Tightening> &tightenings ) const = 0;
 
-	virtual void externalExplanationUpdate( unsigned var, double value, bool isAffectedBoundUpper,
-										   unsigned causingVar, bool isCausingBoundUpper,
-										   PiecewiseLinearFunctionType constraintType ) = 0;
-
-	/*
-	 * Gets the upper bound stored in the CBT
-	 */
-	virtual double getUpperBound( unsigned  var ) const = 0;
-
-	/*
-     * Gets the lower bound stored in the CBT
-     */
-	virtual double getLowerBound( unsigned  var ) const = 0;
+	virtual unsigned registerIndicatingRow( TableauRow* row, unsigned var ) = 0;
 };
 
 #endif // __IConstraintBoundTightener_h__

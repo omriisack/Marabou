@@ -17,7 +17,7 @@
  ** SIGN_PHASE_POSITIVE: b > 0 and f =  1
  ** SIGN_PHASE_NEGATIVE: b <=0 and f = -1
  **
- ** The constraint is implemented as PiecewiseLinearConstraint
+ ** The constraint is implemented as ContextDependentPiecewiseLinearConstraint
  ** and operates in two modes:
  **   * pre-processing mode, which stores bounds locally, and
  **   * context dependent mode, used during the search.
@@ -31,9 +31,9 @@
 #define __SignConstraint_h__
 
 #include "Map.h"
-#include "PiecewiseLinearConstraint.h"
+#include "ContextDependentPiecewiseLinearConstraint.h"
 
-class SignConstraint : public PiecewiseLinearConstraint
+class SignConstraint : public ContextDependentPiecewiseLinearConstraint
 {
 public:
     /*
@@ -64,7 +64,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    PiecewiseLinearConstraint *duplicateConstraint() const override;
+    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.
@@ -194,6 +194,7 @@ public:
 
   void updateScoreBasedOnPolarity() override;
 
+  void registerTighteningEquation( const unsigned n, const unsigned counterpart ) const;
 
 private:
     unsigned _b, _f;

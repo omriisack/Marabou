@@ -15,7 +15,7 @@
 #include "ReluConstraint.h"
 
 #include "ConstraintBoundTightener.h"
-#include "PiecewiseLinearConstraint.h"
+#include "ContextDependentPiecewiseLinearConstraint.h"
 #include "Debug.h"
 #include "DivideStrategy.h"
 #include "FloatUtils.h"
@@ -26,15 +26,13 @@
 #include "MarabouError.h"
 #include "PiecewiseLinearCaseSplit.h"
 #include "Statistics.h"
-#include "TableauRow.h"
-#include "InfeasibleQueryException.h"
 
 #ifdef _WIN32
 #define __attribute__(x)
 #endif
 
 ReluConstraint::ReluConstraint( unsigned b, unsigned f )
-    : PiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
+    : ContextDependentPiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
     , _b( b )
     , _f( f )
     , _auxVarInUse( false )
@@ -82,7 +80,7 @@ PiecewiseLinearFunctionType ReluConstraint::getType() const
     return PiecewiseLinearFunctionType::RELU;
 }
 
-PiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
+ContextDependentPiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
 {
     ReluConstraint *clone = new ReluConstraint( _b, _f );
     *clone = *this;
@@ -132,7 +130,7 @@ void ReluConstraint::notifyVariableValue( unsigned variable, double value )
 void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 {
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
+        _statistics->incNumBoundNotificationsPlConstraints();
 
     if ( existsLowerBound( variable ) && !FloatUtils::gt( bound, getLowerBound( variable ) ) )
         return;
@@ -148,66 +146,42 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 
     if ( isActive() && _constraintBoundTightener )
     {
-		SparseUnsortedList tighteningRow = createTighteningRow();
-
-		// A positive lower bound is always propagated between f and b
+        // A positive lower bound is always propagated between f and b
         if ( ( variable == _f || variable == _b ) && bound > 0 )
         {
-            // If we're in the active phase, aux should be 0
-			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false, getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
-
-			// After updating to active phase
             unsigned partner = ( variable == _f ) ? _b : _f;
-            _constraintBoundTightener->registerTighterLowerBound( partner, bound, tighteningRow );
+            _constraintBoundTightener->registerTighterLowerBound( partner, bound );
+
+            // If we're in the active phase, aux should be 0
+            if ( _auxVarInUse )
+                _constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
         }
 
         // If b is non-negative, we're in the active phase
         else if ( _auxVarInUse && variable == _b && FloatUtils::isZero( bound ) )
         {
-			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false, getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
+            _constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
         }
 
         // A positive lower bound for aux means we're inactive: f is 0, b is non-positive
         // When inactive, b = -aux
         else if ( _auxVarInUse && variable == _aux && bound > 0 )
         {
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, false, getType() );
-			else
-				_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
-
-			// After updating to inactive phase
-            _constraintBoundTightener->registerTighterUpperBound( _b, -bound, tighteningRow );
+            _constraintBoundTightener->registerTighterUpperBound( _b, -bound );
+            _constraintBoundTightener->registerTighterUpperBound( _f, 0 );
         }
 
         // A negative lower bound for b could tighten aux's upper bound
         else if ( _auxVarInUse && variable == _b && bound < 0 )
         {
-        	if ( GlobalConfiguration :: PROOF_CERTIFICATE )
-			{
-				if ( _phaseStatus == RELU_PHASE_INACTIVE )
-					_constraintBoundTightener->registerTighterUpperBound( _aux, -bound, tighteningRow );
-				else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, lower bound of b is already >= 0
-					_constraintBoundTightener->externalExplanationUpdate( _aux, -bound, true, variable, false, getType() );
-			}
-        	else
-				_constraintBoundTightener->registerTighterUpperBound( _aux, -bound );
+            _constraintBoundTightener->registerTighterUpperBound( _aux, -bound );
         }
 
         // Also, if for some reason we only know a negative lower bound for f,
         // we attempt to tighten it to 0
         else if ( bound < 0 && variable == _f )
         {
-			if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				_constraintBoundTightener->externalExplanationUpdate( _f, 0, false, variable, false, getType() );
-			else
-            	_constraintBoundTightener->registerTighterLowerBound( _f, 0 );
+            _constraintBoundTightener->registerTighterLowerBound( _f, 0 );
         }
     }
 }
@@ -215,7 +189,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 {
     if ( _statistics )
-        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
+        _statistics->incNumBoundNotificationsPlConstraints();
 
     if ( existsUpperBound( variable ) && !FloatUtils::lt( bound, getUpperBound( variable ) ) )
         return;
@@ -230,74 +204,33 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 
     if ( isActive() && _constraintBoundTightener )
     {
-		SparseUnsortedList tighteningRow = createTighteningRow();
-
-		if ( variable == _f )
+        if ( variable == _f )
         {
             // Any bound that we learned of f should be propagated to b
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-			{
-				if ( _phaseStatus != RELU_PHASE_INACTIVE )
-					_constraintBoundTightener->registerTighterUpperBound( _b, bound, tighteningRow );
-				else
-				{
-					if ( FloatUtils::isZero( bound ) )
-						_constraintBoundTightener->externalExplanationUpdate( _b, 0, true, variable, true, getType() );
-					else if ( FloatUtils::isNegative( bound ) )
-						throw InfeasibleQueryException();
-					// Bound cannot be positive if ReLU is inactive
-				}
-			}
-            else
-				_constraintBoundTightener->registerTighterUpperBound( _b, bound );
-
+            _constraintBoundTightener->registerTighterUpperBound( _b, bound );
         }
         else if ( variable == _b )
         {
             if ( !FloatUtils::isPositive( bound ) )
             {
                 // If b has a non-positive upper bound, f's upper bound is 0
-				if ( GlobalConfiguration::PROOF_CERTIFICATE )
-					_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, true, getType() );
-				else
-					_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
+                _constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
-				// Aux's range is minus the range of b
-				// After updating to inactive phase
                 if ( _auxVarInUse )
-					_constraintBoundTightener->registerTighterLowerBound( _aux, -bound, tighteningRow );
+                {
+                    // Aux's range is minus the range of b
+                    _constraintBoundTightener->registerTighterLowerBound( _aux, -bound );
+                }
             }
             else
             {
                 // b has a positive upper bound, propagate to f
-				if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				{
-					if ( _phaseStatus == RELU_PHASE_ACTIVE )
-                		_constraintBoundTightener->registerTighterUpperBound( _f, bound, tighteningRow );
-					else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, upper bound of f is already <= 0
-						_constraintBoundTightener->externalExplanationUpdate( _f, bound, true, variable, true, getType() );
-				}
-				else
-					_constraintBoundTightener->registerTighterUpperBound( _f, bound );
+                _constraintBoundTightener->registerTighterUpperBound( _f, bound );
             }
         }
         else if ( _auxVarInUse && variable == _aux )
         {
-			if ( GlobalConfiguration::PROOF_CERTIFICATE )
-			{
-				if ( _phaseStatus != RELU_PHASE_ACTIVE )
-					_constraintBoundTightener->registerTighterLowerBound( _b, -bound, tighteningRow );
-				else
-				{
-					if ( FloatUtils::isZero( bound ) )
-						_constraintBoundTightener->externalExplanationUpdate( _b, 0, false, variable, true, getType() );
-					else if ( FloatUtils::isNegative( bound ) )
-						throw InfeasibleQueryException();
-					// Bound cannot be positive if ReLU is active
-				}
-			}
-			else
-				_constraintBoundTightener->registerTighterLowerBound( _b, -bound );
+            _constraintBoundTightener->registerTighterLowerBound( _b, -bound );
         }
     }
 }
@@ -888,53 +821,50 @@ void ReluConstraint::addAuxiliaryEquations( InputQuery &inputQuery )
     _auxVarInUse = true;
 }
 
-void ReluConstraint::getCostFunctionComponent( LinearExpression &cost,
-                                               PhaseStatus phase ) const
+void ReluConstraint::getCostFunctionComponent( Map<unsigned, double> &cost ) const
 {
-    // If the constraint is not active or is fixed, it contributes nothing
-    if( !isActive() || phaseFixed() )
+    // This should not be called for inactive constraints
+    ASSERT( isActive() );
+
+    // If the constraint is satisfied, fixed or has OOB components,
+    // it contributes nothing
+    if ( satisfied() || phaseFixed() || haveOutOfBoundVariables() )
         return;
 
-    // This should not be called when the linear constraints have
-    // not been satisfied
-    ASSERT( !haveOutOfBoundVariables() );
+    // Both variables are within bounds and the constraint is not
+    // satisfied or fixed.
+    double bValue = _assignment.get( _b );
+    double fValue = _assignment.get( _f );
 
-    ASSERT( phase == RELU_PHASE_ACTIVE || phase == RELU_PHASE_INACTIVE );
+    if ( !cost.exists( _f ) )
+        cost[_f] = 0;
 
-    // The soundness of the SoI component assumes that the constraints f >= b and
-    // f >= 0 is added.
-    ASSERT( FloatUtils::gte( _assignment.get( _f ), _assignment.get( _b ),
-                             GlobalConfiguration::RELU_CONSTRAINT_COMPARISON_TOLERANCE )
-            && FloatUtils::gte( getLowerBound( _f ), 0 ) );
-
-    if ( phase == RELU_PHASE_INACTIVE )
+    // Case 1: b is non-positive, f is not zero. Cost: f
+    if ( !FloatUtils::isPositive( bValue ) )
     {
-        // The cost term corresponding to the inactive phase is just f,
-        // since the ReLU is inactive and satisfied iff f is 0 and minimal.
-        if ( !cost._addends.exists( _f ) )
-            cost._addends[_f] = 0;
-        cost._addends[_f] = cost._addends[_f] + 1;
+        ASSERT( !FloatUtils::isZero( fValue ) );
+        cost[_f] = cost[_f] + 1;
+        return;
     }
-    else
-    {
-        // The cost term corresponding to the inactive phase is f - b,
-        // since the ReLU is active and satisfied iff f - b is 0 and minimal.
-        // Note that this is true only when we added the constraint that f >= b.
-        if ( !cost._addends.exists( _f ) )
-            cost._addends[_f] = 0;
-        if ( !cost._addends.exists( _b ) )
-            cost._addends[_b] = 0;
-        cost._addends[_f] = cost._addends[_f] + 1;
-        cost._addends[_b] = cost._addends[_b] - 1;
-    }
-}
 
-PhaseStatus ReluConstraint::getPhaseStatusInAssignment( const Map<unsigned, double>
-                                                        &assignment ) const
-{
-    ASSERT( assignment.exists( _b ) );
-    return FloatUtils::isNegative( assignment[_b] ) ?
-        RELU_PHASE_INACTIVE : RELU_PHASE_ACTIVE;
+    ASSERT( !FloatUtils::isNegative( bValue ) );
+    ASSERT( !FloatUtils::isNegative( fValue ) );
+
+    if ( !cost.exists( _b ) )
+        cost[_b] = 0;
+
+    // Case 2: both non-negative, not equal, b > f. Cost: b - f
+    if ( FloatUtils::gt( bValue, fValue ) )
+    {
+        cost[_b] = cost[_b] + 1;
+        cost[_f] = cost[_f] - 1;
+        return;
+    }
+
+    // Case 3: both non-negative, not equal, f > b. Cost: f - b
+    cost[_b] = cost[_b] - 1;
+    cost[_f] = cost[_f] + 1;
+    return;
 }
 
 bool ReluConstraint::haveOutOfBoundVariables() const
@@ -1011,22 +941,56 @@ void ReluConstraint::updateScoreBasedOnPolarity()
     _score = std::abs( computePolarity() );
 }
 
-SparseUnsortedList ReluConstraint::createTighteningRow() const
+void ReluConstraint::registerTighteningEquation( const unsigned n, const unsigned counterpart) const
 {
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-		return SparseUnsortedList();
+	TableauRow* fIndicatingRow = new TableauRow ( n );
+	// f = b + aux + counterpart (added as an additional aux variable of tableau after adding aux)
+	fIndicatingRow->_lhs = _f;
 
-	//TODO consider making an object field (without invalid memory frees)
-	ASSERT( _auxVarInUse && _constraintBoundTightener && _tableauAuxVar );
+	fIndicatingRow->_row[0]._var = _b;
+	fIndicatingRow->_row[0]._coefficient = 1;
 
-	SparseUnsortedList tighteningRow ( 4 );
-	// f = b + aux + counterpart (an additional aux variable of tableau)
-	tighteningRow.append( _f, -1 );
-	tighteningRow.append( _b, 1 );
-	tighteningRow.append( _aux, 1 );
-	tighteningRow.append( _tableauAuxVar, 1 );
+	fIndicatingRow->_row[1]._var = _aux;
+	fIndicatingRow->_row[1]._coefficient = 1;
 
-	return tighteningRow;
+	fIndicatingRow->_row[2]._var = counterpart;
+	fIndicatingRow->_row[2]._coefficient = 1;
+
+	TableauRow* bIndicatingRow = new TableauRow ( n );
+	// b = f - aux
+	bIndicatingRow->_lhs = _b;
+
+	bIndicatingRow->_row[0]._var = _f;
+	bIndicatingRow->_row[0]._coefficient = 1;
+
+	bIndicatingRow->_row[1]._var = _aux;
+	bIndicatingRow->_row[1]._coefficient = -1;
+
+	bIndicatingRow->_row[2]._var = counterpart ;
+	bIndicatingRow->_row[2]._coefficient = -1;
+
+
+	TableauRow* aIndicatingRow = new TableauRow ( n );
+	// aux = f - b
+	aIndicatingRow->_lhs = _aux;
+
+	aIndicatingRow->_row[0]._var = _f;
+	aIndicatingRow->_row[0]._coefficient = 1;
+
+	aIndicatingRow->_row[1]._var = _b;
+	aIndicatingRow->_row[1]._coefficient = -1;
+
+	aIndicatingRow->_row[2]._var = counterpart ;
+	aIndicatingRow->_row[2]._coefficient = -1;
+
+	if ( !_constraintBoundTightener->registerIndicatingRow( fIndicatingRow, _f ) )
+		delete fIndicatingRow;
+
+	if ( !_constraintBoundTightener->registerIndicatingRow( bIndicatingRow, _b ) )
+		delete bIndicatingRow;
+
+	if ( !_constraintBoundTightener->registerIndicatingRow( aIndicatingRow, _aux ) )
+		delete aIndicatingRow;
 }
 
 //

@@ -18,7 +18,7 @@
  ** local member _maxValueOfEliminated, and its phase is a reserved value
  ** PhaseStatus::MAX_PHASE_ELIMINATED.
  **
- ** The constraint is implemented as PiecewiseLinearConstraint
+ ** The constraint is implemented as ContextDependentPiecewiseLinearConstraint
  ** and operates in two modes:
  **   * pre-processing mode, which stores bounds locally, and
  **   * context dependent mode, used during the search.
@@ -31,13 +31,12 @@
 #ifndef __MaxConstraint_h__
 #define __MaxConstraint_h__
 
-#include "PiecewiseLinearConstraint.h"
-#include "LinearExpression.h"
+#include "ContextDependentPiecewiseLinearConstraint.h"
 #include "Map.h"
 
 #define MAX_VARIABLE_TO_PHASE_OFFSET 1
 
-class MaxConstraint : public PiecewiseLinearConstraint
+class MaxConstraint : public ContextDependentPiecewiseLinearConstraint
 {
 public:
     ~MaxConstraint();
@@ -57,7 +56,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    PiecewiseLinearConstraint *duplicateConstraint() const override;
+    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.
@@ -166,17 +165,6 @@ public:
     void addAuxiliaryEquations( InputQuery &inputQuery ) override;
 
     /*
-      Ask the piecewise linear constraint to add its cost term corresponding to
-      the given phase to the cost function. The cost term for Max is:
-      _f - element_i for each element
-    */
-    virtual void getCostFunctionComponent( LinearExpression &cost,
-                                           PhaseStatus phase ) const override;
-
-    virtual PhaseStatus getPhaseStatusInAssignment( const Map<unsigned, double>
-                                                    &assignment ) const override;
-
-    /*
       Returns string with shape:
       max, _f, element_1, element_2, ... , element_n
     */
@@ -190,6 +178,8 @@ public:
 
 
     bool isImplication() const override;
+
+    void registerTighteningEquation( const unsigned n, const unsigned counterpart) const;
 
  private:
     unsigned _f;
@@ -253,11 +243,6 @@ public:
                  ? MAX_PHASE_ELIMINATED
                  : static_cast<unsigned>( phase ) - MAX_VARIABLE_TO_PHASE_OFFSET;
     }
-
-    /*
-      Return true iff f or the elements are not all within bounds.
-    */
-    bool haveOutOfBoundVariables() const;
 };
 
 #endif // __MaxConstraint_h__
