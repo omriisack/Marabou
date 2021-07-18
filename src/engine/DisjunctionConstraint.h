@@ -170,7 +170,6 @@ public:
     */
     String serializeToString() const override;
 
-	void registerTighteningEquation( const unsigned n, const unsigned counterpart) const;
 
 private:
     /*

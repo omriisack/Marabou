@@ -758,13 +758,6 @@ void AbsoluteValueConstraint::setPhaseStatus( PhaseStatus phaseStatus )
     _phaseStatus = phaseStatus;
 }
 
-
-void AbsoluteValueConstraint::registerTighteningEquation( const unsigned n, const unsigned counterpart ) const
-{
-	//TODO complete
-	printf( "%d, %d\n", n, counterpart );
-}
-
 //
 // Local Variables:
 // compile-command: "make -C ../.. "

@@ -341,13 +341,6 @@ bool DisjunctionConstraint::caseSplitIsFeasible( const PiecewiseLinearCaseSplit 
     return true;
 }
 
-void DisjunctionConstraint::registerTighteningEquation( const unsigned n, const unsigned counterpart) const
-{
-	//TODO complete
-	printf( "%d, %d\n", n, counterpart );
-
-}
-
 //
 // Local Variables:
 // compile-command: "make -C ../.. "

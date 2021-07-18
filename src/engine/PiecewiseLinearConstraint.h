@@ -267,7 +267,11 @@ public:
         return _upperBounds[i];
     }
 
-	virtual void registerTighteningEquation( const unsigned n, const unsigned counterpart ) const = 0;
+	void setTableauAuxVar( const unsigned counterpart )
+	{
+    	_tableauAuxVar = counterpart;
+	}
+
 
 protected:
     bool _constraintActive;
@@ -303,6 +307,9 @@ protected:
     {
         return _phaseStatus;
     };
+
+	unsigned _tableauAuxVar;
+
 };
 
 #endif // __PiecewiseLinearConstraint_h__
