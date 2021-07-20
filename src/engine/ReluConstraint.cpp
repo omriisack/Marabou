@@ -158,8 +158,10 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
             _constraintBoundTightener->registerTighterLowerBound( partner, bound );
 
             // If we're in the active phase, aux should be 0
-			if ( _auxVarInUse && !_addedFixedAuxEq )
+			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse && !_addedFixedAuxEq )
 				addEqualZeroEqAndUpdate( _aux );
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
 
             unsigned partner = ( variable == _f ) ? _b : _f;
             _constraintBoundTightener->registerTighterLowerBound( partner, bound, tighteningRow );
@@ -168,16 +170,20 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         // If b is non-negative, we're in the active phase
         else if ( _auxVarInUse && variable == _b && FloatUtils::isZero( bound ) )
         {
-			if ( _auxVarInUse && !_addedFixedAuxEq )
+			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse && !_addedFixedAuxEq )
 				addEqualZeroEqAndUpdate( _aux );
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
         }
 
         // A positive lower bound for aux means we're inactive: f is 0, b is non-positive
         // When inactive, b = -aux
         else if ( _auxVarInUse && variable == _aux && bound > 0 )
         {
-            if ( !_addedFixedFEq )
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && !_addedFixedFEq )
             	addEqualZeroEqAndUpdate( _f );
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+				_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
             _constraintBoundTightener->registerTighterUpperBound( _b, -bound, tighteningRow );
         }
@@ -229,7 +235,7 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
             // Any bound that we learned of f should be propagated to b
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
-				if ( _phaseStatus == PHASE_ACTIVE )
+				if ( _phaseStatus == PHASE_ACTIVE || FloatUtils::isZero( bound ) )
 					_constraintBoundTightener->registerTighterUpperBound( _b, bound, tighteningRow );
 			}
             else
@@ -241,8 +247,10 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
             if ( !FloatUtils::isPositive( bound ) )
             {
                 // If b has a non-positive upper bound, f's upper bound is 0
-				if ( !_addedFixedFEq )
+				if ( GlobalConfiguration::PROOF_CERTIFICATE && !_addedFixedFEq )
 					addEqualZeroEqAndUpdate( _f );
+				else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+					_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
                 if ( _auxVarInUse )
                 {
@@ -992,10 +1000,14 @@ void ReluConstraint::updateScoreBasedOnPolarity()
 
 void ReluConstraint::addEqualZeroEqAndUpdate( unsigned var )
 {
+	if ( var == _aux )
+		assert( _auxVarInUse && !_addedFixedAuxEq );
+	if (var == _f)
+		assert ( !_addedFixedFEq );
+
 	Equation varIsZero;
 	varIsZero.addAddend( 1, var );
-	_constraintBoundTightener->registerTighterUpperBound( var, 0, varIsZero );
-	_constraintBoundTightener->registerTighterLowerBound( var, 0, varIsZero );
+	_constraintBoundTightener->replaceEquationAndAdd( var, varIsZero );
 
 	if ( var == _aux)
 		_addedFixedAuxEq = true;
