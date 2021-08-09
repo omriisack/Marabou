@@ -55,10 +55,9 @@ const unsigned GlobalConfiguration::SIMULATION_RANDOM_SEED = 1;
 
 const bool GlobalConfiguration::USE_HARRIS_RATIO_TEST = true;
 
-const bool GlobalConfiguration::USE_SYMBOLIC_BOUND_TIGHTENING = true;
 const double GlobalConfiguration::SYMBOLIC_TIGHTENING_ROUNDING_CONSTANT = 0.00000005;
 
-const bool GlobalConfiguration::PREPROCESS_INPUT_QUERY = true; //TODO change back to true
+const bool GlobalConfiguration::PREPROCESS_INPUT_QUERY = true; //TODO must enable for proof certificate since addPlAuxiliaryEquations()
 const bool GlobalConfiguration::PREPROCESSOR_ELIMINATE_VARIABLES = true;
 const bool GlobalConfiguration::PREPROCESSOR_PL_CONSTRAINTS_ADD_AUX_EQUATIONS = true;
 const double GlobalConfiguration::PREPROCESSOR_ALMOST_FIXED_THRESHOLD = 0.00001;
@@ -89,7 +88,6 @@ const unsigned GlobalConfiguration::POLARITY_CANDIDATES_THRESHOLD = 5;
 
 const unsigned GlobalConfiguration::DNC_DEPTH_THRESHOLD = 5;
 
-const bool GlobalConfiguration::BOUND_TIGHTENING = true;  //TODO change to true
 const bool GlobalConfiguration::PROOF_CERTIFICATE = true;
 
 #ifdef ENABLE_GUROBI

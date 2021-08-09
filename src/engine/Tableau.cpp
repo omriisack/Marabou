@@ -209,9 +209,9 @@ void Tableau::freeMemoryIfNeeded()
         _workN = NULL;
     }
 
-    if (_boundsExplanator)
+    if ( _boundsExplanator )
     {
-        _boundsExplanator->~BoundsExplanator();
+        delete _boundsExplanator;
         _boundsExplanator = NULL;
     }
 }
@@ -321,12 +321,14 @@ void Tableau::setDimensions( unsigned m, unsigned n )
     if ( _statistics )
         _statistics->setCurrentTableauDimension( _m, _n );
 
-    if(GlobalConfiguration::PROOF_CERTIFICATE)
+    if( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
     	if( _boundsExplanator )
 			delete _boundsExplanator;
 
-		_boundsExplanator = new BoundsExplanator(n, m);  // Reset whenever new dimensions are set.
+		_boundsExplanator = new BoundsExplanator(_n, _m);  // Reset whenever new dimensions are set.
+		if ( !_boundsExplanator )
+			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
 
 	// Guy: the tableau dimensions can also change in addRow(). The
@@ -1647,6 +1649,10 @@ void Tableau::storeState( TableauState &state ) const
 
     // Store the merged variables
     state._mergedVariables = _mergedVariables;
+
+    // Store bounds explanations
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		*state._boundsExplanator = *_boundsExplanator;
 }
 
 void Tableau::restoreState( const TableauState &state )
@@ -1689,8 +1695,17 @@ void Tableau::restoreState( const TableauState &state )
     // Restore the _boundsValid indicator
     _boundsValid = state._boundsValid;
 
-    // Restore the merged varaibles
+    // Restore the merged variables
     _mergedVariables = state._mergedVariables;
+
+    // Restore bounds explanations
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+	{
+		*_boundsExplanator = *state._boundsExplanator;
+    	ASSERT(_boundsExplanator->getRowsNum() == _m);
+		ASSERT(_boundsExplanator->getVarsNum() == _n);
+	}
+
 
     computeAssignment();
     _costFunctionManager->initialize();
@@ -2629,23 +2644,69 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
 
 int Tableau::getInfeasibleRow( TableauRow& row )
 {
+	bool oneHasNoneEmptySlack = false;
+	unsigned basicVar;
     for ( unsigned i = 0; i < _m; ++i )
-    {
-        if ( basicOutOfBounds( i )  )
+	{
+     	Tableau::getTableauRow( i, &row );
+        basicVar = row._lhs;
+     	if ( basicOutOfBounds( basicVar ) )
         {
-            Tableau::getTableauRow( i, &row );
-            if ( ( computeRowBound( row, true ) < _lowerBounds[row._lhs] || computeRowBound( row, false ) > _upperBounds[row._lhs] ) )
+            if ( computeRowBound( row, true ) < _lowerBounds[basicVar]  ||  computeRowBound( row, false ) > _upperBounds[basicVar] )
                 return (int) i;
         }
+		if ( !checkSlack( i ) )
+			 oneHasNoneEmptySlack = true;
     }
+    if ( oneHasNoneEmptySlack )
+    	printf("There is a var with a none-empty slack\n");
+    else
+		printf("All vars have an empty slack\n");
     return -1;
+}
+
+
+bool Tableau::checkSlack( unsigned rowIndex )
+{
+
+	TableauRow *row = new TableauRow( _n );
+	Tableau::getTableauRow( rowIndex, row );
+
+	for ( unsigned i = 0; i < row->_size; ++i )
+	{
+		auto curCoefficient = row->_row[i]._coefficient;
+		auto var = row->_row[i]._var;
+
+		if ( FloatUtils::isZero( curCoefficient ) )
+			continue;
+		// Cases slack vars should be pressed against lower bounds
+		else if ( ( FloatUtils::isPositive( curCoefficient ) && basicTooHigh( i ) ) || ( FloatUtils::isNegative( curCoefficient ) && basicTooLow( i ) ) )
+		{
+			if ( !( FloatUtils::areEqual( getValue( var ), _lowerBounds[var] ) ) )
+			{
+				delete row;
+				return false;
+			}
+		}
+		// Cases slack vas should be pressed against upper bounds
+		else if ( ( FloatUtils::isPositive( curCoefficient ) && basicTooLow( i ) ) || ( FloatUtils::isNegative( curCoefficient ) && basicTooHigh( i ) ) )
+		{
+			if ( !( FloatUtils::areEqual( getValue( var ), _upperBounds[var] ) ) )
+			{
+				delete row;
+				return false;
+			}
+		}
+	}
+	delete row;
+	return true;
 }
 
 int Tableau::getInfeasibleVar() const
 {
     for (unsigned i = 0; i < _n; ++i)
         if ( _lowerBounds[i] > _upperBounds[i] )
-            return i;  
+            return ( int ) i;
     return -1;
 }
 
@@ -2680,10 +2741,10 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
     for ( unsigned i = 0; i < row._size; ++i )
     {
         var = row._row[i]._var;
-        if( !row[i] )
+        if( FloatUtils::isZero( row[i] ) )
             continue;
 
-        multiplier = (isUpper && FloatUtils::isPositive( row[i] ) ) || (!isUpper && FloatUtils::isNegative( row[i] ) )? _upperBounds[var] : _lowerBounds[var];
+        multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
         multiplier *= row[i];
         bound += multiplier;
     }
@@ -2706,6 +2767,7 @@ void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double
 
 void Tableau::injectExplanation(unsigned var, SingleVarBoundsExplanator& expl)
 {
+	ASSERT( expl.getLength() == _m );
 	_boundsExplanator->injectExplanation( var, expl );
 }
 
