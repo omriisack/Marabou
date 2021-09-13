@@ -657,6 +657,16 @@ private:
     int getInfeasibleVar() const;
 
     /*
+     * Checks that the slack of a given row lhs is empty
+     */
+	bool checkSlack( unsigned rowIndex );
+
+	/*
+ 	* Checks that the slack of a given row lhs is empty
+ 	*/
+	bool checkCostFunctionSlack() ;
+
+    /*
     * Computes the upper bound imposed by row rhs
     * Consider making a static function
     */
@@ -701,6 +711,7 @@ private:
       Explanator of all bounds 
     */
     BoundsExplanator *_boundsExplanator;
+
 };
 
 #endif // __Tableau_h__

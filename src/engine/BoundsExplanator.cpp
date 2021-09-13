@@ -28,11 +28,20 @@ SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=(const SingleVarB
 	if (this == &other)
 		return *this;
 
-	assert( _length = other._length );
+	_upper.clear();
+	_lower.clear();
+
+	_upper.resize( other._upper.size() );
+	_lower.resize( other._lower.size() );
+	_length = other._length;
+
 	std::copy( other._lower.begin(), other._lower.end(), _lower.begin() );
 	std::copy( other._upper.begin(), other._upper.end(), _upper.begin() );
 	_lowerRecLevel = other._lowerRecLevel;
 	_upperRecLevel = other._upperRecLevel;
+
+	assert( _upper.size() == _length );
+	assert( _lower.size() == _length );
 
 	return *this;
 }
@@ -41,7 +50,7 @@ void SingleVarBoundsExplanator::getVarBoundExplanation( std::vector<double>& bou
 {
 	assert( bound.size() == _length );
 	const std::vector<double>& temp = isUpper? _upper : _lower;
-	std::copy(temp.begin(), temp.end(), bound.begin());
+	std::copy( temp.begin(), temp.end(), bound.begin() );
 }
 
 
@@ -54,9 +63,7 @@ void SingleVarBoundsExplanator::updateVarBoundExplanation(const std::vector<doub
 {
 	assert( newBound.size() == _length );
 	std::vector<double>& temp = isUpper ? _upper : _lower;
-	for (unsigned i =0; i< _length; ++i)
-		temp[i] = FloatUtils::isZero( newBound[i] ) ? 0 : newBound[i];
-	//std::copy(newBound.begin(), newBound.end(), temp.begin());
+	std::copy( newBound.begin(), newBound.end(), temp.begin() );
 }
 
 
@@ -74,6 +81,19 @@ void SingleVarBoundsExplanator::addEntry( double coefficient )
 	_lower.push_back( coefficient );
 }
 
+void SingleVarBoundsExplanator::injectEntry( unsigned position, double coefficient, bool isUpper )
+{
+	std::vector<double> &temp = isUpper ? _upper : _lower;
+	temp[position] = coefficient;
+}
+
+void SingleVarBoundsExplanator::assertLengthConsistency()
+{
+	ASSERT( _length == _upper.size() );
+	ASSERT (_length == _lower.size() );
+}
+
+
 /* Functions of BoundsExplanator */
 BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsNum )
 	:_varsNum( varsNum )
@@ -83,13 +103,25 @@ BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsN
 
 }
 
+unsigned BoundsExplanator::getRowsNum()
+{
+	return _rowsNum;
+}
+
+unsigned BoundsExplanator::getVarsNum()
+{
+	return _varsNum;
+}
+
 BoundsExplanator& BoundsExplanator::operator=(const BoundsExplanator& other)
 {
 	if (this == &other)
 		return *this;
 
-	assert( _rowsNum == other._rowsNum && _varsNum == other._varsNum );
-	for (unsigned i = 0; i <_varsNum; ++i )
+	_rowsNum = other._rowsNum;
+	_varsNum = other._varsNum;
+
+	for ( unsigned i = 0; i < _varsNum; ++i )
 		_bounds[i] = other._bounds[i];
 
 	return *this;
@@ -116,6 +148,7 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	unsigned var = row._lhs, maxLevel = 0, tempLevel,  tempVar;  // The var to be updated is the lhs of the row
 	double curCoefficient;
 	assert ( var < _varsNum );
+	assert( row._size == _varsNum || row._size == _varsNum - _rowsNum );
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> tempBound = std::vector<double>( _rowsNum, 0 );
@@ -173,19 +206,24 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 		}
 
 	assert ( varIndex >= 0 );
-	double ci = row[varIndex]; 
+	double ci = row[varIndex];
 	assert ( ci );  // Coefficient of var cannot be zero.
 	double coeff = 1 / ci;
 	// Create a new row with var as its lhs
 	TableauRow equiv = TableauRow( row._size );
 	equiv._lhs = var;
-	equiv._scalar = - row._scalar * coeff;
+	equiv._scalar = FloatUtils::isZero( row._scalar ) ? 0 : - row._scalar * coeff;
 
 	for ( unsigned i = 0; i < row._size; ++i )
 	{
-		if ( row[i] ) // Updates of zero coefficients are unnecessary
+		if ( !FloatUtils::isZero( row[i] ) ) // Updates of zero coefficients are unnecessary
 		{
 			equiv._row[i]._coefficient = - row[i] * coeff;
+			equiv._row[i]._var = row._row[i]._var;
+		}
+		else
+		{
+			equiv._row[i]._coefficient = 0;
 			equiv._row[i]._var = row._row[i]._var;
 		}
 	}
@@ -227,7 +265,7 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 		tempUpper = (curCoefficient * ci < 0) == isUpper; // If coefficient of lhs and var are different, use same bound
 
 		getOneBoundExplanation( tempBound, entry._index, tempUpper );
-		addVecTimesScalar( sum, tempBound, curCoefficient / -ci );
+		addVecTimesScalar( sum, tempBound, - curCoefficient / ci );
 	}
 
 	extractSparseRowCoefficients( row, rowCoefficients, -ci ); // Update according to row coefficients
@@ -249,6 +287,9 @@ void BoundsExplanator::multiplyExplanationCoefficients( const unsigned var, cons
 void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const
 {
 	assert( sum.size() == _rowsNum && input.size() == _rowsNum );
+
+	if (FloatUtils::isZero( scalar) )
+		return;
 
 	for ( unsigned i = 0; i < _rowsNum; ++i )
 		sum[i] += scalar * input[i];
@@ -286,15 +327,17 @@ void BoundsExplanator::addZeroExplanation()
 {
 	_rowsNum += 1;
 	_varsNum += 1;
-	_bounds.push_back( SingleVarBoundsExplanator( _rowsNum ) );
+	_bounds.emplace_back( _rowsNum );
 }
 
-void BoundsExplanator::resetExplanation (const unsigned var, const bool isUpper)
+void BoundsExplanator::resetExplanation ( const unsigned var, const bool isUpper )
 {
-	_bounds[var].updateVarBoundExplanation( std::vector<double>(_rowsNum, 0), isUpper);
+	_bounds[var].updateVarBoundExplanation( std::vector<double>( _rowsNum, 0 ), isUpper);
+	_bounds[var]._lowerRecLevel = 0;
+	_bounds[var]._upperRecLevel = 0;
 }
 
-void BoundsExplanator::injectExplanation(unsigned var, SingleVarBoundsExplanator& expl)
+void BoundsExplanator::injectExplanation( unsigned var, SingleVarBoundsExplanator& expl )
 {
 	assert( expl.getLength() == _bounds[var].getLength() );
 	_bounds[var] = expl;
