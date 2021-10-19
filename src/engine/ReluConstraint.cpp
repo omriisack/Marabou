@@ -188,9 +188,11 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         {
         	if ( GlobalConfiguration :: PROOF_CERTIFICATE )
 			{
-				// TODO relaxed for now - should be ok on any case
+				// TODO consider more cases
 				if ( _phaseStatus == RELU_PHASE_INACTIVE )
 					_constraintBoundTightener->registerTighterUpperBound( _aux, -bound, tighteningRow );
+				else
+					registerExternalExplanationUpdate( _aux, -bound, true );
 			}
         	else
 				_constraintBoundTightener->registerTighterUpperBound( _aux, -bound );
@@ -200,7 +202,10 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         // we attempt to tighten it to 0
         else if ( bound < 0 && variable == _f )
         {
-            _constraintBoundTightener->registerTighterLowerBound( _f, 0 );
+			if ( GlobalConfiguration::PROOF_CERTIFICATE )
+				registerExternalExplanationUpdate( _f, 0, false );
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+            	_constraintBoundTightener->registerTighterLowerBound( _f, 0 );
         }
     }
 }
@@ -227,12 +232,14 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 
 		if ( variable == _f )
         {
-			// TODO relaxed for now - should be ok on any case
+			// TODO consider more cases
             // Any bound that we learned of f should be propagated to b
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
-				if ( _phaseStatus == RELU_PHASE_ACTIVE )
+				if ( _phaseStatus == RELU_PHASE_ACTIVE || FloatUtils::isZero( bound ) )
 					_constraintBoundTightener->registerTighterUpperBound( _b, bound, tighteningRow );
+				else
+					registerExternalExplanationUpdate( _b, bound, true );
 			}
             else
 				_constraintBoundTightener->registerTighterUpperBound( _b, bound );
@@ -253,10 +260,11 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
                 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 					{
 						// Aux's range is minus the range of b
-						if ( _phaseStatus != RELU_PHASE_ACTIVE)
+						// TODO review again
+						if ( !getLowerBound( _f ) )
 							_constraintBoundTightener->registerTighterLowerBound( _aux, -bound, tighteningRow );
-                        else if ( FloatUtils::isNegative( bound ) )
-							_constraintBoundTightener->registerTighterLowerBound( _aux, -bound, tighteningRow );
+                        else
+							registerExternalExplanationUpdate( _aux, -bound, false );
                     }
                 	else
 						_constraintBoundTightener->registerTighterLowerBound( _aux, -bound );
@@ -270,6 +278,8 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 				{
 					if ( _phaseStatus == RELU_PHASE_ACTIVE )
                 		_constraintBoundTightener->registerTighterUpperBound( _f, bound, tighteningRow );
+					else
+						registerExternalExplanationUpdate( _f, bound, true );
 				}
 				else
 					_constraintBoundTightener->registerTighterUpperBound( _f, bound );
@@ -281,6 +291,8 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 			{
 				if ( _phaseStatus != RELU_PHASE_ACTIVE )
 					_constraintBoundTightener->registerTighterLowerBound( _b, -bound, tighteningRow );
+				else
+					registerExternalExplanationUpdate( _b, -bound, false );
 			}
 			else
 				_constraintBoundTightener->registerTighterLowerBound( _b, -bound );
@@ -996,12 +1008,11 @@ void ReluConstraint::updateScoreBasedOnPolarity()
 
 void ReluConstraint::registerExternalExplanationUpdate( unsigned var, double value, bool isUpper )
 {
-	if (var == _aux)
-		assert(_auxVarInUse && _phaseStatus == RELU_PHASE_ACTIVE);
-	if (var == _f)
-		assert (_phaseStatus == RELU_PHASE_INACTIVE);
-
-	_constraintBoundTightener->externalExplanationUpdate(var, value, isUpper);
+//	if ( var == _aux )
+//		assert( _auxVarInUse && _phaseStatus == RELU_PHASE_ACTIVE );
+//	if ( var == _f )
+//		assert ( _phaseStatus == RELU_PHASE_INACTIVE );
+	_constraintBoundTightener->externalExplanationUpdate( var, value, isUpper );
 }
 
 SparseUnsortedList ReluConstraint::createTighteningRow() const

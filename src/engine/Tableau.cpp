@@ -2646,8 +2646,6 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
 
 int Tableau::getInfeasibleRow( TableauRow& row )
 {
-	checkBoundsValid();
-	bool oneHasEmptySlack = false;
 	unsigned basicVar;
     for ( unsigned i = 0; i < _m; ++i )
 	{
@@ -2657,20 +2655,8 @@ int Tableau::getInfeasibleRow( TableauRow& row )
      		Tableau::getTableauRow( i, &row );
             if ( computeRowBound( row, true ) < _lowerBounds[basicVar] || computeRowBound( row, false ) > _upperBounds[basicVar] )
                 return (int) i;
-			if ( checkSlack( i ) )
-				oneHasEmptySlack = true;
         }
     }
-    if ( !oneHasEmptySlack && allBoundsValid() )
-	{
-     	checkCostFunctionSlack();
-	}
-
-//    if ( !oneHasEmptySlack && allBoundsValid() )
-//    	printf("No one has empty slack, and all bounds are valid.\n");
-//    else
-//		printf("Someone has an empty slack or there's invalid bound.\n");
-
 	return -1;
 }
 
@@ -2735,12 +2721,12 @@ bool Tableau::checkSlack( unsigned rowIndex )
 int Tableau::getInfeasibleVar() const
 {
     for (unsigned i = 0; i < _n; ++i)
-        if ( _lowerBounds[i] > _upperBounds[i] )
+        if ( !FloatUtils::lte( _lowerBounds[i], _upperBounds[i] ) )
             return ( int ) i;
     return -1;
 }
 
-SingleVarBoundsExplanator* Tableau::ExplainBound( const unsigned variable ) const
+SingleVarBoundsExplanator* Tableau::explainBound( const unsigned variable ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
     return &_boundsExplanator->returnWholeVarExplanation( variable );
@@ -2752,13 +2738,13 @@ void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) con
         _boundsExplanator->updateBoundExplanation( row, isUpper );
 }
 
-void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, unsigned var ) const
+void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
         _boundsExplanator->updateBoundExplanation( row, isUpper, var );
 }
 
-void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, unsigned var ) const
+void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
         _boundsExplanator->updateBoundExplanationSparse( row, isUpper, var );
@@ -2775,7 +2761,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
             continue;
 
         multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
-        multiplier *= row[i];
+        multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
         bound += multiplier;
     }
 
@@ -2783,6 +2769,37 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
     return bound;
 }
 
+double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var) const
+{
+	assert ( !row.empty() && var < _n);
+	double ci = 0, realCoefficient;
+
+	for ( const auto& entry : row )
+		if ( entry._index == var )
+		{
+			ci = entry._value;
+			break;
+		}
+
+	assert( !FloatUtils::isZero( ci ) );
+
+	double bound = 0, curVal, multiplier;
+	unsigned curVar;
+	for ( const auto& entry : row )
+	{
+		curVar = entry._index;
+		curVal = entry._value;
+
+		if ( FloatUtils::isZero( curVal ) || curVar == var )
+			continue;
+
+		realCoefficient = curVal / -ci;
+		multiplier = ( isUpper && FloatUtils::isPositive( realCoefficient ) ) || ( !isUpper && FloatUtils::isNegative( realCoefficient ) ) ? _upperBounds[curVar] : _lowerBounds[curVar];
+		bound += multiplier * realCoefficient;
+	}
+
+	return bound;
+}
 
 void Tableau::resetExplanation( const unsigned var, const bool isUpper )
 {
@@ -2795,7 +2812,7 @@ void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double
 	_boundsExplanator->multiplyExplanationCoefficients( var, alpha, isUpper );
 }
 
-void Tableau::injectExplanation(unsigned var, SingleVarBoundsExplanator& expl)
+void Tableau::injectExplanation( const unsigned var, SingleVarBoundsExplanator& expl )
 {
 	ASSERT( expl.getLength() == _m );
 	_boundsExplanator->injectExplanation( var, expl );

@@ -622,7 +622,7 @@ public:
     {
     }
 
-    SingleVarBoundsExplanator* ExplainBound( const unsigned /* variable */ ) const
+    SingleVarBoundsExplanator* explainBound( const unsigned /* variable */ ) const
     {
     	return NULL;
     }
