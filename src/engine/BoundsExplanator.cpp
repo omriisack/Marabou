@@ -143,7 +143,6 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 {
 	if ( !row._size )
 		return;
-
 	bool tempUpper;
 	unsigned var = row._lhs, maxLevel = 0, tempLevel,  tempVar;  // The var to be updated is the lhs of the row
 	double curCoefficient;
@@ -249,8 +248,7 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 			ci = entry._value;
 			break;
 		}
-
-	assert( ci );
+	assert( !FloatUtils::isZero( ci ) );
 	unsigned tempLevel, maxLevel = 0;
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );

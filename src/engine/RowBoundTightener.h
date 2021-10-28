@@ -26,7 +26,7 @@
 class RowBoundTightener : public IRowBoundTightener
 {
 public:
-    RowBoundTightener( const ITableau &tableau );
+    RowBoundTightener( ITableau &tableau );
     ~RowBoundTightener();
 
     /*
@@ -35,7 +35,7 @@ public:
     void setDimensions();
 
     /*
-      Initialize tightest lower/upper bounds using the talbeau.
+      Initialize tightest lower/upper bounds using the tableau.
     */
     void resetBounds();
 
@@ -99,7 +99,7 @@ public:
     void setStatistics( Statistics *statistics );
 
 private:
-    const ITableau &_tableau;
+    ITableau &_tableau;
     unsigned _n;
     unsigned _m;
 

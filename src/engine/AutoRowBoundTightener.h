@@ -22,7 +22,7 @@
 class AutoRowBoundTightener
 {
 public:
-	AutoRowBoundTightener( const ITableau &tableau )
+	AutoRowBoundTightener( ITableau &tableau )
 	{
 		_rowBoundTightener = T::createRowBoundTightener( tableau );
 	}

@@ -23,14 +23,14 @@ class ITableau;
 
 namespace T
 {
-	IRowBoundTightener *createRowBoundTightener( const ITableau &tableau );
+	IRowBoundTightener *createRowBoundTightener(  ITableau &tableau );
 	void discardRowBoundTightener( IRowBoundTightener *rowBoundTightener );
 }
 
 CXXTEST_SUPPLY( createRowBoundTightener,
 				IRowBoundTightener *,
 				createRowBoundTightener,
-				( const ITableau &tableau ),
+				( ITableau &tableau ),
 				T::createRowBoundTightener,
 				( tableau ) );
 

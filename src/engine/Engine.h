@@ -651,7 +651,7 @@ private:
 	int updateMostInfeasibleBasic();
 
 	/*
- 	* Updates explanations of the first unfeasible basic var by cost function;
+ 	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
 };

@@ -138,6 +138,7 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
         _lowerBounds[variable] = bound;
         _tightenedLower[variable] = true;
     }
+    _tableau.tightenLowerBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound )
@@ -147,13 +148,15 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
         _upperBounds[variable] = bound;
         _tightenedUpper[variable] = true;
     }
+    _tableau.tightenUpperBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
 {
+	double realBound = FloatUtils::max( _lowerBounds[variable], _tableau.getLowerBound( variable ) );
 	if ( bound > _lowerBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::gt( bound, realBound ) )
 			_tableau.updateExplanation( row, false, variable );
 
 		registerTighterLowerBound( variable, bound );
@@ -162,9 +165,10 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
 
 void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row )
 {
+	double realBound = FloatUtils::min( _upperBounds[variable], _tableau.getUpperBound( variable ) );
 	if ( bound < _upperBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::lt( bound, realBound ) )
 			_tableau.updateExplanation( row, true, variable );
 
 		registerTighterUpperBound( variable, bound );
@@ -202,19 +206,9 @@ void ConstraintBoundTightener::clearEngineUpdates()
 void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double value, bool isUpper )
 {
 	// Register new ground bound, and reset explanation
-	double realBound;
-	if ( !isUpper )
-	{
-		realBound = _tightenedLower[var] ? _lowerBounds[var] : _tableau.getLowerBound( var );
-		if (value <= realBound  )
-			return;
-	}
-	else
-	{
-		realBound = _tightenedUpper[var] ? _upperBounds[var] : _tableau.getUpperBound( var );
-		if (  value >= realBound )
-			return;
-	}
+	double realBound = isUpper? FloatUtils::min( _upperBounds[var], _tableau.getUpperBound( var ) ) : FloatUtils::max( _lowerBounds[var], _tableau.getLowerBound( var ) );
+	if ( ( !isUpper &&  FloatUtils::lt ( value, realBound ) ) || ( isUpper && FloatUtils::gt( value, realBound ) ) )
+		return;
 
 	isUpper? _upperGBUpdates[var] = value : _lowerGBUpdates[var] = value;
 	isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );

@@ -1239,7 +1239,6 @@ void Engine::performMILPSolverBoundedTightening()
 					{
 						_tableau->resetExplanation( tightening._variable, false );
 						_groundLowerBounds[tightening._variable] = tightening._value;
-						_tableau->tightenLowerBound( tightening._variable, tightening._value );
 					}
 				}
 				_tableau->tightenLowerBound( tightening._variable, tightening._value );
@@ -1252,7 +1251,6 @@ void Engine::performMILPSolverBoundedTightening()
 					{
 						_tableau->resetExplanation( tightening._variable, true );
 						_groundUpperBounds[tightening._variable] = tightening._value;
-						_tableau->tightenUpperBound( tightening._variable, tightening._value );
 					}
 				}
 				_tableau->tightenUpperBound( tightening._variable, tightening._value );
@@ -1696,7 +1694,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             _tableau->tightenUpperBound( variable, bound._value );
         }
     }
-    validateAllBounds( 0.01 );
+	validateAllBounds( 0.01 );
 	DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
 }
@@ -1705,7 +1703,6 @@ void Engine::applyAllRowTightenings()
 {
     List<Tightening> rowTightenings;
     _rowBoundTightener->getRowTightenings( rowTightenings );
-
     for ( const auto &tightening : rowTightenings )
     {
         if ( tightening._type == Tightening::LB )
@@ -1714,8 +1711,10 @@ void Engine::applyAllRowTightenings()
             _tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
 
-// Checking all bounds here may be inaccurate, since there are ground bounds updates in CBT.
-
+	updateGBfromCBT();
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		for ( const auto &tightening : rowTightenings ) //TODO delete
+			validateBounds( tightening._variable, 0.01, tightening._type == Tightening::UB );
 }
 
 void Engine::applyAllConstraintTightenings()
@@ -1724,8 +1723,6 @@ void Engine::applyAllConstraintTightenings()
 
     _constraintBoundTightener->getConstraintTightenings( entailedTightenings );
 
-	// All updates to IT and GB registered by the CBT need to be updated
-	updateGBfromCBT();
 
     for ( const auto &tightening : entailedTightenings )
     {
@@ -2639,7 +2636,6 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, bool isU
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return true;
-
 	auto certificate = _tableau->explainBound( var );
 	ASSERT( certificate->getLength() == _tableau->getM() );
 	certificate->assertLengthConsistency();
@@ -2715,14 +2711,8 @@ void Engine::explainSimplexFailure()
 {
 	if( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
-	try
-	{
-		applyAllBoundTightenings();
-	}
-	catch ( InfeasibleQueryException )
-	{
-		updateGBfromCBT();
-	} // In case contradicting bounds will be discovered, might need to update the ground bounds
+
+	applyAllBoundTightenings();
 
 	checkGroundBounds();
 	validateAllBounds( 0.01 );
@@ -2803,13 +2793,18 @@ int Engine::updateMostInfeasibleBasic()
 
 int Engine::updateFirstInfeasibleBasic()
 {
+	if ( _costFunctionManager->costFunctionInvalid() )
+		_costFunctionManager->computeCoreCostFunction();
+	else
+		_costFunctionManager->adjustBasicCostAccuracy();
+
 	unsigned inf = -1;
 	int infIndex = _costFunctionManager->getFirstParticipatingBasicIndex();
-//	if (infIndex < 0 )
-//	{
-//		_costFunctionManager->computeCoreCostFunction();
-//		infIndex = _costFunctionManager->getFirstParticipatingBasicIndex();
-//	}
+	if (infIndex < 0 )
+	{
+		_costFunctionManager->computeCoreCostFunction();
+		infIndex = _costFunctionManager->getFirstParticipatingBasicIndex();
+	}
 	assert( infIndex >= 0 );
 	inf = ( int ) _tableau->basicIndexToVariable( infIndex );
 	auto *costRow = _costFunctionManager->createRowOfCostFunction();

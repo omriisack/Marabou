@@ -20,7 +20,7 @@
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
 
-RowBoundTightener::RowBoundTightener( const ITableau &tableau )
+RowBoundTightener::RowBoundTightener( ITableau &tableau )
     : _tableau( tableau )
     , _lowerBounds( NULL )
     , _upperBounds( NULL )
@@ -367,6 +367,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, false );
         ++result;
+        _tableau.tightenLowerBound( y, lowerBound );
     }
 
     if ( FloatUtils::gt( _upperBounds[y], upperBound ) )
@@ -376,6 +377,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, true );
         ++result;
+		_tableau.tightenUpperBound( y, upperBound );
     }
 
     if ( FloatUtils::gt( _lowerBounds[y], _upperBounds[y] ) )
@@ -418,7 +420,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
     for ( unsigned i = 0; i < n - m; ++i )
     {
         // If ci = 0, nothing to do.
-        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.00001)
+        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.001 )
             continue;
 
         lowerBound = auxLb;
@@ -457,6 +459,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, false, xi );
             ++result;
+			_tableau.tightenLowerBound( xi, lowerBound );
         }
 
         if ( FloatUtils::gt( _upperBounds[xi], upperBound ) )
@@ -466,6 +469,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, true, xi );
             ++result;
+			_tableau.tightenUpperBound( xi, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[xi], _upperBounds[xi] ) )
@@ -612,7 +616,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
 
         // Now divide everything by ci, switching signs if needed.
         ci = entry._value;
-		if ( abs( ci ) < 0.00001)
+		if ( abs( ci ) < 0.001)
 			continue;
 
         lowerBound = lowerBound / ci;
@@ -633,6 +637,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, false, index );
             ++result;
+			_tableau.tightenLowerBound( index, lowerBound );
         }
 
         if ( FloatUtils::gt( _upperBounds[index], upperBound ) )
@@ -642,6 +647,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, true, index );
             ++result;
+			_tableau.tightenUpperBound( index, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[index], _upperBounds[index] ) )

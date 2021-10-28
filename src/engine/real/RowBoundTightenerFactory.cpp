@@ -17,7 +17,7 @@
 
 namespace T
 {
-	IRowBoundTightener *createRowBoundTightener( const ITableau &tableau )
+	IRowBoundTightener *createRowBoundTightener( ITableau &tableau )
 	{
 		return new RowBoundTightener( tableau );
 	}
