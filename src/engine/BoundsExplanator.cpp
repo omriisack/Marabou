@@ -183,7 +183,7 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	sum.clear();
 }
 
-void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var)
+void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var )
 {
 	if ( !row._size )
 		return;
@@ -227,7 +227,7 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 		}
 	}
 
-	// Since the original var is the new lhs, the new var should be replaced with original lhs 
+	// Since the original var is the new lhs, the new var should be replaced with original lhs
 	equiv._row[varIndex]._coefficient = -coeff;
 	equiv._row[varIndex]._var = row._lhs;
 

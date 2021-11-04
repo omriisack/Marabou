@@ -159,7 +159,7 @@ public:
 		ASSERT( groundLBs.size() == initialTableau[0].size() - 1 );
 		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
 
-		double derived_bound = 0, scalar = 0, c, temp;
+		double derived_bound = 0, scalar = 0, temp;
 		unsigned n = groundUBs.size(), m = boundsExplanation.getLength();
 		std::vector<double> expl ( m );
 		boundsExplanation.getVarBoundExplanation( expl, isUpper );
@@ -189,18 +189,17 @@ public:
 
 		// Isolate var in the linear combination - compute its coefficient and divide by -c.
 		// Then erase the coefficient of var
-		c = explanationRowsCombination[var];
-
-		ASSERT( !FloatUtils::isZero( c ) );
-
+//		c = explanationRowsCombination[var]; //TODO consider carefully not dividing by -c
+		explanationRowsCombination[var] -=1;
+//		ASSERT( !FloatUtils::isZero( c ) );
 		for ( unsigned i = 0; i < n; ++i )
 			if ( !FloatUtils::isZero( explanationRowsCombination[i] ) )
-				explanationRowsCombination[i] /= -c;
+				explanationRowsCombination[i] *= -1;
 			else
 				explanationRowsCombination[i] = 0;
 
 		explanationRowsCombination[var] = 0;
-		scalar /= -c;
+		scalar /= -1;
 
 		// Set the bound derived from the linear combination, using original bounds.
 		for ( unsigned i = 0; i < n; ++i )

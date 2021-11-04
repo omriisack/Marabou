@@ -1235,7 +1235,7 @@ void Engine::performMILPSolverBoundedTightening()
 			{
 				if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				{
-					if ( _tableau->getLowerBound( tightening._variable ) <= tightening._value )
+					if ( FloatUtils::lt( _tableau->getLowerBound( tightening._variable ), tightening._value ) )
 					{
 						_tableau->resetExplanation( tightening._variable, false );
 						_groundLowerBounds[tightening._variable] = tightening._value;
@@ -1247,7 +1247,7 @@ void Engine::performMILPSolverBoundedTightening()
 			{
 				if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				{
-					if ( _tableau->getUpperBound( tightening._variable ) >= tightening._value )
+					if ( FloatUtils::gt( _tableau->getUpperBound( tightening._variable ), tightening._value) )
 					{
 						_tableau->resetExplanation( tightening._variable, true );
 						_groundUpperBounds[tightening._variable] = tightening._value;
@@ -1657,7 +1657,6 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
         }
     }
 
-	updateGBfromCBT();
     adjustWorkMemorySize();
     _rowBoundTightener->resetBounds();
     _constraintBoundTightener->resetBounds();
@@ -1694,7 +1693,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             _tableau->tightenUpperBound( variable, bound._value );
         }
     }
-	validateAllBounds( 0.01 );
+	//validateAllBounds( 0.01, 1000 );
 	DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
 }
@@ -1710,11 +1709,6 @@ void Engine::applyAllRowTightenings()
         else
             _tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
-
-	updateGBfromCBT();
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		for ( const auto &tightening : rowTightenings ) //TODO delete
-			validateBounds( tightening._variable, 0.01, tightening._type == Tightening::UB );
 }
 
 void Engine::applyAllConstraintTightenings()
@@ -1733,13 +1727,11 @@ void Engine::applyAllConstraintTightenings()
         else
 			_tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
-	// All updates to IT and GB registered by the CBT need to be updated
-	updateGBfromCBT();
-
+	checkGroundBounds();
     // All updates to IT and GB registered by the CBT need to be updated
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		for ( const auto &tightening : entailedTightenings ) //TODO delete
-			validateBounds( tightening._variable, 0.01, tightening._type == Tightening::UB );
+//    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+//		for ( const auto &tightening : entailedTightenings ) //TODO delete
+//			validateBounds( tightening._variable, 0.01, 1000 tightening._type == Tightening::UB );
 }
 
 void Engine::applyAllBoundTightenings()
@@ -1869,7 +1861,6 @@ void Engine::performPrecisionRestoration( PrecisionRestorer::RestoreBasics resto
 
     _statistics.incNumPrecisionRestorations();
     _rowBoundTightener->clear();
-    updateGBfromCBT();
     _constraintBoundTightener->resetBounds();
 
     // debug
@@ -1892,7 +1883,6 @@ void Engine::performPrecisionRestoration( PrecisionRestorer::RestoreBasics resto
         _statistics.incNumPrecisionRestorations();
 
         _rowBoundTightener->clear();
-        updateGBfromCBT();
         _constraintBoundTightener->resetBounds();
 
         // debug
@@ -2118,7 +2108,6 @@ void Engine::resetExitCode()
 
 void Engine::resetBoundTighteners()
 {
-	updateGBfromCBT();
     _constraintBoundTightener->resetBounds();
     _rowBoundTightener->resetBounds();
 }
@@ -2507,7 +2496,7 @@ void Engine::printBoundsExplanation( const unsigned var )
     unsigned m = _tableau->getM();
     SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
     *certificate = *_tableau->explainBound(var);
-    std::vector<double> expl = std::vector<double>( m, 0 ); 
+    std::vector<double> expl = std::vector<double>( m, 0 );
     certificate->getVarBoundExplanation( expl, true );
 
     printf( "Upper bound explanation:\n[" );
@@ -2534,39 +2523,42 @@ int Engine::simplexBoundsUpdate()
     	return -1;
 
     unsigned var = boundUpdateRow._lhs;
-    double newUBound, newLBound;
-    newUBound = _tableau->computeRowBound( boundUpdateRow, true );
+    double newBound;
+	newBound = _tableau->computeRowBound( boundUpdateRow, true );
 
-    if ( FloatUtils::isZero( newUBound ) )
-    	newUBound = 0;
+    if ( FloatUtils::isZero( newBound ) )
+		newBound = 0;
 
-    if ( FloatUtils::lt( newUBound, _tableau->getLowerBound( var ) ) )
+    if ( FloatUtils::lt( newBound, _tableau->getLowerBound( var ) ) )
     {
 		_tableau->updateExplanation( boundUpdateRow, true );
-        //_tableau->tightenUpperBound( var, newUBound ); // No re-tightening, since can create chain reaction
+        //_tableau->tightenUpperBound( var, newBound ); // No re-tightening, since can create chain reaction
         //printf("Updating ub of var %d from %.5lf to %.5lf\n", var, _tableau->getUpperBound( var ), newBound ); //TODO delete
         return ( int ) var;
     }
-    newLBound = _tableau->computeRowBound( boundUpdateRow, false );
+	newBound = _tableau->computeRowBound( boundUpdateRow, false );
 
-	if ( FloatUtils::isZero( newLBound ) )
-		newLBound = 0;
+	if ( FloatUtils::isZero( newBound ) )
+		newBound = 0;
 
-    if ( FloatUtils::gt( newLBound, _tableau->getUpperBound( var ) ) )
+    if ( FloatUtils::gt( newBound, _tableau->getUpperBound( var ) ) )
     {
     	_tableau->updateExplanation( boundUpdateRow, false );
-		//printf("Updating lb of var %d from %.5lf to %.5lf. ub is %.5lf, row ub is %.5lf\n", var, _tableau->getLowerBound( var ), newLBound, _tableau->getUpperBound( var ), _tableau->computeRowBound( boundUpdateRow, true ) ); //TODO delete
-		//_tableau->tightenLowerBound( var, newLBound );
+		//printf("Updating lb of var %d from %.5lf to %.5lf. ub is %.5lf, row ub is %.5lf\n", var, _tableau->getLowerBound( var ), newBound, _tableau->getUpperBound( var ), _tableau->computeRowBound( boundUpdateRow, true ) ); //TODO delete
+		//_tableau->tightenLowerBound( var, newBound );
 		return  ( int ) var;
     }
 	return -1;
 }
 
-void Engine::certifyInfeasibility( const unsigned var ) const
+bool Engine::certifyInfeasibility( const unsigned var ) const
 {
     double computedUpper = getExplainedBound( var, true ), computedLower = getExplainedBound( var, false );
-    if ( computedLower <= computedUpper )
-    	printf("Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
+    if ( computedLower > computedUpper )
+    	return true;
+
+    printf("Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
+	return false;
     //TODO revert upon completing
     //ASSERT( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon );
     //ASSERT( abs( computedLower - _tableau->getLowerBound( var ) ) < epsilon );
@@ -2632,7 +2624,7 @@ void Engine::normalizeAllExplanations()
 }
 
 
-bool Engine::validateBounds( const unsigned var , const double epsilon, bool isUpper ) const
+bool Engine::validateBounds( const unsigned var , const double epsilon, const double M, bool isUpper ) const
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return true;
@@ -2643,7 +2635,7 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, bool isU
 	if ( isUpper )
 	{
 		explained = getExplainedBound( var, true ), real = _tableau->getUpperBound( var );
-		if ( explained - real  > epsilon )
+		if ( explained - real > epsilon || explained - real < -M  || abs(explained) > 10 * M)
 		{
 			printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
 			return false;
@@ -2653,7 +2645,7 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, bool isU
 	{
 		explained = getExplainedBound( var, false ), real = _tableau->getLowerBound( var );
 
-		if ( explained - real  < -epsilon)
+		if ( explained - real  < -epsilon || explained - real > M || abs(explained) > 10 * M )
 		{
 			printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
 			return false;
@@ -2665,7 +2657,7 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, bool isU
 	//ASSERT(  getExplainedBound( var, false ) - _tableau->getLowerBound( var ) < -epsilon );
 }
 
-bool Engine::validateAllBounds( const double epsilon ) const
+bool Engine::validateAllBounds( const double epsilon, const double M ) const
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return true;
@@ -2673,7 +2665,7 @@ bool Engine::validateAllBounds( const double epsilon ) const
 	bool res = true;
     //Assuming all tightening were applied
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
-       if ( !validateBounds( var, epsilon, true ) || !validateBounds( var, epsilon, false ) )
+       if ( !validateBounds( var, epsilon, M, true ) || !validateBounds( var, epsilon, M, false ) )
        		res = false;
 
     return res;
@@ -2715,7 +2707,7 @@ void Engine::explainSimplexFailure()
 	applyAllBoundTightenings();
 
 	checkGroundBounds();
-	validateAllBounds( 0.01 );
+	//validateAllBounds( 0.01, 1000 );
 
 	int inf = _tableau->getInfeasibleVar();
 
@@ -2726,8 +2718,8 @@ void Engine::explainSimplexFailure()
 		inf = updateFirstInfeasibleBasic();
 
 	assert ( inf >= 0 );
-	validateBounds( inf, 0.01, true );
-	validateBounds( inf, 0.01, false );
+	validateBounds( inf, 0.01, 1000, true );
+	validateBounds( inf, 0.01, 1000, false );
 	//printBoundsExplanation( inf );
 	certifyInfeasibility( inf );
 }
@@ -2739,20 +2731,6 @@ void Engine::checkGroundBounds()
 	{
 		assert ( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
 		assert( FloatUtils::gte( _groundUpperBounds[i], _tableau->getUpperBound( i ) ) );
-	}
-}
-
-void Engine::updateGBfromCBT()
-{
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-		for ( std::pair<unsigned, double> update : _constraintBoundTightener->getUGBUpdates() )
-			_groundUpperBounds[update.first] = update.second;
-
-		for ( std::pair<unsigned, double> update : _constraintBoundTightener->getLGBUpdates() )
-			_groundLowerBounds[update.first] = update.second;
-
-		_constraintBoundTightener->clearEngineUpdates();
 	}
 }
 
@@ -2812,4 +2790,40 @@ int Engine::updateFirstInfeasibleBasic()
 	_tableau->updateExplanation( *costRow, isUpper, inf );
 	delete costRow;
 	return ( int ) inf;
+}
+
+unsigned Engine::tightenBoundsByExplanations()
+{
+	unsigned n = _tableau->getN(), counter = 0;
+	for ( unsigned i = 0; i < n; ++i )
+	{
+		try
+		{
+			double ub = getExplainedBound( i, true );
+			if ( FloatUtils::lt( ub ,_tableau->getUpperBound( i ) ) )
+			{
+				_tableau->tightenUpperBound( i, ub );
+				++counter;
+			}
+		}
+		catch (InfeasibleQueryException)
+		{
+
+		}
+
+		try
+		{
+			double lb = getExplainedBound( i, false );
+			if ( FloatUtils::gt(lb ,_tableau->getLowerBound( i ) ) )
+			{
+				_tableau->tightenLowerBound( i, lb );
+				++counter;
+			}
+		}
+		catch (InfeasibleQueryException)
+		{
+
+		}
+	}
+	return counter;
 }

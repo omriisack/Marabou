@@ -593,7 +593,7 @@ private:
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
     */
-    void certifyInfeasibility( unsigned var ) const;
+    bool certifyInfeasibility( unsigned var ) const;
 
     /*
      Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
@@ -621,14 +621,14 @@ private:
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-	bool validateBounds( unsigned var , double epsilon, bool isUpper ) const;
+	bool validateBounds( unsigned var , double epsilon,double M, bool isUpper ) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds
      Separately for tightenings and actual bounds
      Returns true iff all bounds are epsilon-close to theier explanations
     */
-    bool validateAllBounds( double epsilon ) const;
+    bool validateAllBounds( double epsilon, double M ) const;
 
     /*
      * Finds the variable causing failure and updates its bounds explanations
@@ -640,11 +640,6 @@ private:
      */
     void checkGroundBounds();
 
-    /*
-     * Updated all ground bound as stored in CBT
-     */
-	void updateGBfromCBT();
-
 	/*
 	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
 	 */
@@ -654,6 +649,12 @@ private:
  	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
+
+	/*
+	 * Pass through all explanations, if they explain a tighter bound - update it.
+	 * Returns the number of tightenings performed
+	 */
+	unsigned tightenBoundsByExplanations();
 };
 
 #endif // __Engine_h__

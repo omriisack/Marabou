@@ -1761,15 +1761,6 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-    /* TODO erase - since explanations are already updated via rowBoundTightener
-    // Update only for a basic var
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
-    {
-        TableauRow row = TableauRow( _n );
-        getTableauRow( _variableToIndex[variable], &row );
-        _boundsExplanator->updateBoundExplanation( row, false );
-    }
-    */
 }
 
 void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, double value )
@@ -1789,15 +1780,6 @@ void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-    /* TODO erase - since explanations are already updated via rowBoundTightener
-    // Update only for a basic var
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
-    {
-        TableauRow row = TableauRow( _n );
-        getTableauRow( _variableToIndex[variable], &row );
-        _boundsExplanator->updateBoundExplanation( row, true );
-    }
-    */
 }
 
 void Tableau::tightenLowerBound( unsigned variable, double value )
@@ -2762,7 +2744,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 
         multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
         multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
-        bound += multiplier;
+        bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
     }
 
 	bound += row._scalar;

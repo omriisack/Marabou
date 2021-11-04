@@ -70,12 +70,6 @@ public:
     */
     void getConstraintTightenings( List<Tightening> &tightenings ) const;
 
-
-	std::map<unsigned , double> getUGBUpdates() const;
-	std::map<unsigned, double> getLGBUpdates() const;
-	std::list<std::vector<double>> getTableauUpdates() const;
-	void clearEngineUpdates();
-
 	/*
 	 * Replaces the indicating row by equation which is added to the Tableau
 	 */
@@ -108,8 +102,6 @@ private:
     */
     void freeMemoryIfNeeded();
 
-	std::map<unsigned, double> _lowerGBUpdates;
-	std::map<unsigned, double> _upperGBUpdates;
 
 	IEngine &_engine; // TODO Consider design
 };

@@ -1018,8 +1018,7 @@ void ReluConstraint::registerExternalExplanationUpdate( unsigned var, double val
 SparseUnsortedList ReluConstraint::createTighteningRow() const
 {
 	//TODO consider making an object field (without invalid memory frees)
-	if ( !_auxVarInUse || !_constraintBoundTightener || !_tableauAuxVar )
-		return SparseUnsortedList( 0 );
+	assert(_auxVarInUse && _constraintBoundTightener && _tableauAuxVar );
 
 	SparseUnsortedList tighteningRow ( 4 );
 	// f = b + aux + counterpart (an additional aux variable of tableau)

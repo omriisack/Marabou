@@ -17,7 +17,6 @@
 #include "FloatUtils.h"
 #include "MarabouError.h"
 #include "Statistics.h"
-#include "InfeasibleQueryException.h"
 
 
 ConstraintBoundTightener::ConstraintBoundTightener( ITableau &tableau, IEngine &engine )
@@ -100,7 +99,6 @@ void ConstraintBoundTightener::freeMemoryIfNeeded()
         _tightenedUpper = NULL;
     }
 
-	clearEngineUpdates();
 }
 
 void ConstraintBoundTightener::setStatistics( Statistics *statistics )
@@ -138,7 +136,7 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
         _lowerBounds[variable] = bound;
         _tightenedLower[variable] = true;
     }
-    _tableau.tightenLowerBound( variable, bound );
+    //_tableau.tightenLowerBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound )
@@ -148,7 +146,7 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
         _upperBounds[variable] = bound;
         _tightenedUpper[variable] = true;
     }
-    _tableau.tightenUpperBound( variable, bound );
+    //_tableau.tightenUpperBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
@@ -187,33 +185,15 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
     }
 }
 
-std::map<unsigned, double> ConstraintBoundTightener::getUGBUpdates() const
-{
-	return _upperGBUpdates;
-}
-
-std::map<unsigned, double>ConstraintBoundTightener::getLGBUpdates() const
-{
-	return _lowerGBUpdates;
-}
-
-void ConstraintBoundTightener::clearEngineUpdates()
-{
-	_lowerGBUpdates.clear();
-	_upperGBUpdates.clear();
-}
-
 void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double value, bool isUpper )
 {
 	// Register new ground bound, and reset explanation
 	double realBound = isUpper? FloatUtils::min( _upperBounds[var], _tableau.getUpperBound( var ) ) : FloatUtils::max( _lowerBounds[var], _tableau.getLowerBound( var ) );
-	if ( ( !isUpper &&  FloatUtils::lt ( value, realBound ) ) || ( isUpper && FloatUtils::gt( value, realBound ) ) )
-		return;
-
-	isUpper? _upperGBUpdates[var] = value : _lowerGBUpdates[var] = value;
-	isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
-	_tableau.resetExplanation(var, isUpper);
-
+	if ( ( !isUpper && FloatUtils::gt( value, realBound ) ) || ( isUpper && FloatUtils::lt( value, realBound ) ) )
+	{
+		isUpper? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value );
+		isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+	}
 }
 
 //

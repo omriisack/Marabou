@@ -359,25 +359,26 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             upperBound += _ciTimesLb[i];
         }
     }
-
-    if ( FloatUtils::lt( _lowerBounds[y], lowerBound ) )
+	double realBound = FloatUtils::max( _lowerBounds[y], _tableau.getLowerBound( y ) );
+    if ( FloatUtils::lt( realBound, lowerBound ) )
     {
         _lowerBounds[y] = lowerBound;
         _tightenedLower[y] = true;
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, false );
         ++result;
-        _tableau.tightenLowerBound( y, lowerBound );
+        //_tableau.tightenLowerBound( y, lowerBound );
     }
 
-    if ( FloatUtils::gt( _upperBounds[y], upperBound ) )
+    realBound = FloatUtils::min( _upperBounds[y], _tableau.getUpperBound( y ) );
+    if ( FloatUtils::gt( realBound, upperBound ) )
     {
         _upperBounds[y] = upperBound;
         _tightenedUpper[y] = true;
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, true );
         ++result;
-		_tableau.tightenUpperBound( y, upperBound );
+		//_tableau.tightenUpperBound( y, upperBound );
     }
 
     if ( FloatUtils::gt( _lowerBounds[y], _upperBounds[y] ) )
@@ -452,24 +453,25 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
 
         // If a tighter bound is found, store it
         xi = row._row[i]._var;
-        if ( FloatUtils::lt( _lowerBounds[xi], lowerBound ) )
+		realBound = FloatUtils::max( _lowerBounds[xi], _tableau.getLowerBound( xi ) );
+        if ( FloatUtils::lt( realBound, lowerBound ) )
         {
             _lowerBounds[xi] = lowerBound;
             _tightenedLower[xi] = true;
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, false, xi );
             ++result;
-			_tableau.tightenLowerBound( xi, lowerBound );
+			//_tableau.tightenLowerBound( xi, lowerBound );
         }
-
-        if ( FloatUtils::gt( _upperBounds[xi], upperBound ) )
+		realBound = FloatUtils::min( _upperBounds[xi], _tableau.getUpperBound( xi ) );
+        if ( FloatUtils::gt( realBound, upperBound ) )
         {
             _upperBounds[xi] = upperBound;
             _tightenedUpper[xi] = true;
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, true, xi );
             ++result;
-			_tableau.tightenUpperBound( xi, upperBound );
+			//_tableau.tightenUpperBound( xi, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[xi], _upperBounds[xi] ) )
@@ -628,26 +630,28 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             upperBound = lowerBound;
             lowerBound = temp;
         }
+		double realBound = FloatUtils::max( _lowerBounds[index], _tableau.getLowerBound( index ) );
 
-        // If a tighter bound is found, store it
-        if ( FloatUtils::lt( _lowerBounds[index], lowerBound ) )
+		// If a tighter bound is found, store it
+        if ( FloatUtils::lt( realBound, lowerBound ) )
         {
             _lowerBounds[index] = lowerBound;
             _tightenedLower[index] = true;
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, false, index );
             ++result;
-			_tableau.tightenLowerBound( index, lowerBound );
+			//_tableau.tightenLowerBound( index, lowerBound );
         }
+		realBound = FloatUtils::min( _upperBounds[index], _tableau.getUpperBound( index ) );
 
-        if ( FloatUtils::gt( _upperBounds[index], upperBound ) )
+        if ( FloatUtils::gt( realBound, upperBound ) )
         {
             _upperBounds[index] = upperBound;
             _tightenedUpper[index] = true;
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, true, index );
             ++result;
-			_tableau.tightenUpperBound( index, upperBound );
+			//_tableau.tightenUpperBound( index, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[index], _upperBounds[index] ) )
