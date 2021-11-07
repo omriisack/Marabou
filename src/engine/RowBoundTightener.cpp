@@ -367,7 +367,6 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, false );
         ++result;
-        //_tableau.tightenLowerBound( y, lowerBound );
     }
 
     realBound = FloatUtils::min( _upperBounds[y], _tableau.getUpperBound( y ) );
@@ -378,7 +377,6 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
             _tableau.updateExplanation( row, true );
         ++result;
-		//_tableau.tightenUpperBound( y, upperBound );
     }
 
     if ( FloatUtils::gt( _lowerBounds[y], _upperBounds[y] ) )
@@ -461,7 +459,6 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, false, xi );
             ++result;
-			//_tableau.tightenLowerBound( xi, lowerBound );
         }
 		realBound = FloatUtils::min( _upperBounds[xi], _tableau.getUpperBound( xi ) );
         if ( FloatUtils::gt( realBound, upperBound ) )
@@ -471,7 +468,6 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( row, true, xi );
             ++result;
-			//_tableau.tightenUpperBound( xi, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[xi], _upperBounds[xi] ) )
@@ -640,7 +636,6 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, false, index );
             ++result;
-			//_tableau.tightenLowerBound( index, lowerBound );
         }
 		realBound = FloatUtils::min( _upperBounds[index], _tableau.getUpperBound( index ) );
 
@@ -651,7 +646,6 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau.updateExplanation( *sparseRow, true, index );
             ++result;
-			//_tableau.tightenUpperBound( index, upperBound );
         }
 
         if ( FloatUtils::gt( _lowerBounds[index], _upperBounds[index] ) )

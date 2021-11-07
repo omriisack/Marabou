@@ -2783,21 +2783,21 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 	return bound;
 }
 
-void Tableau::resetExplanation( const unsigned var, const bool isUpper )
+void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 {
 	_boundsExplanator->resetExplanation( var, isUpper );
 }
 
 
-void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double alpha, const bool isUpper )
+void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double alpha, const bool isUpper ) const
 {
 	_boundsExplanator->multiplyExplanationCoefficients( var, alpha, isUpper );
 }
 
-void Tableau::injectExplanation( const unsigned var, SingleVarBoundsExplanator& expl )
+void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, bool isUpper ) const
 {
-	ASSERT( expl.getLength() == _m );
-	_boundsExplanator->injectExplanation( var, expl );
+	ASSERT( expl.size() == _m );
+	_boundsExplanator->injectExplanation( var, expl, isUpper );
 }
 
 //

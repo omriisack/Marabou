@@ -81,13 +81,7 @@ void SingleVarBoundsExplanator::addEntry( double coefficient )
 	_lower.push_back( coefficient );
 }
 
-void SingleVarBoundsExplanator::injectEntry( unsigned position, double coefficient, bool isUpper )
-{
-	std::vector<double> &temp = isUpper ? _upper : _lower;
-	temp[position] = coefficient;
-}
-
-void SingleVarBoundsExplanator::assertLengthConsistency()
+void SingleVarBoundsExplanator::assertLengthConsistency() const
 {
 	ASSERT( _length == _upper.size() );
 	ASSERT (_length == _lower.size() );
@@ -346,8 +340,8 @@ void BoundsExplanator::resetExplanation ( const unsigned var, const bool isUpper
 	_bounds[var]._upperRecLevel = 0;
 }
 
-void BoundsExplanator::injectExplanation( unsigned var, SingleVarBoundsExplanator& expl )
+void BoundsExplanator::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper )
 {
-	assert( expl.getLength() == _bounds[var].getLength() );
-	_bounds[var] = expl;
+	assert( expl.size() == _bounds[var].getLength() );
+	_bounds[var].updateVarBoundExplanation(expl, isUpper );
 }

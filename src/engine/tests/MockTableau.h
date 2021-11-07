@@ -632,15 +632,15 @@ public:
     	return NULL;
     }
 
-	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ )
+	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ ) const
 	{
 	}
 
-	void multiplyExplanationCoefficients ( const unsigned /* var */, const double /* alpha */, const bool /* isUpper */ )
+	void multiplyExplanationCoefficients ( const unsigned /* var */, const double /* alpha */, const bool /* isUpper */ ) const
 	{
 	}
 
-	void injectExplanation( unsigned /* var */, SingleVarBoundsExplanator& /* expl */)
+	void injectExplanation( unsigned /* var */, const std::vector<double>& /* expl */, bool /*isUpper*/ ) const
 	{
 	}
 

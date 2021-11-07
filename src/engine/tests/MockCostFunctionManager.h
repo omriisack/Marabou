@@ -130,12 +130,12 @@ public:
     {
     }
 
-	SparseUnsortedList* createRowOfCostFunction()
+	SparseUnsortedList* createRowOfCostFunction() const
 	{
     	return NULL;
 	}
 
-	int getFirstParticipatingBasicIndex()
+	int getFirstParticipatingBasicIndex() const
 	{
     	return -1;
 	}

@@ -57,14 +57,9 @@ public:
 	void addEntry( double coefficient );
 
 	/*
-	 * Manually changes the explanation
-	 */
-	void injectEntry( unsigned position, double coefficient, bool isUpper );
-
-	/*
 	 * Asserts that all lengths are consistent
 	 */
-	void assertLengthConsistency();
+	void assertLengthConsistency() const;
 
 	unsigned _upperRecLevel; // For debugging purpose, TODO delete upon completing
 	unsigned _lowerRecLevel;
@@ -145,7 +140,7 @@ public:
 	/*
 	 * Artificially updates an explanation, without using the recursive rule
 	 */
-	void injectExplanation( unsigned var, SingleVarBoundsExplanator& expl );
+	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper );
 
 private:
 	unsigned _varsNum;

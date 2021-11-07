@@ -658,11 +658,13 @@ private:
 
     /*
      * Checks that the slack of a given row lhs is empty
+     * TODO delete function when completing
      */
 	bool checkSlack( unsigned rowIndex );
 
 	/*
  	* Checks that the slack of a given row lhs is empty
+	* TODO delete function when completing
  	*/
 	bool checkCostFunctionSlack();
 
@@ -699,17 +701,17 @@ private:
     /*
      * Resets a bound explanation
      */
-	void resetExplanation ( unsigned var, bool isUpper );
+	void resetExplanation ( unsigned var, bool isUpper ) const;
 
     /*
      * Multiplies the explanation vector of a var by scalar alpha
      */
-	void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper );
+	void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper ) const;
 
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/
-	void injectExplanation( unsigned var, SingleVarBoundsExplanator& expl );
+	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const;
 
 	/*
       Explanator of all bounds 

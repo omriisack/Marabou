@@ -582,7 +582,7 @@ private:
     /*
      Updates bounds after deducing Simplex infeasibility
     */
-    int simplexBoundsUpdate();
+    int explainFailureWithTableau();
 
     std::vector<std::vector<double>> _initialTableau;
     std::vector<double> _groundUpperBounds;
@@ -604,17 +604,7 @@ private:
     /*
      * Returns the coefficient of a var according to its explanation of isUpper bound
      */
-    double extractVarExplanationCoefficient( unsigned var, bool isUpper );
-
-	/*
-	* Normalizes an explanation, i.e. making them produce explanation where the coefficient of explained var is 1
-	*/
-	void normalizeExplanation( unsigned var );
-
-    /*
-     * Normalizes all explanations
-     */
-    void normalizeAllExplanations();
+    double extractVarExplanationCoefficient( unsigned var, bool isUpper ) const;
 
 	/*
 	 Validates that explanations epsilon close to real bounds of a given var
@@ -638,23 +628,18 @@ private:
     /*
      * Sanity check for ground bounds
      */
-    void checkGroundBounds();
+    void checkGroundBounds() const;
 
 	/*
 	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
 	 */
-	int updateMostInfeasibleBasic();
+	int explainFailureWithCostFunction();
 
 	/*
  	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
 
-	/*
-	 * Pass through all explanations, if they explain a tighter bound - update it.
-	 * Returns the number of tightenings performed
-	 */
-	unsigned tightenBoundsByExplanations();
 };
 
 #endif // __Engine_h__

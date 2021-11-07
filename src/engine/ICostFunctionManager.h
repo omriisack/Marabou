@@ -51,8 +51,8 @@ public:
     virtual bool costFunctionJustComputed() const = 0;
     virtual void invalidateCostFunction() = 0;
 
-	virtual SparseUnsortedList* createRowOfCostFunction() = 0;
-	virtual int getFirstParticipatingBasicIndex() = 0;
+	virtual SparseUnsortedList* createRowOfCostFunction() const = 0;
+	virtual int getFirstParticipatingBasicIndex() const = 0;
 
 
 };
