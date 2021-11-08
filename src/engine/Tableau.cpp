@@ -2663,7 +2663,7 @@ bool Tableau::checkCostFunctionSlack()
 	return true;
 }
 
-bool Tableau::checkSlack( unsigned rowIndex )
+bool Tableau::checkSlack( const unsigned rowIndex )
 {
 	TableauRow *row = new TableauRow( _n );
 	Tableau::getTableauRow( rowIndex, row );
@@ -2794,7 +2794,7 @@ void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double
 	_boundsExplanator->multiplyExplanationCoefficients( var, alpha, isUpper );
 }
 
-void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, bool isUpper ) const
+void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
 {
 	ASSERT( expl.size() == _m );
 	_boundsExplanator->injectExplanation( var, expl, isUpper );

@@ -185,7 +185,7 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
     }
 }
 
-void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double value, bool isUpper )
+void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value, const bool isUpper )
 {
 	// Register new ground bound, and reset explanation
 	double realBound = isUpper? FloatUtils::min( _upperBounds[var], _tableau.getUpperBound( var ) ) : FloatUtils::max( _lowerBounds[var], _tableau.getLowerBound( var ) );

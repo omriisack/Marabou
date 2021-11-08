@@ -23,7 +23,7 @@ SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
 {
 }
 
-SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=(const SingleVarBoundsExplanator& other)
+SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=( const SingleVarBoundsExplanator& other )
 {
 	if (this == &other)
 		return *this;
@@ -59,7 +59,7 @@ unsigned SingleVarBoundsExplanator::getLength() const
 	return _length;
 }
 
-void SingleVarBoundsExplanator::updateVarBoundExplanation(const std::vector<double>& newBound, const bool isUpper )
+void SingleVarBoundsExplanator::updateVarBoundExplanation( const std::vector<double>& newBound, const bool isUpper )
 {
 	assert( newBound.size() == _length );
 	std::vector<double>& temp = isUpper ? _upper : _lower;
@@ -74,7 +74,7 @@ void SingleVarBoundsExplanator::multiplyAllCoefficients( const double alpha, con
 		temp[i] *= alpha;
 }
 
-void SingleVarBoundsExplanator::addEntry( double coefficient )
+void SingleVarBoundsExplanator::addEntry( const double coefficient )
 {
 	_length += 1;
 	_upper.push_back( coefficient );
@@ -107,7 +107,7 @@ unsigned BoundsExplanator::getVarsNum() const
 	return _varsNum;
 }
 
-BoundsExplanator& BoundsExplanator::operator=(const BoundsExplanator& other)
+BoundsExplanator& BoundsExplanator::operator=( const BoundsExplanator& other )
 {
 	if (this == &other)
 		return *this;
