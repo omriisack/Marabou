@@ -166,7 +166,7 @@ void SmtCore::performSplit()
 
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        _statistics->setCurrentDecisionLevel( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
         _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }
@@ -269,7 +269,7 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        _statistics->setCurrentDecisionLevel( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
         _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }
@@ -472,7 +472,7 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        _statistics->setCurrentDecisionLevel( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
         _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }

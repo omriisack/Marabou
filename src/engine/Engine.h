@@ -129,6 +129,11 @@ public:
     void applySplit( const PiecewiseLinearCaseSplit &split );
 
     /*
+      Hook invoked after context pop to update context independent data.
+    */
+    void postContextPopHook() { _tableau->postContextPopHook(); };
+
+    /*
       Reset the state of the engine, before solving a new query
       (as part of DnC mode).
     */

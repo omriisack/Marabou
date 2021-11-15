@@ -596,6 +596,8 @@ public:
         return 0;
     }
 
+    void postContextPopHook() {}
+
 	ITableau::BasicStatus getInfeasibleRow( TableauRow& /* row */ )
     {
     	return ITableau::BETWEEN;
