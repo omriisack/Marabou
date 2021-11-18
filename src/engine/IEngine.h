@@ -19,6 +19,7 @@
 #include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
 #include "List.h"
+#include <vector>
 
 #ifdef _WIN32
 #undef ERROR
@@ -29,6 +30,7 @@ class Equation;
 class PiecewiseLinearCaseSplit;
 class SmtState;
 class PiecewiseLinearConstraint;
+class CertificateNode;
 
 class IEngine
 {
@@ -95,10 +97,41 @@ public:
     */
     virtual PiecewiseLinearConstraint *pickSplitPLConstraintSnC( SnCDivideStrategy
                                                                  strategy ) = 0;
+	/*
+	 * Returns the current explanation of a var
+	 */
+    virtual std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const = 0;
 
-	virtual void updatedGroundUpperBound( unsigned var, double value ) = 0;
-	virtual void updatedGroundLowerBound( unsigned var, double value ) = 0;
+	/*
+	 * Updates the ground bounds
+	 */
+	virtual void updateGroundUpperBound(unsigned var, double value ) = 0;
+	virtual void updateGroundLowerBound(unsigned var, double value ) = 0;
 
+	/*
+	 * Get the current pointer in the UNSAT certificate
+	 */
+	virtual CertificateNode* getUNSATCertificateCurrentPointer() const = 0;
+
+	/*
+	 * Set the current pointer in the UNSAT certificate
+	 */
+	virtual void setUNSATCertificateCurrentPointer( CertificateNode* node ) = 0;
+
+	/*
+	 * Get the root of the UNSAT certificate
+	 */
+	virtual CertificateNode* getUNSATCertificateRoot() const = 0;
+
+	/*
+	 * Certify the UNSAT certificate
+	 */
+	virtual bool certifyUNSATCertificate() const = 0;
+
+	/*
+  	 * Returns true iff the value can be the tightest bound of a variable
+   	*/
+	virtual bool isBoundTightest( unsigned var, double value, bool isUpper ) const = 0;
 };
 
 #endif // __IEngine_h__

@@ -174,8 +174,35 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
+	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
+
     void updateGroundUpperBound(unsigned var, double value );
     void updateGroundLowerBound(unsigned var, double value );
+
+    /*
+     * Get the current pointer of the UNSAT certificate
+     */
+    CertificateNode* getUNSATCertificateCurrentPointer() const;
+
+    /*
+  	* Set the current pointer of the UNSAT certificate
+  	*/
+	void setUNSATCertificateCurrentPointer( CertificateNode* node );
+
+	/*
+     * Get the pointer to the root of the UNSAT certificate
+     */
+	CertificateNode* getUNSATCertificateRoot() const;
+
+	/*
+	 * Certify the UNSAT certificate
+	 */
+	bool certifyUNSATCertificate() const;
+
+	/*
+	* Returns true iff the value can be the tightest bound of a variable
+	 */
+	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
 
 private:
     enum BasisRestorationRequired {
@@ -581,7 +608,7 @@ private:
     /*
      Updates bounds after deducing Simplex infeasibility
     */
-    int simplexBoundsUpdate();
+    int explainFailureWithTableau();
 
     std::vector<std::vector<double>> _initialTableau;
     std::vector<double> _groundUpperBounds;
@@ -592,7 +619,7 @@ private:
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
     */
-    void certifyInfeasibility( unsigned var ) const;
+    bool certifyInfeasibility( unsigned var ) const;
 
     /*
      Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
@@ -603,31 +630,21 @@ private:
     /*
      * Returns the coefficient of a var according to its explanation of isUpper bound
      */
-    double extractVarExplanationCoefficient( unsigned var, bool isUpper );
-
-	/*
-	* Normalizes an explanation, i.e. making them produce explanation where the coefficient of explained var is 1
-	*/
-	void normalizeExplanation( unsigned var );
-
-    /*
-     * Normalizes all explanations
-     */
-    void normalizeAllExplanations();
+    double extractVarExplanationCoefficient( unsigned var, bool isUpper ) const;
 
 	/*
 	 Validates that explanations epsilon close to real bounds of a given var
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-	bool validateBounds( unsigned var , double epsilon, bool isUpper ) const;
+	bool validateBounds(const unsigned var, const double epsilon, const double M, bool isUpper, bool toPrint) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds
      Separately for tightenings and actual bounds
      Returns true iff all bounds are epsilon-close to theier explanations
     */
-    bool validateAllBounds( double epsilon ) const;
+    bool validateAllBounds( double epsilon, double M ) const;
 
     /*
      * Finds the variable causing failure and updates its bounds explanations
@@ -637,22 +654,18 @@ private:
     /*
      * Sanity check for ground bounds
      */
-    void checkGroundBounds();
-
-    /*
-     * Updated all ground bound as stored in CBT
-     */
-	void updateGBfromCBT();
+    void checkGroundBounds() const;
 
 	/*
 	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
 	 */
-	int updateMostInfeasibleBasic();
+	int explainFailureWithCostFunction();
 
 	/*
- 	* Updates explanations of the first unfeasible basic var by cost function;
+ 	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
+
 };
 
 #endif // __Engine_h__

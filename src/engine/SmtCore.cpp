@@ -22,7 +22,6 @@
 #include "MStringf.h"
 #include "MarabouError.h"
 #include "Options.h"
-#include "PseudoImpactTracker.h"
 #include "ReluConstraint.h"
 #include "SmtCore.h"
 #include "UNSATCertificate.h"
@@ -34,10 +33,6 @@ SmtCore::SmtCore( IEngine *engine )
     , _constraintForSplitting( NULL )
     , _stateId( 0 )
     , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
-    , _deepSoIRejectionThreshold( Options::get()->getInt( Options::DEEP_SOI_REJECTION_THRESHOLD ) )
-    , _branchingHeuristic( Options::get()->getDivideStrategy() )
-    , _scoreTracker( nullptr )
-    , _numRejectedPhasePatternProposal( 0 )
 {
 }
 
@@ -65,7 +60,6 @@ void SmtCore::reset()
     _constraintForSplitting = NULL;
     _stateId = 0;
     _constraintToViolationCount.clear();
-    _numRejectedPhasePatternProposal = 0;
 }
 
 void SmtCore::reportViolatedConstraint( PiecewiseLinearConstraint *constraint )
@@ -94,35 +88,6 @@ unsigned SmtCore::getViolationCounts( PiecewiseLinearConstraint *constraint ) co
     return _constraintToViolationCount[constraint];
 }
 
-void SmtCore::initializeScoreTrackerIfNeeded( const
-                                              List<PiecewiseLinearConstraint *>
-                                              &plConstraints )
-{
-    if ( GlobalConfiguration::USE_DEEPSOI_LOCAL_SEARCH )
-    {
-        _scoreTracker = std::unique_ptr<PseudoImpactTracker>
-            ( new PseudoImpactTracker() );
-        _scoreTracker->initialize( plConstraints );
-
-        SMT_LOG( "\tTracking Pseudo Impact..." );
-    }
-}
-
-void SmtCore::reportRejectedPhasePatternProposal()
-{
-    ++_numRejectedPhasePatternProposal;
-
-    if ( _numRejectedPhasePatternProposal >=
-         _deepSoIRejectionThreshold )
-    {
-        _needToSplit = true;
-        if ( !pickSplitPLConstraint() )
-            // If pickSplitConstraint failed to pick one, use the native
-            // relu-violation based splitting heuristic.
-            _constraintForSplitting = _scoreTracker->topUnfixed();
-    }
-}
-
 bool SmtCore::needToSplit() const
 {
     return _needToSplit;
@@ -132,7 +97,6 @@ void SmtCore::performSplit()
 {
     ASSERT( _needToSplit );
 
-    _numRejectedPhasePatternProposal = 0;
     // Maybe the constraint has already become inactive - if so, ignore
     if ( !_constraintForSplitting->isActive() )
     {
@@ -149,8 +113,8 @@ void SmtCore::performSplit()
 
     if ( _statistics )
     {
-        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
-        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
+        _statistics->incNumSplits();
+        _statistics->incNumVisitedTreeStates();
     }
 
     // Before storing the state of the engine, we:
@@ -167,7 +131,7 @@ void SmtCore::performSplit()
     ++_stateId;
     _engine->storeState( *stateBeforeSplits, true );
 
-	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();
+	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
 		//Create children for UNSATCertificate current node, and assign a split to each of them
@@ -187,11 +151,10 @@ void SmtCore::performSplit()
 		_engine->setUNSATCertificateCurrentPointer( firstSplitChild );
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
 	}
-	_stack.append( stackEntry ); //TODO moved here so depth will be accurate when applying the split
+    _engine->applySplit( *split );
     stackEntry->_activeSplit = *split;
 
     // Store the remaining splits on the stack, for later
-    _engine->applySplit( *split );
     stackEntry->_engineState = stateBeforeSplits;
     ++split;
     while ( split != splits.end() )
@@ -200,17 +163,12 @@ void SmtCore::performSplit()
         ++split;
     }
 
+    _stack.append( stackEntry );
     if ( _statistics )
     {
-        unsigned level = getStackDepth();
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
-                                           level );
-        if ( level > _statistics->getUnsignedAttribute
-             ( Statistics::MAX_DECISION_LEVEL ) )
-            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
-                                               level );
+        _statistics->setCurrentStackDepth( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
+        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }
 
     _constraintForSplitting = NULL;
@@ -232,16 +190,14 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->incUnsignedAttribute( Statistics::NUM_POPS );
+        _statistics->incNumPops();
         // A pop always sends us to a state that we haven't seen before - whether
         // from a sibling split, or from a lower level of the tree.
-        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
+        _statistics->incNumVisitedTreeStates();
     }
 
     // Remove any entries that have no alternatives
     String error;
-	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
-
     while ( _stack.back()->_alternativeSplits.empty() )
     {
         if ( checkSkewFromDebuggingSolution() )
@@ -250,6 +206,7 @@ bool SmtCore::popSplit()
             printf( "Error! Popping from a compliant stack\n" );
             throw MarabouError( MarabouError::DEBUGGING_ERROR );
         }
+		CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 		{
 			ASSERT( currentCertificateNode );
@@ -261,14 +218,14 @@ bool SmtCore::popSplit()
 
         if ( _stack.empty() )
             return false;
-    }
 
-	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-	{
-		// In case that the current pointer is not the root
-		ASSERT( currentCertificateNode );
-		_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
-	}
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		{
+			// In case that the current pointer is not the root
+			ASSERT( currentCertificateNode );
+			_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+		}
+    }
 
     if ( checkSkewFromDebuggingSolution() )
     {
@@ -311,15 +268,9 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        unsigned level = getStackDepth();
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
-                                           level );
-        if ( level > _statistics->getUnsignedAttribute
-             ( Statistics::MAX_DECISION_LEVEL ) )
-            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
-                                               level );
+        _statistics->setCurrentStackDepth( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
+        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }
 
     checkSkewFromDebuggingSolution();
@@ -327,10 +278,9 @@ bool SmtCore::popSplit()
     return true;
 }
 
-void SmtCore::resetSplitConditions()
+void SmtCore::resetReportedViolations()
 {
     _constraintToViolationCount.clear();
-    _numRejectedPhasePatternProposal = 0;
     _needToSplit = false;
 }
 
@@ -501,8 +451,8 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
-        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
+        _statistics->incNumSplits();
+        _statistics->incNumVisitedTreeStates();
     }
 
     // Obtain the current state of the engine
@@ -521,15 +471,9 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        unsigned level = getStackDepth();
-        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
-                                           level );
-        if ( level > _statistics->getUnsignedAttribute
-             ( Statistics::MAX_DECISION_LEVEL ) )
-            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
-                                               level );
+        _statistics->setCurrentStackDepth( getStackDepth() );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
+        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
     }
 }
 
@@ -546,40 +490,6 @@ void SmtCore::storeSmtState( SmtState &smtState )
 bool SmtCore::pickSplitPLConstraint()
 {
     if ( _needToSplit )
-    {
-        _constraintForSplitting = _engine->pickSplitPLConstraint
-            ( _branchingHeuristic );
-    }
+        _constraintForSplitting = _engine->pickSplitPLConstraint();
     return _constraintForSplitting != NULL;
-}
-
-bool SmtCore::backjump( unsigned backjumpLevel )
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !backjumpLevel )
-		return true;
-
-	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
-	// Remove any entries that have no alternatives
-
-	for ( unsigned  i = 0; i < backjumpLevel; ++i)
-	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-		{
-			ASSERT( currentCertificateNode );
-			currentCertificateNode = currentCertificateNode->getParent();
-		}
-
-		delete _stack.back()->_engineState;
-		delete _stack.back();
-		_stack.popBack();
-	}
-
-	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-	{
-		// In case that the current pointer is not the root
-		ASSERT( currentCertificateNode );
-		_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
-	}
-
-	return true;
 }

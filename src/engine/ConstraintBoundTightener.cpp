@@ -17,7 +17,7 @@
 #include "FloatUtils.h"
 #include "MarabouError.h"
 #include "Statistics.h"
-#include "InfeasibleQueryException.h"
+#include "UNSATCertificate.h"
 
 
 ConstraintBoundTightener::ConstraintBoundTightener( ITableau &tableau, IEngine &engine )
@@ -100,7 +100,6 @@ void ConstraintBoundTightener::freeMemoryIfNeeded()
         _tightenedUpper = NULL;
     }
 
-	clearEngineUpdates();
 }
 
 void ConstraintBoundTightener::setStatistics( Statistics *statistics )
@@ -151,9 +150,10 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
 
 void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
 {
+
 	if ( bound > _lowerBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, false ) )
 			_tableau.updateExplanation( row, false, variable );
 
 		registerTighterLowerBound( variable, bound );
@@ -164,7 +164,7 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
 {
 	if ( bound < _upperBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, true ) )
 			_tableau.updateExplanation( row, true, variable );
 
 		registerTighterUpperBound( variable, bound );
@@ -183,43 +183,47 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
     }
 }
 
-std::map<unsigned, double> ConstraintBoundTightener::getUGBUpdates() const
+void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value,
+														 const bool isAffectedBoundUpper,
+														 const unsigned causingVar, bool isCausingBoundUpper,
+														 const List<unsigned int> constraintVars,
+														 const PiecewiseLinearFunctionType constraintType )
 {
-	return _upperGBUpdates;
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return;
+	// TODO consider design of function
+	//Make sure the bound is the tightest learned
+	if ( !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
+		return;
+
+	// Register new ground bound, update certificate, and reset explanation
+	auto* PLCExpl = new PLCExplanation();
+
+	PLCExpl->_causingVar = causingVar;
+	PLCExpl->_explanation = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
+	PLCExpl->_constraintVars = constraintVars;
+	PLCExpl->_affectedVar = var;
+	PLCExpl->_bound = value;
+	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;
+	PLCExpl->_isCausingBoundUpper = isCausingBoundUpper;
+	PLCExpl->_constraintType = constraintType;
+
+	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+
+	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value ); // Function resets explanation as well
+	isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
 }
 
-std::map<unsigned, double>ConstraintBoundTightener::getLGBUpdates() const
+double ConstraintBoundTightener::getUpperBound( unsigned var ) const
 {
-	return _lowerGBUpdates;
+	ASSERT( var <= _n );
+	return _upperBounds[var];
 }
 
-void ConstraintBoundTightener::clearEngineUpdates()
+double ConstraintBoundTightener::getLowerBound( unsigned var ) const
 {
-	_lowerGBUpdates.clear();
-	_upperGBUpdates.clear();
-}
-
-void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double value, bool isUpper )
-{
-	// Register new ground bound, and reset explanation
-	double realBound;
-	if ( !isUpper )
-	{
-		realBound = _tightenedLower[var] ? _lowerBounds[var] : _tableau.getLowerBound( var );
-		if (value <= realBound  )
-			return;
-	}
-	else
-	{
-		realBound = _tightenedUpper[var] ? _upperBounds[var] : _tableau.getUpperBound( var );
-		if (  value >= realBound )
-			return;
-	}
-
-	isUpper? _upperGBUpdates[var] = value : _lowerGBUpdates[var] = value;
-	isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
-	_tableau.resetExplanation(var, isUpper);
-
+	ASSERT( var <= _n );
+	return _lowerBounds[var];
 }
 
 //

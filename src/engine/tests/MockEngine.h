@@ -191,18 +191,43 @@ public:
             return NULL;
     }
 
-	void applyAllConstraintTightenings()
+
+	std::vector<double> getVarCurrentBoundExplanation(unsigned /* var */, bool /* isUpper */ ) const
+	{
+    	return std::vector<double> ( 0,0 );
+	}
+
+	void updateGroundUpperBound(unsigned /* var */, double /* value */ )
 	{
 	}
 
-	void updatedGroundUpperBound( unsigned /*var*/, double /*value*/ )
+	void updateGroundLowerBound(unsigned /*var*/, double /*value*/ )
 	{
 	}
 
-	void updatedGroundLowerBound( unsigned /*var*/, double /*value*/ )
+	CertificateNode* getUNSATCertificateCurrentPointer() const
+	{
+		return NULL;
+	}
+
+	void setUNSATCertificateCurrentPointer( CertificateNode* /* node*/ )
 	{
 	}
 
+	CertificateNode*  getUNSATCertificateRoot() const
+	{
+		return NULL;
+	}
+
+	bool certifyUNSATCertificate() const
+	{
+    	return true;
+	}
+
+	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
+	{
+    	return 0;
+	}
 };
 
 #endif // __MockEngine_h__

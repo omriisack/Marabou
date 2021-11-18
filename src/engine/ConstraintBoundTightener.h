@@ -79,8 +79,21 @@ public:
 	/*
 	 * Replaces the indicating row by equation which is added to the Tableau
 	 */
-	void externalExplanationUpdate( unsigned var, double value, bool isUpper );
+	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper,
+								   const unsigned causingVar, bool isCausingBoundUpper,
+								   List<unsigned int> constraintVars,
+								   PiecewiseLinearFunctionType constraintType );
 
+
+	/*
+	 * Gets the upper bound stored in the CBT
+	 */
+	double getUpperBound(unsigned  var ) const;
+
+	/*
+     * Gets the lower bound stored in the CBT
+     */
+	double getLowerBound(unsigned  var ) const;
 
 private:
     ITableau &_tableau;
@@ -111,7 +124,7 @@ private:
 	std::map<unsigned, double> _lowerGBUpdates;
 	std::map<unsigned, double> _upperGBUpdates;
 
-	IEngine &_engine; // TODO Consider design
+	IEngine &_engine;
 };
 
 #endif // __ConstraintBoundTightener_h__

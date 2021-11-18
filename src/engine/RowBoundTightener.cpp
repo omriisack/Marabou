@@ -20,7 +20,7 @@
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
 
-RowBoundTightener::RowBoundTightener( const ITableau &tableau )
+RowBoundTightener::RowBoundTightener( ITableau &tableau, IEngine &engine )
     : _tableau( tableau )
     , _lowerBounds( NULL )
     , _upperBounds( NULL )
@@ -32,6 +32,7 @@ RowBoundTightener::RowBoundTightener( const ITableau &tableau )
     , _ciTimesUb( NULL )
     , _ciSign( NULL )
     , _statistics( NULL )
+    , _engine( engine )
 {
 }
 
@@ -359,22 +360,21 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
             upperBound += _ciTimesLb[i];
         }
     }
-
     if ( FloatUtils::lt( _lowerBounds[y], lowerBound ) )
     {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( y, lowerBound, false ) )
+            _tableau.updateExplanation( row, false );
         _lowerBounds[y] = lowerBound;
         _tightenedLower[y] = true;
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
-            _tableau.updateExplanation( row, false );
         ++result;
     }
 
     if ( FloatUtils::gt( _upperBounds[y], upperBound ) )
     {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( y, upperBound, true ) )
+            _tableau.updateExplanation( row, true );
         _upperBounds[y] = upperBound;
         _tightenedUpper[y] = true;
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
-            _tableau.updateExplanation( row, true );
         ++result;
     }
 
@@ -418,7 +418,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
     for ( unsigned i = 0; i < n - m; ++i )
     {
         // If ci = 0, nothing to do.
-        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.00001)
+        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.001 )
             continue;
 
         lowerBound = auxLb;
@@ -452,19 +452,18 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         xi = row._row[i]._var;
         if ( FloatUtils::lt( _lowerBounds[xi], lowerBound ) )
         {
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( xi, lowerBound, false ) )
+                _tableau.updateExplanation( row, false, xi );
             _lowerBounds[xi] = lowerBound;
             _tightenedLower[xi] = true;
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                _tableau.updateExplanation( row, false, xi );
             ++result;
         }
-
-        if ( FloatUtils::gt( _upperBounds[xi], upperBound ) )
+        if (  FloatUtils::gt( _upperBounds[xi], upperBound ) )
         {
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( xi, upperBound, true ) )
+                _tableau.updateExplanation( row, true, xi );
             _upperBounds[xi] = upperBound;
             _tightenedUpper[xi] = true;
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                _tableau.updateExplanation( row, true, xi );
             ++result;
         }
 
@@ -566,7 +565,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
               b - sum ci xi
 
       Then, when we consider xi we adjust the computed lower and upper
-      boudns accordingly.
+      bounds accordingly.
     */
 
     double auxLb = b[row];
@@ -612,7 +611,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
 
         // Now divide everything by ci, switching signs if needed.
         ci = entry._value;
-		if ( abs( ci ) < 0.00001)
+		if ( abs( ci ) < 0.001)
 			continue;
 
         lowerBound = lowerBound / ci;
@@ -625,22 +624,22 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
             lowerBound = temp;
         }
 
-        // If a tighter bound is found, store it
-        if ( FloatUtils::lt( _lowerBounds[index], lowerBound ) )
+		// If a tighter bound is found, store it
+        if ( FloatUtils::lt( _lowerBounds[index], lowerBound )  )
         {
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( index, lowerBound, false ) )
+                _tableau.updateExplanation( *sparseRow, false, index );
             _lowerBounds[index] = lowerBound;
             _tightenedLower[index] = true;
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                _tableau.updateExplanation( *sparseRow, false, index );
             ++result;
         }
 
         if ( FloatUtils::gt( _upperBounds[index], upperBound ) )
         {
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( index, upperBound, true ) )
+                _tableau.updateExplanation( *sparseRow, true, index );
             _upperBounds[index] = upperBound;
             _tightenedUpper[index] = true;
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                _tableau.updateExplanation( *sparseRow, true, index );
             ++result;
         }
 
@@ -707,6 +706,19 @@ void RowBoundTightener::notifyUpperBound( unsigned variable, double bound )
 void RowBoundTightener::notifyDimensionChange( unsigned /* m */ , unsigned /* n */ )
 {
     setDimensions();
+}
+
+
+double  RowBoundTightener::getUpperBound( unsigned var ) const
+{
+	ASSERT( var <= _n );
+	return _upperBounds[var];
+}
+
+double  RowBoundTightener::getLowerBound( unsigned var ) const
+{
+	ASSERT( var <= _n );
+	return _lowerBounds[var];
 }
 //
 // Local Variables:

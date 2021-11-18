@@ -123,7 +123,7 @@ void Marabou::solveQuery()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE && !_engine.certifyUNSATCertificate() )
     	printf("Error certifying UNSAT certificate\n"); //TODO call only in case of UNSAT when done
-    else if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    else
     	printf("Certified\n");
 
     if ( _engine.getExitCode() == Engine::SAT )
@@ -209,9 +209,7 @@ void Marabou::displayResults( unsigned long long microSecondsElapsed ) const
 
         // Field #3: number of visited tree states
         summaryFile.write( Stringf( "%u ",
-                                    _engine.getStatistics()->
-                                    getUnsignedAttribute
-                                    ( Statistics::NUM_VISITED_TREE_STATES ) ) );
+                                    _engine.getStatistics()->getNumVisitedTreeStates() ) );
 
         // Field #4: average pivot time in micro seconds
         summaryFile.write( Stringf( "%u",
