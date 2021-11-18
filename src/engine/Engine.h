@@ -175,8 +175,35 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
+	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
+
     void updateGroundUpperBound(unsigned var, double value );
     void updateGroundLowerBound(unsigned var, double value );
+
+    /*
+     * Get the current pointer of the UNSAT certificate
+     */
+    CertificateNode* getUNSATCertificateCurrentPointer() const;
+
+    /*
+  	* Set the current pointer of the UNSAT certificate
+  	*/
+	void setUNSATCertificateCurrentPointer( CertificateNode* node );
+
+	/*
+     * Get the pointer to the root of the UNSAT certificate
+     */
+	CertificateNode* getUNSATCertificateRoot() const;
+
+	/*
+	 * Certify the UNSAT certificate
+	 */
+	bool certifyUNSATCertificate() const;
+
+	/*
+	* Returns true iff the value can be the tightest bound of a variable
+	 */
+	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
 
 private:
     enum BasisRestorationRequired {
@@ -611,7 +638,7 @@ private:
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-	bool validateBounds( unsigned var , double epsilon,double M, bool isUpper ) const;
+	bool validateBounds(const unsigned var, const double epsilon, const double M, bool isUpper, bool toPrint) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds

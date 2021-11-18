@@ -76,7 +76,7 @@ const double GlobalConfiguration::ABS_CONSTRAINT_COMPARISON_TOLERANCE = 0.00001;
 const bool GlobalConfiguration::ONLY_AUX_INITIAL_BASIS = false;
 
 const GlobalConfiguration::ExplicitBasisBoundTighteningType GlobalConfiguration::EXPLICIT_BASIS_BOUND_TIGHTENING_TYPE =
-GlobalConfiguration::DISABLE_EXPLICIT_BASIS_TIGHTENING; //TODO change back to COMPUTE_INVERTED_BASIS_MATRIX
+GlobalConfiguration::COMPUTE_INVERTED_BASIS_MATRIX;
 const bool GlobalConfiguration::EXPLICIT_BOUND_TIGHTENING_UNTIL_SATURATION = false;
 
 const unsigned GlobalConfiguration::REFACTORIZATION_THRESHOLD = 100;

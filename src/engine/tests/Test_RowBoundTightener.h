@@ -16,6 +16,7 @@
 #include <cxxtest/TestSuite.h>
 
 #include "MockTableau.h"
+#include "MockEngine.h"
 #include "RowBoundTightener.h"
 
 class MockForRowBoundTightener
@@ -28,22 +29,25 @@ class RowBoundTightenerTestSuite : public CxxTest::TestSuite
 public:
     MockForRowBoundTightener *mock;
     MockTableau *tableau;
+    MockEngine *engine;
 
     void setUp()
     {
         TS_ASSERT( mock = new MockForRowBoundTightener );
         TS_ASSERT( tableau = new MockTableau );
+		TS_ASSERT( engine = new MockEngine );
     }
 
     void tearDown()
     {
         TS_ASSERT_THROWS_NOTHING( delete tableau );
+		TS_ASSERT_THROWS_NOTHING( delete engine );
         TS_ASSERT_THROWS_NOTHING( delete mock );
     }
 
     void test_pivot_row__both_bounds_tightened()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 2, 5 );
 
@@ -105,7 +109,7 @@ public:
 
     void test_pivot_row__just_upper_tightend()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 2, 5 );
 
@@ -156,7 +160,7 @@ public:
 
     void test_pivot_row__just_lower_tightend()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 2, 5 );
 
@@ -201,7 +205,7 @@ public:
 
     void test_pivot_row__nothing_tightened()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 2, 5 );
 
@@ -238,7 +242,7 @@ public:
 
     void test_examine_constraint_matrix_single_equation()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 1, 5 );
 
@@ -299,7 +303,7 @@ public:
 
     void test_examine_constraint_matrix_multiple_equations()
     {
-        RowBoundTightener tightener( *tableau );
+        RowBoundTightener tightener( *tableau, *engine );
 
         tableau->setDimensions( 2, 5 );
 

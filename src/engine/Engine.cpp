@@ -36,7 +36,7 @@
 
 
 Engine::Engine()
-    : _rowBoundTightener( *_tableau )
+    : _rowBoundTightener( *_tableau, *this )
     , _smtCore( this )
     , _numPlConstraintsDisabledByValidSplits( 0 )
     , _preprocessingEnabled( false )
@@ -88,6 +88,13 @@ Engine::~Engine()
         delete[] _work;
         _work = NULL;
     }
+
+    if ( _UNSATCertificate ) //TODO consider deleting outside engine
+	{
+		delete _UNSATCertificate;
+		_UNSATCertificate = NULL;
+		_UNSATCertificateCurrentPointer = NULL;
+	}
 }
 
 void Engine::setVerbosity( unsigned verbosity )
@@ -266,6 +273,11 @@ bool Engine::solve( unsigned timeoutInSeconds )
                         printf( "\nEngine::solve: sat assignment found\n" );
                         _statistics.print();
                     }
+                    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+					{
+                    	ASSERT( _UNSATCertificateCurrentPointer );
+                    	_UNSATCertificateCurrentPointer->hasSATSolution();
+					}
 					_exitCode = Engine::SAT;
                     return true;
                 }
@@ -1089,7 +1101,7 @@ void Engine::initializeTableau( const double *constraintMatrix, const List<unsig
 	{
     	plConstraint->registerConstraintBoundTightener( _constraintBoundTightener );
     	// Assuming aux var is use
-    	if (GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery._lastAddendToAux.exists (plConstraint->getParticipatingVariables().back() ) )
+    	if ( GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery._lastAddendToAux.exists( plConstraint->getParticipatingVariables().back() ) )
 			plConstraint->setTableauAuxVar( _preprocessedQuery._lastAddendToAux.at( plConstraint->getParticipatingVariables().back() ) );
 	}
 
@@ -1171,6 +1183,14 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
                   GlobalConfiguration::INTERVAL_SPLITTING_THRESHOLD ) ?
                 DivideStrategy::LargestInterval : DivideStrategy::ReLUViolation;
         }
+		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		{
+			_UNSATCertificate = new CertificateNode( _initialTableau, _groundUpperBounds, _groundLowerBounds );
+			for ( auto& plConstraint : _plConstraints )
+				_UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables() );
+			_UNSATCertificateCurrentPointer = _UNSATCertificate;
+			_UNSATCertificate->wasVisited();
+		}
 
         struct timespec end = TimeUtils::sampleMicro();
         _statistics.setPreprocessingTime( TimeUtils::timePassed( start, end ) );
@@ -1203,7 +1223,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 void Engine::performMILPSolverBoundedTightening()
 {
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		return; //TODO change
+		return;
 
     if ( _networkLevelReasoner && Options::get()->gurobiEnabled() )
     {
@@ -1232,29 +1252,9 @@ void Engine::performMILPSolverBoundedTightening()
         for ( const auto &tightening : tightenings )
         {
             if ( tightening._type == Tightening::LB )
-			{
-				if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				{
-					if ( FloatUtils::lt( _tableau->getLowerBound( tightening._variable ), tightening._value ) )
-					{
-						_tableau->resetExplanation( tightening._variable, false );
-						_groundLowerBounds[tightening._variable] = tightening._value;
-					}
-				}
 				_tableau->tightenLowerBound( tightening._variable, tightening._value );
-			}
             else if ( tightening._type == Tightening::UB )
-			{
-				if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				{
-					if ( FloatUtils::gt( _tableau->getUpperBound( tightening._variable ), tightening._value) )
-					{
-						_tableau->resetExplanation( tightening._variable, true );
-						_groundUpperBounds[tightening._variable] = tightening._value;
-					}
-				}
 				_tableau->tightenUpperBound( tightening._variable, tightening._value );
-			}
         }
     }
 }
@@ -1262,7 +1262,7 @@ void Engine::performMILPSolverBoundedTightening()
 void Engine::performMILPSolverBoundedTighteningForSingleLayer( unsigned targetIndex )
 {
 	if (GlobalConfiguration::PROOF_CERTIFICATE)
-		return; //TODO change
+		return;
 
     if ( _networkLevelReasoner && _isGurobyEnabled && !_isSkipLpTighteningAfterSplit
             && _milpSolverBoundTighteningType != MILPSolverBoundTighteningType::NONE )
@@ -1691,7 +1691,10 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             _tableau->tightenUpperBound( variable, bound._value );
         }
     }
-	//validateAllBounds( 0.01, 1000 );
+	validateAllBounds( 0.01, 1000 );
+	if ( GlobalConfiguration::PROOF_CERTIFICATE && _UNSATCertificateCurrentPointer )
+		_UNSATCertificateCurrentPointer->wasVisited();
+
 	DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
 }
@@ -1707,6 +1710,10 @@ void Engine::applyAllRowTightenings()
         else
             _tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		for ( const auto &tightening : rowTightenings )
+			validateBounds( tightening._variable, 0.01, 1000, tightening._type == Tightening::UB, true );
 }
 
 void Engine::applyAllConstraintTightenings()
@@ -1729,7 +1736,7 @@ void Engine::applyAllConstraintTightenings()
     // All updates to IT and GB registered by the CBT need to be updated
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		for ( const auto &tightening : entailedTightenings )
-			validateBounds( tightening._variable, 0.01, 1000, tightening._type == Tightening::UB );
+			validateBounds( tightening._variable, 0.01, 1000, tightening._type == Tightening::UB, true );
 }
 
 void Engine::applyAllBoundTightenings()
@@ -1977,7 +1984,7 @@ List<unsigned> Engine::getInputVariables() const
 
 void Engine::performSimulation()
 {
-	if ( GlobalConfiguration::PROOF_CERTIFICATE ) // TODO change
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
     if ( _simulationSize == 0 || !_networkLevelReasoner )
     {
@@ -2007,7 +2014,7 @@ void Engine::performSimulation()
 void Engine::performSymbolicBoundTightening()
 {
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
-         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE) //TODO change
+         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE)
         return;
 
     struct timespec start = TimeUtils::sampleMicro();
@@ -2482,6 +2489,14 @@ void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
     }
 }
 
+std::vector<double> Engine::getVarCurrentBoundExplanation(unsigned var, bool isUpper ) const
+{
+	std::vector<double> expl( _tableau->getM(), 0 );
+	_tableau->explainBound( var )->getVarBoundExplanation( expl, isUpper );
+	return expl;
+}
+
+
 void Engine::printBoundsExplanation( const unsigned var )
 {
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
@@ -2551,7 +2566,7 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
     if ( computedLower > computedUpper )
     	return true;
 
-    printf("Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
+    printf("(Local) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 	return false;
     //TODO revert upon completing
     //ASSERT( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon );
@@ -2562,8 +2577,10 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-	SingleVarBoundsExplanator *certificate = _tableau->explainBound(var);
-	return UNSATCertificateUtils::computeBound( var, isUpper, *certificate, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+	SingleVarBoundsExplanator *certificate = _tableau->explainBound( var );
+	std::vector<double> expl ( _tableau->getM() );
+	certificate->getVarBoundExplanation( expl, isUpper );
+	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
 
@@ -2588,7 +2605,7 @@ double Engine::extractVarExplanationCoefficient ( const unsigned var, const bool
 	return c;
 }
 
-bool Engine::validateBounds( const unsigned var , const double epsilon, const double M, bool isUpper ) const
+bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper, bool toPrint ) const
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return true;
@@ -2597,11 +2614,12 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, const do
 	certificate->assertLengthConsistency();
 	double explained, real;
 	if ( isUpper )
-	{
+	{ //TODO erase toPrint after debugging
 		explained = getExplainedBound( var, true ), real = _tableau->getUpperBound( var );
 		if ( explained - real > epsilon || explained - real < -M  || abs(explained) > 10 * M )
 		{
-			printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
+			if ( toPrint )
+				printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
 			return false;
 		}
 	}
@@ -2611,7 +2629,8 @@ bool Engine::validateBounds( const unsigned var , const double epsilon, const do
 
 		if ( explained - real  < -epsilon || explained - real > M || abs(explained) > 10 * M )
 		{
-			printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
+			if ( toPrint )
+				printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
 			return false;
 		}
 	}
@@ -2629,7 +2648,7 @@ bool Engine::validateAllBounds( const double epsilon, const double M ) const
 	bool res = true;
     //Assuming all tightening were applied
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
-       if ( !validateBounds( var, epsilon, M, true ) || !validateBounds( var, epsilon, M, false ) )
+       if ( !validateBounds( var, epsilon, M, true, true ) || !validateBounds( var, epsilon, M, false, true ) )
        		res = false;
 
     return res;
@@ -2682,10 +2701,19 @@ void Engine::explainSimplexFailure()
 		inf = explainFailureWithCostFunction();
 
 	assert ( inf >= 0 );
-	validateBounds( inf, 0.01, 1000, true );
-	validateBounds( inf, 0.01, 1000, false );
+	assert ( ( unsigned ) inf < _tableau->getN() );
+	validateBounds( inf, 0.01, 1000, true, true );
+	validateBounds( inf, 0.01, 1000, false, true );
 	//printBoundsExplanation( inf );
 	certifyInfeasibility( inf );
+	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+
+	SingleVarBoundsExplanator* temp = new SingleVarBoundsExplanator( _tableau->getN() );
+	*temp = *_tableau->explainBound( inf );
+	Contradiction* tempCont = new Contradiction();
+	*tempCont = { ( unsigned ) inf, temp};
+
+	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
 }
 
 void Engine::checkGroundBounds() const
@@ -2693,7 +2721,7 @@ void Engine::checkGroundBounds() const
 	unsigned n = _tableau->getN();
 	for ( unsigned i = 0; i < n; ++i )
 	{
-		assert ( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
+		assert( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
 		assert( FloatUtils::gte( _groundUpperBounds[i], _tableau->getUpperBound( i ) ) );
 	}
 }
@@ -2730,7 +2758,8 @@ int Engine::explainFailureWithCostFunction()
 	}
 
 	// If for some reason, the previous tightening fails  try recomputing the cost function
-	if ( !hadBreak || !validateBounds( curBasicVar, 0.01, 1000, true ) || !validateBounds( curBasicVar, 0.01, 1000, false ) )
+	if (!hadBreak || !validateBounds( curBasicVar, 0.01, 1000, true, false ) || !validateBounds( curBasicVar, 0.01, 1000,
+																							 false, false ) )
 	{
 		if ( curBasicVar >= 0 )
 			_tableau->injectExplanation( curBasicVar, backup, curUpper );
@@ -2759,4 +2788,41 @@ int Engine::updateFirstInfeasibleBasic()
 	_tableau->updateExplanation( *costRow, isUpper, inf );
 	delete costRow;
 	return ( int ) inf;
+}
+
+CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
+{
+	return _UNSATCertificateCurrentPointer;
+}
+
+void Engine::setUNSATCertificateCurrentPointer( CertificateNode* node )
+{
+	_UNSATCertificateCurrentPointer = node;
+}
+
+CertificateNode* Engine::getUNSATCertificateRoot() const
+{
+	return _UNSATCertificate;
+}
+
+bool Engine::certifyUNSATCertificate() const
+{
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		return _UNSATCertificate->certify();
+	return false;
+}
+
+bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
+{
+	double realBound;
+	ASSERT( var <= _tableau->getN() );
+	if ( isUpper )
+	{
+		realBound = FloatUtils::min( _rowBoundTightener->getUpperBound( var ), _tableau->getUpperBound( var ) );
+		realBound = FloatUtils::min( realBound, _constraintBoundTightener->getUpperBound( var ) );
+		return FloatUtils::lt( value, realBound );
+	}
+	realBound = FloatUtils::max( _rowBoundTightener->getLowerBound( var ), _tableau->getLowerBound( var ) );
+	realBound = FloatUtils::max( realBound, _constraintBoundTightener->getLowerBound( var ) );
+	return FloatUtils::gt( value, realBound );
 }

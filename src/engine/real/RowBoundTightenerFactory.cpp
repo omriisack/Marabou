@@ -17,9 +17,9 @@
 
 namespace T
 {
-	IRowBoundTightener *createRowBoundTightener( ITableau &tableau )
+	IRowBoundTightener *createRowBoundTightener( ITableau &tableau, IEngine &engine  )
 	{
-		return new RowBoundTightener( tableau );
+		return new RowBoundTightener( tableau, engine );
 	}
 
 	void discardRowBoundTightener( IRowBoundTightener *rowBoundTightener )

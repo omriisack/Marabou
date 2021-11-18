@@ -20,19 +20,21 @@
 
 class IRowBoundTightener;
 class ITableau;
+class IEngine;
+
 
 namespace T
 {
-	IRowBoundTightener *createRowBoundTightener(  ITableau &tableau );
+	IRowBoundTightener *createRowBoundTightener(  ITableau &tableau, IEngine &engine );
 	void discardRowBoundTightener( IRowBoundTightener *rowBoundTightener );
 }
 
 CXXTEST_SUPPLY( createRowBoundTightener,
 				IRowBoundTightener *,
 				createRowBoundTightener,
-				( ITableau &tableau ),
+				( ITableau &tableau, IEngine &engine ),
 				T::createRowBoundTightener,
-				( tableau ) );
+				( tableau, engine ) );
 
 CXXTEST_SUPPLY_VOID( discardRowBoundTightener,
 					 discardRowBoundTightener,

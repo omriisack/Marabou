@@ -17,6 +17,7 @@
 #include "FloatUtils.h"
 #include "MarabouError.h"
 #include "Statistics.h"
+#include "UNSATCertificate.h"
 
 
 ConstraintBoundTightener::ConstraintBoundTightener( ITableau &tableau, IEngine &engine )
@@ -136,7 +137,6 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
         _lowerBounds[variable] = bound;
         _tightenedLower[variable] = true;
     }
-    //_tableau.tightenLowerBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound )
@@ -146,15 +146,14 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
         _upperBounds[variable] = bound;
         _tightenedUpper[variable] = true;
     }
-    //_tableau.tightenUpperBound( variable, bound );
 }
 
 void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
 {
-	double realBound = FloatUtils::max( _lowerBounds[variable], _tableau.getLowerBound( variable ) );
+
 	if ( bound > _lowerBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::gt( bound, realBound ) )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, false ) )
 			_tableau.updateExplanation( row, false, variable );
 
 		registerTighterLowerBound( variable, bound );
@@ -163,10 +162,9 @@ void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, dou
 
 void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row )
 {
-	double realBound = FloatUtils::min( _upperBounds[variable], _tableau.getUpperBound( variable ) );
 	if ( bound < _upperBounds[variable] )
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::lt( bound, realBound ) )
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, true ) )
 			_tableau.updateExplanation( row, true, variable );
 
 		registerTighterUpperBound( variable, bound );
@@ -185,15 +183,47 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
     }
 }
 
-void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value, const bool isUpper )
+void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value,
+														 const bool isAffectedBoundUpper,
+														 const unsigned causingVar, bool isCausingBoundUpper,
+														 const List<unsigned int> constraintVars,
+														 const PiecewiseLinearFunctionType constraintType )
 {
-	// Register new ground bound, and reset explanation
-	double realBound = isUpper? FloatUtils::min( _upperBounds[var], _tableau.getUpperBound( var ) ) : FloatUtils::max( _lowerBounds[var], _tableau.getLowerBound( var ) );
-	if ( ( !isUpper && FloatUtils::gt( value, realBound ) ) || ( isUpper && FloatUtils::lt( value, realBound ) ) )
-	{
-		isUpper? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value );
-		isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
-	}
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return;
+	// TODO consider design of function
+	//Make sure the bound is the tightest learned
+	if ( !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
+		return;
+
+	// Register new ground bound, update certificate, and reset explanation
+	auto* PLCExpl = new PLCExplanation();
+
+	PLCExpl->_causingVar = causingVar;
+	PLCExpl->_explanation = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
+	PLCExpl->_constraintVars = constraintVars;
+	PLCExpl->_affectedVar = var;
+	PLCExpl->_bound = value;
+	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;
+	PLCExpl->_isCausingBoundUpper = isCausingBoundUpper;
+	PLCExpl->_constraintType = constraintType;
+
+	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+
+	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value ); // Function resets explanation as well
+	isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+}
+
+double ConstraintBoundTightener::getUpperBound( unsigned var ) const
+{
+	ASSERT( var <= _n );
+	return _upperBounds[var];
+}
+
+double ConstraintBoundTightener::getLowerBound( unsigned var ) const
+{
+	ASSERT( var <= _n );
+	return _lowerBounds[var];
 }
 
 //

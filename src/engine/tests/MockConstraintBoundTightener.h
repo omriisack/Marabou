@@ -110,10 +110,22 @@ public:
 	}
 
 	void clearEngineUpdates(){}
-	void externalExplanationUpdate( unsigned var, double value, bool isUpper )
+	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper, const unsigned,
+							  bool,
+							  List<unsigned int>, PiecewiseLinearFunctionType /* constraintType */ )
 	{
-    	isUpper? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+		isAffectedBoundUpper ? registerTighterUpperBound(var, value ) : registerTighterLowerBound(var, value );
     }
+
+	double getUpperBound( unsigned /* var */ ) const
+	{
+		return 0;
+	}
+
+	double getLowerBound( unsigned /* var */ ) const
+	{
+		return 0;
+	}
 };
 
 #endif // __MockConstraintBoundTightener_h__

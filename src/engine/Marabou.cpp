@@ -121,6 +121,11 @@ void Marabou::solveQuery()
     if ( _engine.processInputQuery( _inputQuery ) )
         _engine.solve( Options::get()->getInt( Options::TIMEOUT ) );
 
+    if ( GlobalConfiguration::PROOF_CERTIFICATE && !_engine.certifyUNSATCertificate() )
+    	printf("Error certifying UNSAT certificate\n"); //TODO call only in case of UNSAT when done
+    else
+    	printf("Certified\n");
+
     if ( _engine.getExitCode() == Engine::SAT )
         _engine.extractSolution( _inputQuery );
 }

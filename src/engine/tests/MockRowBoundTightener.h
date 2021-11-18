@@ -36,12 +36,16 @@ public:
 	bool wasCreated;
 	bool wasDiscarded;
     const ITableau *lastTableau;
+	const IEngine *_engine;
 
-	void mockConstructor( const ITableau &tableau )
+
+	void mockConstructor( const ITableau &tableau, const IEngine &engine )
 	{
 		TS_ASSERT( !wasCreated );
 		wasCreated = true;
         lastTableau = &tableau;
+		_engine = &engine;
+
 	}
 
 	void mockDestructor()
@@ -70,6 +74,15 @@ public:
     void getRowTightenings( List<Tightening> &/* tightenings */ ) const {}
     void setStatistics( Statistics */* statistics */ ) {}
     void examineImplicitInvertedBasisMatrix( bool /* untilSaturation */ ) {}
+	double getUpperBound(unsigned  /* var */ ) const
+	{
+    	return 0;
+	}
+
+	double getLowerBound(unsigned  /* var */ ) const
+	{
+    	return 0;
+	}
 };
 
 #endif // __MockRowBoundTightener_h__

@@ -24,6 +24,7 @@
 #include "Options.h"
 #include "ReluConstraint.h"
 #include "SmtCore.h"
+#include "UNSATCertificate.h"
 
 SmtCore::SmtCore( IEngine *engine )
     : _statistics( NULL )
@@ -130,9 +131,26 @@ void SmtCore::performSplit()
     ++_stateId;
     _engine->storeState( *stateBeforeSplits, true );
 
+	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
+    if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	{
+		//Create children for UNSATCertificate current node, and assign a split to each of them
+		ASSERT( certificateNode );
+		for ( PiecewiseLinearCaseSplit& childSplit : splits )
+			certificateNode->addChild( new CertificateNode( certificateNode, childSplit ) );
+	}
+
     SmtStackEntry *stackEntry = new SmtStackEntry;
     // Perform the first split: add bounds and equations
     List<PiecewiseLinearCaseSplit>::iterator split = splits.begin();
+	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	{
+		//Set the current node of the UNSAT certificate to be the child corresponding to the first split
+		auto *firstSplitChild = certificateNode->getChildBySplit( *split );
+		ASSERT( firstSplitChild );
+		_engine->setUNSATCertificateCurrentPointer( firstSplitChild );
+		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
+	}
     _engine->applySplit( *split );
     stackEntry->_activeSplit = *split;
 
@@ -188,13 +206,25 @@ bool SmtCore::popSplit()
             printf( "Error! Popping from a compliant stack\n" );
             throw MarabouError( MarabouError::DEBUGGING_ERROR );
         }
-
+		CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		{
+			ASSERT( currentCertificateNode );
+			currentCertificateNode = currentCertificateNode->getParent();
+		}
         delete _stack.back()->_engineState;
         delete _stack.back();
         _stack.popBack();
 
         if ( _stack.empty() )
             return false;
+
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		{
+			// In case that the current pointer is not the root
+			ASSERT( currentCertificateNode );
+			_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+		}
     }
 
     if ( checkSkewFromDebuggingSolution() )
@@ -217,6 +247,18 @@ bool SmtCore::popSplit()
     // Erase any valid splits that were learned using the split we just popped
     stackEntry->_impliedValidSplits.clear();
 
+	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	{
+		//Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
+		CertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
+		ASSERT( certificateNode );
+		certificateNode = certificateNode->getParent();
+		ASSERT( certificateNode );
+		auto *splitChild = certificateNode->getChildBySplit( *split );
+		ASSERT(splitChild );
+		_engine->setUNSATCertificateCurrentPointer( splitChild );
+		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
+	}
     SMT_LOG( "\tApplying new split..." );
     _engine->applySplit( *split );
     SMT_LOG( "\tApplying new split - DONE" );

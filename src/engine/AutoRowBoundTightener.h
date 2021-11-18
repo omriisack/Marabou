@@ -22,9 +22,9 @@
 class AutoRowBoundTightener
 {
 public:
-	AutoRowBoundTightener( ITableau &tableau )
+	AutoRowBoundTightener( ITableau &tableau, IEngine &engine )
 	{
-		_rowBoundTightener = T::createRowBoundTightener( tableau );
+		_rowBoundTightener = T::createRowBoundTightener( tableau, engine );
 	}
 
 	~AutoRowBoundTightener()

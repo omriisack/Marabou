@@ -17,6 +17,7 @@
 #define __IRowBoundTightener_h__
 
 #include "ITableau.h"
+#include "IEngine.h"
 #include "Tightening.h"
 
 class IRowBoundTightener : public ITableau::VariableWatcher, public ITableau::ResizeWatcher
@@ -80,6 +81,16 @@ public:
       Have the Bound Tightener start reporting statistics.
      */
     virtual void setStatistics( Statistics *statistics ) = 0;
+
+    /*
+     * Gets the upper bound stored in the RBT
+     */
+	virtual double getUpperBound(unsigned  var ) const = 0;
+
+	/*
+     * Gets the lower bound stored in the RBT
+     */
+	virtual double getLowerBound(unsigned  var ) const = 0;
 };
 
 #endif // __IRowBoundTightener_h__

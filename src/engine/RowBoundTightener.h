@@ -26,7 +26,7 @@
 class RowBoundTightener : public IRowBoundTightener
 {
 public:
-    RowBoundTightener( ITableau &tableau );
+    RowBoundTightener( ITableau &tableau, IEngine &engine );
     ~RowBoundTightener();
 
     /*
@@ -98,6 +98,16 @@ public:
      */
     void setStatistics( Statistics *statistics );
 
+	/*
+ 	* Gets the upper bound stored in the RBT
+ 	*/
+	double getUpperBound(unsigned var ) const;
+
+	/*
+     * Gets the lower bound stored in the RBT
+     */
+	double getLowerBound(unsigned var ) const;
+
 private:
     ITableau &_tableau;
     unsigned _n;
@@ -158,6 +168,10 @@ private:
       of tighter bounds found.
     */
     unsigned tightenOnSingleInvertedBasisRow( const TableauRow &row );
+
+
+    IEngine &_engine;
+
 };
 
 #endif // __RowBoundTightener_h__
