@@ -2751,7 +2751,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
     return bound;
 }
 
-double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var) const
+double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
 	assert ( !row.empty() && var < _n);
 	double ci = 0, realCoefficient;

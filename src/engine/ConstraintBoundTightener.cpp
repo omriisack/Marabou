@@ -216,13 +216,13 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 
 double ConstraintBoundTightener::getUpperBound( unsigned var ) const
 {
-	ASSERT( var <= _n );
+	ASSERT( var < _n );
 	return _upperBounds[var];
 }
 
 double ConstraintBoundTightener::getLowerBound( unsigned var ) const
 {
-	ASSERT( var <= _n );
+	ASSERT( var < _n );
 	return _lowerBounds[var];
 }
 

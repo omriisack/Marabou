@@ -711,13 +711,13 @@ void RowBoundTightener::notifyDimensionChange( unsigned /* m */ , unsigned /* n 
 
 double  RowBoundTightener::getUpperBound( unsigned var ) const
 {
-	ASSERT( var <= _n );
+	ASSERT( var < _n );
 	return _upperBounds[var];
 }
 
 double  RowBoundTightener::getLowerBound( unsigned var ) const
 {
-	ASSERT( var <= _n );
+	ASSERT( var < _n );
 	return _lowerBounds[var];
 }
 //

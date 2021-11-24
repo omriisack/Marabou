@@ -2619,7 +2619,8 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
 		if ( explained - real > epsilon || explained - real < -M  || abs(explained) > 10 * M )
 		{
 			if ( toPrint )
-				printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
+				printf( "Var %d. Computed Upper %.5lf, real %.5lf, rec level is %d\n", var, explained, real, certificate->_upperRecLevel );
+
 			return false;
 		}
 	}
@@ -2630,14 +2631,11 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
 		if ( explained - real  < -epsilon || explained - real > M || abs(explained) > 10 * M )
 		{
 			if ( toPrint )
-				printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
+				printf( "Var %d. Computed Lower  %.5lf, real %.5lf, rec level is %d\n", var, explained, real, certificate->_lowerRecLevel );
 			return false;
 		}
 	}
 	return true;
-	//TODO revert upon completing
-	//ASSERT( getExplainedBound( var, true ) - _tableau->getUpperBound ( var ) > epsilon );
-	//ASSERT(  getExplainedBound( var, false ) - _tableau->getLowerBound( var ) < -epsilon );
 }
 
 bool Engine::validateAllBounds( const double epsilon, const double M ) const
@@ -2711,7 +2709,7 @@ void Engine::explainSimplexFailure()
 	SingleVarBoundsExplanator* temp = new SingleVarBoundsExplanator( _tableau->getN() );
 	*temp = *_tableau->explainBound( inf );
 	Contradiction* tempCont = new Contradiction();
-	*tempCont = { ( unsigned ) inf, temp};
+	*tempCont = { ( unsigned ) inf, temp };
 
 	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
 }
@@ -2728,9 +2726,19 @@ void Engine::checkGroundBounds() const
 
 int Engine::explainFailureWithCostFunction()
 {
-	if ( !_costFunctionManager->costFunctionJustComputed() )
-		_costFunctionManager->computeCoreCostFunction();
+	int inf = updateFirstInfeasibleBasic();
 
+	if ( inf >= 0 )
+		return inf;
+
+	// If for some reason, the previous tightening fails, try recomputing the cost function
+	_costFunctionManager->computeCoreCostFunction();
+	return updateFirstInfeasibleBasic();
+}
+
+
+int Engine::updateFirstInfeasibleBasic()
+{
 	unsigned m = _tableau->getM();
 	int curBasicVar = -1;
 	double costBound, curCost;
@@ -2747,7 +2755,7 @@ int Engine::explainFailureWithCostFunction()
 			continue;
 
 		curUpper = curCost < 0;
-		_tableau->explainBound( curBasicVar )->getVarBoundExplanation( backup, curUpper);
+		_tableau->explainBound( curBasicVar )->getVarBoundExplanation( backup, curUpper );
 		costBound = _tableau->computeSparseRowBound( *costRow, curUpper, curBasicVar );
 		if ( ( curUpper && FloatUtils::lt( costBound, _tableau->getLowerBound( curBasicVar ) ) ) || ( !curUpper && FloatUtils::gt( costBound, _tableau->getUpperBound( curBasicVar ) ) ) )
 		{
@@ -2757,37 +2765,17 @@ int Engine::explainFailureWithCostFunction()
 		}
 	}
 
-	// If for some reason, the previous tightening fails  try recomputing the cost function
-	if (!hadBreak || !validateBounds( curBasicVar, 0.01, 1000, true, false ) || !validateBounds( curBasicVar, 0.01, 1000,
-																							 false, false ) )
+	// If something goes wrong, use backup to revert explanation and set return value to -1
+	if ( !hadBreak || curBasicVar < 0 || !validateBounds( curBasicVar, 0.01, 1000, true, false ) || !validateBounds( curBasicVar, 0.01, 1000,
+																					   false, false ) )
 	{
 		if ( curBasicVar >= 0 )
 			_tableau->injectExplanation( curBasicVar, backup, curUpper );
-
-		_costFunctionManager->computeCoreCostFunction();
-		curBasicVar = updateFirstInfeasibleBasic();
+		curBasicVar = -1;
 	}
 
 	delete costRow;
 	return curBasicVar;
-}
-
-
-int Engine::updateFirstInfeasibleBasic()
-{
-	int infIndex = _costFunctionManager->getFirstParticipatingBasicIndex();
-	if (infIndex < 0 )
-	{
-		_costFunctionManager->computeCoreCostFunction();
-		infIndex = _costFunctionManager->getFirstParticipatingBasicIndex();
-	}
-	assert( infIndex >= 0 );
-	unsigned inf = _tableau->basicIndexToVariable( infIndex );
-	auto *costRow = _costFunctionManager->createRowOfCostFunction();
-	bool isUpper = _costFunctionManager->getBasicCost( infIndex ) < 0;
-	_tableau->updateExplanation( *costRow, isUpper, inf );
-	delete costRow;
-	return ( int ) inf;
 }
 
 CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
@@ -2815,7 +2803,7 @@ bool Engine::certifyUNSATCertificate() const
 bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
 {
 	double realBound;
-	ASSERT( var <= _tableau->getN() );
+	ASSERT( var < _tableau->getN() );
 	if ( isUpper )
 	{
 		realBound = FloatUtils::min( _rowBoundTightener->getUpperBound( var ), _tableau->getUpperBound( var ) );
