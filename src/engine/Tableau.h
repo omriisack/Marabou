@@ -703,11 +703,6 @@ private:
      */
 	void resetExplanation ( unsigned var, bool isUpper ) const;
 
-    /*
-     * Multiplies the explanation vector of a var by scalar alpha
-     */
-	void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper ) const;
-
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/

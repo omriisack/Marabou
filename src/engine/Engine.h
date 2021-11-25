@@ -620,7 +620,7 @@ private:
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
     */
-    bool certifyInfeasibility( unsigned var ) const;
+	bool certifyInfeasibility( const unsigned var, bool toPrint ) const;
 
     /*
      Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
@@ -638,7 +638,7 @@ private:
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-	bool validateBounds(const unsigned var, const double epsilon, const double M, bool isUpper, bool toPrint) const;
+    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds

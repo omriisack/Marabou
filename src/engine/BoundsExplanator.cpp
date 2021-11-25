@@ -281,11 +281,6 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 }
 
 
-void BoundsExplanator::multiplyExplanationCoefficients( const unsigned var, const double alpha, const bool isUpper )
-{
-	_bounds[var].multiplyAllCoefficients( alpha, isUpper );
-}
-
 
 void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const
 {
@@ -343,5 +338,5 @@ void BoundsExplanator::resetExplanation ( const unsigned var, const bool isUpper
 void BoundsExplanator::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper )
 {
 	assert( expl.size() == _bounds[var].getLength() );
-	_bounds[var].updateVarBoundExplanation(expl, isUpper );
+	_bounds[var].updateVarBoundExplanation( expl, isUpper );
 }

@@ -191,7 +191,6 @@ public:
     virtual void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const = 0;
     virtual void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const = 0;
 	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
-    virtual void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper ) const = 0;
     virtual void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
 

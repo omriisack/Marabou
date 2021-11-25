@@ -139,6 +139,11 @@ public:
 	 */
 	void wasVisited();
 
+	/*
+	 * Sets value of _shouldDelegate to be true
+	 */
+	void shouldDelegate();
+
 private:
 
 	std::list<CertificateNode*> _children;
@@ -149,6 +154,7 @@ private:
 	PiecewiseLinearCaseSplit _headSplit;
 	bool _hasSATSolution; // Enables certifying correctness of UNSAT certificates built before concluding SAT.
 	bool _wasVisited; // Same TODO consider deleting when done
+	bool _shouldDelegate; // TODO replace with delegated proof
 
 	std::vector<std::vector<double>> _initialTableau;
 	std::vector<double> _groundUpperBounds;

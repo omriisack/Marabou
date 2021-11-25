@@ -118,11 +118,6 @@ public:
 	BoundsExplanator& operator=(const BoundsExplanator& other);
 
 	/*
-	* Multiplies the explanation vector of a var by scalar alpha
-	*/
-	void multiplyExplanationCoefficients( unsigned var, double alpha, bool isUpper );
-
-	/*
 	 * Get the explanations vector
 	 */
 	std::vector<SingleVarBoundsExplanator>& getExplanations();

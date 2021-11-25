@@ -24,6 +24,7 @@ CertificateNode::CertificateNode( const std::vector<std::vector<double>> &initia
 	, _headSplit( )
 	, _hasSATSolution( false )
 	, _wasVisited ( false )
+	, _shouldDelegate(false )
 	, _initialTableau( initialTableau )
 	, _groundUpperBounds( groundUBs )
 	, _groundLowerBounds( groundLBs )
@@ -39,6 +40,7 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 	, _headSplit( std::move( split ) )
 	, _hasSATSolution( false )
 	, _wasVisited ( false )
+	, _shouldDelegate (false)
 	, _initialTableau( 0 )
 	, _groundUpperBounds( 0 )
 	, _groundLowerBounds( 0 )
@@ -126,12 +128,9 @@ bool CertificateNode::certify()
 	if ( !certifyAllPLCExplanations() )
 		return false;
 
-
-	bool answer;
-
 	// Check if it is a leaf, and if so use contradiction to certify
 	// return true iff it is certified
-	if ( _hasSATSolution )
+	if ( _hasSATSolution || _shouldDelegate )
 		return true;
 
 	if ( isValidLeaf() )
@@ -145,7 +144,7 @@ bool CertificateNode::certify()
 	// validate the constraint is ok
 	// Certify all children
 	// return true iff all children are certified
-	answer = true;
+	bool answer = true;
 	List<PiecewiseLinearCaseSplit> childrenSplits;
 	for ( auto& child : _children )
 		childrenSplits.append( child->_headSplit );
@@ -278,7 +277,7 @@ bool CertificateNode::certifyAllPLCExplanations()
 	for ( auto* expl : _PLCExplanations )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
-		double eps = 0.01; //TODO make global
+		double eps = 0.01; //TODO make global and decrease
 		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, expl->_explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
@@ -302,19 +301,19 @@ bool CertificateNode::certifyAllPLCExplanations()
 
 		// Make sure the explanation is explained using a ReLU bound tightening
 		// TODO document each case
-		if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound ) )
+		if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound + eps ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound ) )
+		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + eps ) )
 			tighteningMatched = true;
 		else if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::gte( explainedBound, -expl->_bound - eps ) && expl->_bound > 0 ) //TODO inspect relations of bounds
 			tighteningMatched = true;
-		else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound ) )
+		else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + eps ) )
 			tighteningMatched = true;
 		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == f && !expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) )
 			tighteningMatched = true;
 		else if ( expl->_causingVar == f && expl->_isCausingBoundUpper && expl->_affectedVar == b && expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, expl->_bound + eps ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound ) )
+		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound - eps ) )
 			tighteningMatched = true;
 		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == aux && !expl->_isAffectedBoundUpper && expl->_bound > 0 && FloatUtils::lte( explainedBound, -expl->_bound + eps) )
 			tighteningMatched = true;
@@ -328,7 +327,7 @@ bool CertificateNode::certifyAllPLCExplanations()
 
 		// If so, update the ground bounds and continue
 		std::vector<double>& temp = expl->_isAffectedBoundUpper ? _groundUpperBounds : _groundLowerBounds;
-		bool isTighter =  expl->_isAffectedBoundUpper?  FloatUtils::lt( expl->_bound, temp[expl->_affectedVar] ) : FloatUtils::gt( expl->_bound, temp[expl->_affectedVar] );
+		bool isTighter =  expl->_isAffectedBoundUpper ? FloatUtils::lt( expl->_bound, temp[expl->_affectedVar] ) : FloatUtils::gt( expl->_bound, temp[expl->_affectedVar] );
 		if ( isTighter )
 			temp[expl->_affectedVar] = expl->_bound;
 	}
@@ -355,4 +354,9 @@ void CertificateNode::hasSATSolution()
 void CertificateNode::wasVisited()
 {
 	_wasVisited = true;
+}
+
+void CertificateNode::shouldDelegate()
+{
+	_shouldDelegate = true;
 }

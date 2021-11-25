@@ -2753,9 +2753,9 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 
 double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
-	assert ( !row.empty() && var < _n);
-	double ci = 0, realCoefficient;
-
+	assert ( !row.empty() && var < _n );
+	unsigned curVar;
+	double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
 	for ( const auto& entry : row )
 		if ( entry._index == var )
 		{
@@ -2765,8 +2765,6 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 
 	assert( !FloatUtils::isZero( ci ) );
 
-	double bound = 0, curVal, multiplier;
-	unsigned curVar;
 	for ( const auto& entry : row )
 	{
 		curVar = entry._index;
@@ -2777,7 +2775,8 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 
 		realCoefficient = curVal / -ci;
 		multiplier = ( isUpper && FloatUtils::isPositive( realCoefficient ) ) || ( !isUpper && FloatUtils::isNegative( realCoefficient ) ) ? _upperBounds[curVar] : _lowerBounds[curVar];
-		bound += multiplier * realCoefficient;
+		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
+		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
 	}
 
 	return bound;
@@ -2786,12 +2785,6 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 {
 	_boundsExplanator->resetExplanation( var, isUpper );
-}
-
-
-void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double alpha, const bool isUpper ) const
-{
-	_boundsExplanator->multiplyExplanationCoefficients( var, alpha, isUpper );
 }
 
 void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
