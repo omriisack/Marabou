@@ -121,6 +121,7 @@ public:
     void incNumTighteningsFromExplicitBasis( unsigned increment = 1 );
 
     void incNumBoundNotificationsPlConstraints();
+    void incNumBoundNotificationsTranscendentalConstraints();
     void incNumBoundsProposedByPlConstraints();
 
     void incNumTighteningsFromSymbolicBoundTightening( unsigned increment );
@@ -266,6 +267,9 @@ private:
 
     // Number of bound notifications sent to pl constraints
     unsigned long long _numBoundNotificationsToPlConstraints;
+
+    // Number of bound notification send to transcendental constraints
+    unsigned long long _numBoundNotificationsToTranscendentalConstraints;
 
     // Number of bound tightenings proposed by the pl constraints
     unsigned long long _numBoundsProposedByPlConstraints;

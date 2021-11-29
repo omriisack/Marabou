@@ -493,6 +493,11 @@ void Statistics::incNumBoundNotificationsPlConstraints()
     ++_numBoundNotificationsToPlConstraints;
 }
 
+void Statistics::incNumBoundNotificationsTranscendentalConstraints()
+{
+    ++_numBoundNotificationsToTranscendentalConstraints;
+}
+
 void Statistics::incNumBoundsProposedByPlConstraints()
 {
     ++_numBoundsProposedByPlConstraints;
