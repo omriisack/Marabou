@@ -116,7 +116,7 @@ bool CertificateNode::certify()
 		temp[tightening._variable] = tightening._value;
 	}
 
-	if ( !certifyAllPLCExplanations() )
+	if ( !certifyAllPLCExplanations( 0.01 ) )
 		return false;
 
 	// Check if it is a leaf, and if so use contradiction to certify
@@ -128,7 +128,7 @@ bool CertificateNode::certify()
 		return certifyContradiction();
 
 	if ( !_wasVisited && !_contradiction && _children.empty() )
-		return true; //TODO Relaxed for now, since possible for SAT queries that some leaves are not checked. Change when debugging with complicated UNSAT queries.
+		return true;
 
 	ASSERT( isValidNoneLeaf() );
 	// Otherwise, assert there is a constraint and children
@@ -166,7 +166,7 @@ bool CertificateNode::certifyContradiction() const
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 
-	if ( computedUpper >= computedLower ) //TODO delete
+	if ( computedUpper >= computedLower ) //TODO delete when completing
 		printf("(Global) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 
 	return (  computedUpper < computedLower );
@@ -178,7 +178,7 @@ double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vec
 }
 
 
-void CertificateNode::copyInitials ( const std::vector<std::vector<double>> &initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
+void CertificateNode::copyInitials( const std::vector<std::vector<double>> &initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
 {
 	clearInitials();
 	for ( auto& row : initialTableau )
@@ -222,7 +222,7 @@ void CertificateNode::addPLCExplanation( PLCExplanation* expl )
 }
 
 
-void CertificateNode::addProblemConstraint(PiecewiseLinearFunctionType type, List<unsigned int> constraintVars )
+void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars )
 {
 	_problemConstraints.append( { type, constraintVars } );
 }
@@ -259,14 +259,13 @@ bool CertificateNode::certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &s
 	return foundConstraint;
 }
 
-bool CertificateNode::certifyAllPLCExplanations()
+bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 {
 	// Create copies of the gb, check for their validity, and pass these changes to all the children
 	// Assuming the splits of the children are ok.
 	for ( auto* expl : _PLCExplanations )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
-		double eps = 0.01; //TODO make global and decrease
 		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, expl->_explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
@@ -287,32 +286,52 @@ bool CertificateNode::certifyAllPLCExplanations()
 		if ( expl->_causingVar != b && expl->_causingVar != f && expl->_causingVar != aux )
 			return false;
 
-		// Make sure the explanation is explained using a ReLU bound tightening
-		// TODO document each case
-		if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound + eps ) )
+		// Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each rule in ReluConstraint.cpp
+		// Cases allow explained bound to be tighter than the ones recorded (since an explanation can explain looser bounds), and an epsilon sized error is tolerated.
+
+		// If lb of b is non negative, then ub of aux is 0
+		if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + eps ) )
+
+		// If lb of f is positive, then ub if aux is 0
+		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::gte( explainedBound, -expl->_bound - eps ) && expl->_bound > 0 ) //TODO inspect relations of bounds
+
+		// If lb of b is positive x, then lb of aux is -x
+		else if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::gte( explainedBound, - expl->_bound - epsilon ) && expl->_bound > 0 )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + eps ) )
+
+		// If lb of aux is positive, then ub of f is 0
+		else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == f && !expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) )
+
+		// If lb of f is negative, then it is 0
+		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == f && !expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isNegative( explainedBound - epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == f && expl->_isCausingBoundUpper && expl->_affectedVar == b && expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, expl->_bound + eps ) )
+
+		// Propagate ub from f to b
+		else if ( expl->_causingVar == f && expl->_isCausingBoundUpper && expl->_affectedVar == b && expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound - eps ) )
+
+		// If ub of b is non positive, then ub of f is 0
+		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound - epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == aux && !expl->_isAffectedBoundUpper && expl->_bound > 0 && FloatUtils::lte( explainedBound, -expl->_bound + eps) )
+
+		// If ub of b is non positive x, then lb of aux is -x
+		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == aux && !expl->_isAffectedBoundUpper && expl->_bound > 0 && !FloatUtils::isPositive( explainedBound - epsilon ) && FloatUtils::lte( explainedBound, -expl->_bound + epsilon) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isPositive( expl->_bound )  && FloatUtils::lte( explainedBound, expl->_bound + eps ) )
+
+		// If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
+		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isPositive( expl->_bound )  && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
 			tighteningMatched = true;
-		else if ( expl->_causingVar == aux && expl->_isCausingBoundUpper && expl->_affectedVar == b && !expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, -expl->_bound + eps ) )
+
+		// If ub of aux is x, then lb of b is -x
+		else if ( expl->_causingVar == aux && expl->_isCausingBoundUpper && expl->_affectedVar == b && !expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, -expl->_bound + epsilon ) )
 			tighteningMatched = true;
 
 		if ( !tighteningMatched )
 		{
-			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete
+			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete when completing
 			return false;
 		}
 

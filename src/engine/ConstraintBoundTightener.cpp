@@ -191,7 +191,7 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
-	// TODO consider design of function
+	// TODO re-consider design of this function
 	//Make sure the bound is the tightest learned
 	if ( !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
 		return;

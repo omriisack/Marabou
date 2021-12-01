@@ -125,9 +125,9 @@ public:
 	bool certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
 
 	/*
-	 * Return true iff the changes in the ground bounds are certified
+	 * Return true iff the changes in the ground bounds are certified, with tolerance to errors with epsilon size at most
  	*/
-	bool certifyAllPLCExplanations();
+	bool certifyAllPLCExplanations( double epsilon );
 
 	/*
 	 * get a pointer to a child by a head split, or NULL if not found
