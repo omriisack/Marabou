@@ -175,8 +175,14 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
+    /*
+	 * Returns the current explanation of a var
+	 */
 	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
 
+	/*
+	 * Update the ground bounds
+	 */
     void updateGroundUpperBound(unsigned var, double value );
     void updateGroundLowerBound(unsigned var, double value );
 
@@ -204,6 +210,11 @@ public:
 	* Returns true iff the value can be the tightest bound of a variable
 	 */
 	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
+
+	/*
+	 * Removes all PLC explanations in current UNSAT certificate node
+	 */
+	void removePLCExplanationsFromCurrentCertificateNode();
 
 private:
     enum BasisRestorationRequired {
@@ -616,6 +627,7 @@ private:
     std::vector<double> _groundLowerBounds;
     CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
+
     /*
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
@@ -623,10 +635,9 @@ private:
 	bool certifyInfeasibility( const unsigned var, bool toPrint ) const;
 
     /*
-     Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
+     Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
     */
     double getExplainedBound( unsigned var,  bool isUpper ) const;
-
 
     /*
      * Returns the coefficient of a var according to its explanation of isUpper bound

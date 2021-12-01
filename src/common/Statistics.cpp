@@ -75,6 +75,7 @@ Statistics::Statistics()
     , _totalTimeApplyingStoredTighteningsMicro( 0 )
     , _totalTimeSmtCoreMicro( 0 )
     , _timedOut( false )
+    , _numDelegatedLeaves (0 )
 {
 }
 
@@ -287,6 +288,10 @@ void Statistics::print()
 
     printf( "\t--- SBT ---\n" );
     printf( "\tNumber of tightened bounds: %llu\n", _numTighteningsFromSymbolicBoundTightening );
+
+    printf( "\t--- Proof Certificate ---\n" );
+	printf("\tNumber of leaves to delegate: %llu\n", _numDelegatedLeaves );
+
 }
 
 double Statistics::printPercents( unsigned long long part, unsigned long long total ) const
@@ -684,6 +689,12 @@ void Statistics::incNumTighteningsFromSymbolicBoundTightening( unsigned incremen
 {
     _numTighteningsFromSymbolicBoundTightening += increment;
 }
+
+void Statistics::incNumDelegatedLeaves()
+{
+	++_numDelegatedLeaves;
+}
+
 
 //
 // Local Variables:

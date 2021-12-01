@@ -41,6 +41,11 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     memcpy( lowerBounds, tableau.getLowerBounds(), sizeof(double) * targetN );
     memcpy( upperBounds, tableau.getUpperBounds(), sizeof(double) * targetN );
 
+	BoundsExplanator tableauExplanations( targetN, targetN );
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		tableauExplanations = *tableau.getAllBoundsExplanations();
+
     try
     {
         EngineState targetEngineState;
@@ -105,12 +110,25 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
             }
         }
 
-        // Tighten bounds if needed. The tableau will ignore these bounds if
-        // tighter bounds are already known, somehow.
+		if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		{
+			tableau.setAllBoundsExplanations( &tableauExplanations );
+			engine.removePLCExplanationsFromCurrentCertificateNode();
+		}
+
+        // Tighten bounds to be as explained bounds, in order to avoid inaccuracies
         for ( unsigned i = 0; i < targetN; ++i )
         {
-            tableau.tightenLowerBound( i, lowerBounds[i] );
-            tableau.tightenUpperBound( i, upperBounds[i] );
+        	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+			{
+				tableau.tightenLowerBoundNaively( i, engine.getExplainedBound( i, false ) );
+				tableau.tightenUpperBoundNaively( i, engine.getExplainedBound( i, true ) );
+			}
+			else
+			{
+				tableau.tightenLowerBound( i, lowerBounds[i] );
+				tableau.tightenUpperBound( i, upperBounds[i] );
+			}
         }
 
         // Restore constraint status

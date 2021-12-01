@@ -193,7 +193,10 @@ public:
 	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
     virtual void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
-
+	virtual BoundsExplanator* getAllBoundsExplanations() const = 0;
+	virtual void setAllBoundsExplanations( BoundsExplanator* boundsExplanations ) = 0;
+	virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
+	virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
 };
 
 #endif // __ITableau_h__

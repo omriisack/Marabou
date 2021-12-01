@@ -648,6 +648,23 @@ public:
 	{
     	return true;
 	}
+
+	BoundsExplanator* getAllBoundsExplanations() const
+	{
+    	return NULL;
+	}
+
+	void setAllBoundsExplanations( BoundsExplanator* /* boundsExplanations */ )
+	{
+	}
+
+	void tightenUpperBoundNaively( unsigned /* variable */, double /* value */ )
+	{
+	}
+
+	void tightenLowerBoundNaively( unsigned /* variable */, double /* value */ )
+	{
+	}
 };
 
 #endif // __MockTableau_h__

@@ -25,7 +25,7 @@ SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
 
 SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=( const SingleVarBoundsExplanator& other )
 {
-	if (this == &other)
+	if ( this == &other )
 		return *this;
 
 	_upper.clear();
@@ -109,7 +109,7 @@ unsigned BoundsExplanator::getVarsNum() const
 
 BoundsExplanator& BoundsExplanator::operator=( const BoundsExplanator& other )
 {
-	if (this == &other)
+	if ( this == &other )
 		return *this;
 
 	_rowsNum = other._rowsNum;

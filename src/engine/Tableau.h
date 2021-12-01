@@ -454,6 +454,22 @@ public:
      */
     unsigned getVariableAfterMerging( unsigned variable ) const;
 
+    /*
+     * Returns the content of the object containing all explanations for variable bounds in the tableau.
+     */
+	BoundsExplanator* getAllBoundsExplanations() const;
+
+	void setAllBoundsExplanations( BoundsExplanator* boundsExplanations );
+
+	/*
+	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
+	 */
+	void tightenUpperBoundNaively( unsigned variable, double value );
+
+	/*
+	 * Tighten a lower bound without checking it is indeed tightening, and without notifying watchers
+	 */
+	void tightenLowerBoundNaively( unsigned variable, double value );
 private:
     /*
       Variable watchers

@@ -145,6 +145,10 @@ public:
     void ppIncNumEquationsRemoved();
 
     /*
+     * Proof certificate statistics
+     */
+    void incNumDelegatedLeaves();
+    /*
       For debugging purposes
     */
     void printStartingIteration( unsigned long long iteration, String message );
@@ -309,6 +313,9 @@ private:
 
     // Whether the engine quitted with a timeout
     bool _timedOut;
+
+	// Number of search-tree leaves that should be delegated
+	unsigned long long _numDelegatedLeaves;
 
     // Printing helpers
     double printPercents( unsigned long long part, unsigned long long total ) const;

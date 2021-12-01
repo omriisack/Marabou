@@ -117,7 +117,12 @@ public:
 	/*
  	* Return true iff the splits are created from a valid PLC
  	*/
-	bool certifyReLUSplits( List<PiecewiseLinearCaseSplit> &splits ) const;
+	bool certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
+
+	/*
+	 * Return true iff a list of splits represents a splits over a single variable
+	 */
+	bool certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
 
 	/*
 	 * Return true iff the changes in the ground bounds are certified
@@ -143,6 +148,11 @@ public:
 	 * Sets value of _shouldDelegate to be true
 	 */
 	void shouldDelegate();
+
+	/*
+ 	* Removes all PLC explanations
+ 	*/
+	void removePLCExplanations();
 
 private:
 

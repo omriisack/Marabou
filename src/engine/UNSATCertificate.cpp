@@ -56,16 +56,7 @@ CertificateNode::~CertificateNode()
 			child = NULL;
 		}
 
-	if ( !_PLCExplanations.empty() )
-	{
-		for ( auto expl : _PLCExplanations )
-		{
-			expl->_explanation.clear();
-			delete expl;
-		}
-
-		_PLCExplanations.clear();
-	}
+	removePLCExplanations();
 
 	if ( _contradiction )
 	{
@@ -149,7 +140,7 @@ bool CertificateNode::certify()
 	for ( auto& child : _children )
 		childrenSplits.append( child->_headSplit );
 
-	if ( !certifyReLUSplits( childrenSplits ) )
+	if ( !certifySingleVarSplits( childrenSplits ) && !certifyReLUSplits( childrenSplits ) )
 		return false;
 
 	passChangesToChildren();
@@ -175,7 +166,7 @@ bool CertificateNode::certifyContradiction() const
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 
-	if (  computedUpper >= computedLower )
+	if ( computedUpper >= computedLower ) //TODO delete
 		printf("(Global) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 
 	return (  computedUpper < computedLower );
@@ -236,7 +227,7 @@ void CertificateNode::addProblemConstraint(PiecewiseLinearFunctionType type, Lis
 	_problemConstraints.append( { type, constraintVars } );
 }
 
-bool CertificateNode::certifyReLUSplits( List<PiecewiseLinearCaseSplit> &splits ) const
+bool CertificateNode::certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &splits ) const
 {
 
 	if ( splits.size() != 2 )
@@ -260,12 +251,10 @@ bool CertificateNode::certifyReLUSplits( List<PiecewiseLinearCaseSplit> &splits 
 
 	// Certify that f = relu(b) + aux is in problem constraints
 	bool foundConstraint = false;
-	for ( auto& con : _problemConstraints )
-	{
 
+	for ( auto& con : _problemConstraints )
 		if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && con._constraintVars.back() == aux )
 			foundConstraint = true;
-	}
 
 	return foundConstraint;
 }
@@ -283,7 +272,6 @@ bool CertificateNode::certifyAllPLCExplanations()
 		// Make sure it is a problem constraint
 		for ( auto& con : _problemConstraints )
 		{
-
 			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && expl->_constraintVars == con._constraintVars )
 			{
 				std::vector<unsigned> conVec( con._constraintVars.begin(), con._constraintVars.end() );
@@ -323,7 +311,10 @@ bool CertificateNode::certifyAllPLCExplanations()
 			tighteningMatched = true;
 
 		if ( !tighteningMatched )
+		{
+			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete
 			return false;
+		}
 
 		// If so, update the ground bounds and continue
 		std::vector<double>& temp = expl->_isAffectedBoundUpper ? _groundUpperBounds : _groundLowerBounds;
@@ -359,4 +350,44 @@ void CertificateNode::wasVisited()
 void CertificateNode::shouldDelegate()
 {
 	_shouldDelegate = true;
+}
+
+bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits) const
+{
+	if ( splits.size() != 2 )
+		return false;
+
+	auto &frontSplitTightenings = splits.front().getBoundTightenings();
+	auto &backSplitTightenings = splits.back().getBoundTightenings();
+
+	if ( frontSplitTightenings.size() != 1 || backSplitTightenings.size() != 1 )
+		return false;
+
+	auto &frontSplitOnlyTightening = frontSplitTightenings.front();
+	auto &backSplitOnlyTightening = backSplitTightenings.front();
+
+	if ( frontSplitOnlyTightening._variable != backSplitOnlyTightening._variable )
+		return false;
+
+	if ( FloatUtils::areDisequal( frontSplitOnlyTightening._value, backSplitOnlyTightening._value ) )
+		return false;
+
+	if ( frontSplitOnlyTightening._type == backSplitOnlyTightening._type )
+		return false;
+
+	return true;
+}
+
+void CertificateNode::removePLCExplanations()
+{
+	if ( !_PLCExplanations.empty() )
+	{
+		for ( auto expl : _PLCExplanations )
+		{
+			expl->_explanation.clear();
+			delete expl;
+		}
+
+		_PLCExplanations.clear();
+	}
 }

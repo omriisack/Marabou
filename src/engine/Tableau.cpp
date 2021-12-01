@@ -2793,6 +2793,43 @@ void Tableau::injectExplanation( const unsigned var, const std::vector<double>& 
 	_boundsExplanator->injectExplanation( var, expl, isUpper );
 }
 
+BoundsExplanator* Tableau::getAllBoundsExplanations() const
+{
+	return _boundsExplanator;
+}
+
+void Tableau::setAllBoundsExplanations( BoundsExplanator* boundsExplanations )
+{
+	*_boundsExplanator = *boundsExplanations;
+}
+
+
+void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
+{
+	ASSERT( variable < _n );
+
+	if ( _statistics )
+		_statistics->incNumTightenedBounds();
+
+	_upperBounds[variable] = value;
+	checkBoundsValid( variable );
+
+	updateVariableToComplyWithUpperBoundUpdate( variable, value );
+}
+
+void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
+{
+	ASSERT( variable < _n );
+
+	if ( _statistics )
+		_statistics->incNumTightenedBounds();
+
+	_lowerBounds[variable] = value;
+	checkBoundsValid( variable );
+
+	updateVariableToComplyWithLowerBoundUpdate( variable, value );
+}
+
 //
 // Local Variables:
 // compile-command: "make -C ../.. "

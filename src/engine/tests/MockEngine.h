@@ -197,6 +197,11 @@ public:
     	return std::vector<double> ( 0,0 );
 	}
 
+	double getExplainedBound( unsigned /* var */,  bool /* isUpper */ ) const
+	{
+    	return 0.0;
+	}
+
 	void updateGroundUpperBound(unsigned /* var */, double /* value */ )
 	{
 	}
@@ -227,6 +232,10 @@ public:
 	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
 	{
     	return 0;
+	}
+
+	virtual void removePLCExplanationsFromCurrentCertificateNode()
+	{
 	}
 };
 
