@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundsExplanator.cpp
+/*! \file BoundsExplainer.cpp
  ** \verbatim
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
@@ -15,7 +15,7 @@
 #ifndef __UNSATCertificate_h__
 #define __UNSATCertificate_h__
 
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 #include <assert.h>
 #include <utility>
 #include "ReluConstraint.h"
@@ -38,7 +38,7 @@ struct PLCExplanation
 struct Contradiction
 {
 	unsigned var;
-	SingleVarBoundsExplanator* explanation;
+	SingleVarBoundsExplainer* explanation;
 };
 
 struct ProblemConstraint

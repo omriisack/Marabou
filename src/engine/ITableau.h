@@ -18,7 +18,7 @@
 
 #include "List.h"
 #include "Set.h"
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 
 class EntrySelectionStrategy;
 class Equation;
@@ -186,15 +186,15 @@ public:
     virtual int getInfeasibleVar() const = 0;
     virtual double computeRowBound( const TableauRow& row, bool isUpper ) const = 0;
     virtual double computeSparseRowBound( const SparseUnsortedList& row,  bool isUpper,  unsigned var) const = 0;
-    virtual SingleVarBoundsExplanator* explainBound( unsigned variable ) const = 0;
+    virtual SingleVarBoundsExplainer* explainBound( unsigned variable ) const = 0;
     virtual void updateExplanation( const TableauRow& row, bool isUpper ) const = 0;
     virtual void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const = 0;
     virtual void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const = 0;
 	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
     virtual void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
-	virtual BoundsExplanator* getAllBoundsExplanations() const = 0;
-	virtual void setAllBoundsExplanations( BoundsExplanator* boundsExplanations ) = 0;
+	virtual BoundsExplainer* getAllBoundsExplanations() const = 0;
+	virtual void setAllBoundsExplanations( BoundsExplainer* boundsExplanations ) = 0;
 	virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
 	virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
 };

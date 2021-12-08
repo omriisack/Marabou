@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundsExplanator.cpp
+/*! \file BoundsExplainer.cpp
  ** \verbatim
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
@@ -11,10 +11,10 @@
 
  **/
 
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 
-/* Functions of SingleVarBoundsExplanator */
-SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
+/* Functions of SingleVarBoundsExplainer */
+SingleVarBoundsExplainer::SingleVarBoundsExplainer( const unsigned length )
 	:_upperRecLevel( 0 )
 	,_lowerRecLevel ( 0 )
 	,_length( length )
@@ -23,7 +23,7 @@ SingleVarBoundsExplanator::SingleVarBoundsExplanator( const unsigned length )
 {
 }
 
-SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=( const SingleVarBoundsExplanator& other )
+SingleVarBoundsExplainer& SingleVarBoundsExplainer::operator=( const SingleVarBoundsExplainer& other )
 {
 	if ( this == &other )
 		return *this;
@@ -46,7 +46,7 @@ SingleVarBoundsExplanator& SingleVarBoundsExplanator::operator=( const SingleVar
 	return *this;
 }
 
-void SingleVarBoundsExplanator::getVarBoundExplanation( std::vector<double>& bound, const bool isUpper ) const
+void SingleVarBoundsExplainer::getVarBoundExplanation( std::vector<double>& bound, const bool isUpper ) const
 {
 	assert( bound.size() == _length );
 	const std::vector<double>& temp = isUpper? _upper : _lower;
@@ -54,12 +54,12 @@ void SingleVarBoundsExplanator::getVarBoundExplanation( std::vector<double>& bou
 }
 
 
-unsigned SingleVarBoundsExplanator::getLength() const
+unsigned SingleVarBoundsExplainer::getLength() const
 {
 	return _length;
 }
 
-void SingleVarBoundsExplanator::updateVarBoundExplanation( const std::vector<double>& newBound, const bool isUpper )
+void SingleVarBoundsExplainer::updateVarBoundExplanation( const std::vector<double>& newBound, const bool isUpper )
 {
 	assert( newBound.size() == _length );
 	std::vector<double>& temp = isUpper ? _upper : _lower;
@@ -67,47 +67,47 @@ void SingleVarBoundsExplanator::updateVarBoundExplanation( const std::vector<dou
 }
 
 
-void SingleVarBoundsExplanator::multiplyAllCoefficients( const double alpha, const bool isUpper)
+void SingleVarBoundsExplainer::multiplyAllCoefficients( const double alpha, const bool isUpper )
 {
 	std::vector<double>& temp = isUpper ? _upper : _lower;
 	for ( unsigned i = 0; i < _length; ++i )
 		temp[i] *= alpha;
 }
 
-void SingleVarBoundsExplanator::addEntry( const double coefficient )
+void SingleVarBoundsExplainer::addEntry( const double coefficient )
 {
 	_length += 1;
 	_upper.push_back( coefficient );
 	_lower.push_back( coefficient );
 }
 
-void SingleVarBoundsExplanator::assertLengthConsistency() const
+void SingleVarBoundsExplainer::assertLengthConsistency() const
 {
 	ASSERT( _length == _upper.size() );
 	ASSERT (_length == _lower.size() );
 }
 
 
-/* Functions of BoundsExplanator */
-BoundsExplanator::BoundsExplanator( const unsigned varsNum, const unsigned rowsNum )
+/* Functions of BoundsExplainer */
+BoundsExplainer::BoundsExplainer( const unsigned varsNum, const unsigned rowsNum )
 	:_varsNum( varsNum )
 	,_rowsNum( rowsNum )
-	,_bounds( varsNum, SingleVarBoundsExplanator( rowsNum ) )
+	,_bounds( varsNum, SingleVarBoundsExplainer( rowsNum ) )
 {
 
 }
 
-unsigned BoundsExplanator::getRowsNum() const
+unsigned BoundsExplainer::getRowsNum() const
 {
 	return _rowsNum;
 }
 
-unsigned BoundsExplanator::getVarsNum() const
+unsigned BoundsExplainer::getVarsNum() const
 {
 	return _varsNum;
 }
 
-BoundsExplanator& BoundsExplanator::operator=( const BoundsExplanator& other )
+BoundsExplainer& BoundsExplainer::operator=( const BoundsExplainer& other )
 {
 	if ( this == &other )
 		return *this;
@@ -122,18 +122,18 @@ BoundsExplanator& BoundsExplanator::operator=( const BoundsExplanator& other )
 }
 
 
-void BoundsExplanator::getOneBoundExplanation( std::vector<double>& bound, const unsigned var, const bool isUpper ) const
+void BoundsExplainer::getOneBoundExplanation( std::vector<double>& bound, const unsigned var, const bool isUpper ) const
 {
 	_bounds[var].getVarBoundExplanation( bound, isUpper );
 }
 
-SingleVarBoundsExplanator& BoundsExplanator::returnWholeVarExplanation( const unsigned var )
+SingleVarBoundsExplainer& BoundsExplainer::returnWholeVarExplanation( const unsigned var )
 {
 	assert ( var < _varsNum );
 	return _bounds[var];
 }
 
-void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper )
+void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool isUpper )
 {
 	if ( !row._size )
 		return;
@@ -177,7 +177,7 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	sum.clear();
 }
 
-void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var )
+void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var )
 {
 	if ( !row._size )
 		return;
@@ -228,7 +228,7 @@ void BoundsExplanator::updateBoundExplanation( const TableauRow& row, const bool
 	updateBoundExplanation( equiv, isUpper );
 }
 
-void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
+void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
 {
 	if ( row.empty() )
 		return;
@@ -282,7 +282,7 @@ void BoundsExplanator::updateBoundExplanationSparse( const SparseUnsortedList& r
 
 
 
-void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const
+void BoundsExplainer::addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const
 {
 	assert( sum.size() == _rowsNum && input.size() == _rowsNum );
 
@@ -293,7 +293,7 @@ void BoundsExplanator::addVecTimesScalar( std::vector<double>& sum, const std::v
 		sum[i] += scalar * input[i];
 }
 
-void BoundsExplanator::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients ) const
+void BoundsExplainer::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients ) const
 {
 	assert( coefficients.size() == _rowsNum && ( row._size == _varsNum  || row._size == _varsNum - _rowsNum ) );
 	//The coefficients of the row m highest-indices vars are the coefficients of slack variables
@@ -306,7 +306,7 @@ void BoundsExplanator::extractRowCoefficients( const TableauRow& row, std::vecto
 }
 
 
-void BoundsExplanator::extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients, double ci ) const
+void BoundsExplainer::extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients, double ci ) const
 {
 	assert( coefficients.size() == _rowsNum );
 
@@ -316,26 +316,26 @@ void BoundsExplanator::extractSparseRowCoefficients( const SparseUnsortedList& r
 			coefficients[entry._index - _varsNum + _rowsNum] = - entry._value / ci;
 }
 
-std::vector<SingleVarBoundsExplanator>& BoundsExplanator::getExplanations()
+std::vector<SingleVarBoundsExplainer>& BoundsExplainer::getExplanations()
 {
 	return _bounds;
 }
 
-void BoundsExplanator::addZeroExplanation()
+void BoundsExplainer::addZeroExplanation()
 {
 	_rowsNum += 1;
 	_varsNum += 1;
 	_bounds.emplace_back( _rowsNum );
 }
 
-void BoundsExplanator::resetExplanation ( const unsigned var, const bool isUpper )
+void BoundsExplainer::resetExplanation( const unsigned var, const bool isUpper )
 {
 	_bounds[var].updateVarBoundExplanation( std::vector<double>( _rowsNum, 0.0 ), isUpper);
 	_bounds[var]._lowerRecLevel = 0;
 	_bounds[var]._upperRecLevel = 0;
 }
 
-void BoundsExplanator::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper )
+void BoundsExplainer::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper )
 {
 	assert( expl.size() == _bounds[var].getLength() );
 	_bounds[var].updateVarBoundExplanation( expl, isUpper );

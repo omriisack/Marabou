@@ -123,7 +123,7 @@ public:
     /*
      * Explanator for all bounds
      */
-    BoundsExplanator *_boundsExplanator;
+    BoundsExplainer *_boundsExplanator;
 
     int _infeasibleVar;
 };

@@ -41,7 +41,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     memcpy( lowerBounds, tableau.getLowerBounds(), sizeof(double) * targetN );
     memcpy( upperBounds, tableau.getUpperBounds(), sizeof(double) * targetN );
 
-	BoundsExplanator tableauExplanations( targetN, targetN );
+	BoundsExplainer tableauExplanations( targetN, targetN );
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		tableauExplanations = *tableau.getAllBoundsExplanations();

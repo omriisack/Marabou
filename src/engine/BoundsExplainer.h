@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundsExplanator.h
+/*! \file BoundsExplainer.h
  ** \verbatim
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
@@ -21,9 +21,9 @@
 /*
  * A class which encapsulates the bounds explanations of a single variable
 */
-class SingleVarBoundsExplanator {
+class SingleVarBoundsExplainer {
 public:
-	explicit SingleVarBoundsExplanator( unsigned length );
+	explicit SingleVarBoundsExplainer( unsigned length );
 
 	/*
 	* Puts the values of a bound explanation in the array bound.
@@ -38,7 +38,7 @@ public:
 	/*
 	 * Updates the values of the bound explanation according to newBound
 	 */
-	void updateVarBoundExplanation(const std::vector<double>& newBound,  bool isUpper );
+	void updateVarBoundExplanation( const std::vector<double>& newBound,  bool isUpper );
 
 	/*
 	 * Updates all coefficients to be in *= alpha
@@ -46,9 +46,9 @@ public:
 	void multiplyAllCoefficients( double alpha, bool isUpper );
 
 	/*
-	 * Deep copy of SingleVarBoundsExplanator
+	 * Deep copy of SingleVarBoundsExplainer
 	 */
-	SingleVarBoundsExplanator& operator=(const SingleVarBoundsExplanator& other);
+	SingleVarBoundsExplainer& operator=( const SingleVarBoundsExplainer& other );
 
 	/*
 	 * Adds an entry for an explanation with given coefficient
@@ -73,9 +73,9 @@ private:
 /*
   A class which encapsulates the bounds explanations of all variables of a tableau
 */
-class BoundsExplanator {
+class BoundsExplainer {
 public:
-	BoundsExplanator( unsigned varsNum, unsigned rowsNum );
+	BoundsExplainer( unsigned varsNum, unsigned rowsNum );
 
 	/*
 	 * Returns the number of rows
@@ -94,7 +94,7 @@ public:
 	/*
 	  Puts the values of a bound explanation in the array bound.
 	*/
-	SingleVarBoundsExplanator& returnWholeVarExplanation( unsigned var );
+	SingleVarBoundsExplainer& returnWholeVarExplanation( unsigned var );
 
 	/*
 	  Given a row, updates the values of the bound explanations of its lhs according to the row
@@ -112,14 +112,14 @@ public:
 	void updateBoundExplanationSparse( const SparseUnsortedList& row, bool isUpper, unsigned var );
 
 	/*
-	 * Copies all elements of other BoundsExplanator
+	 * Copies all elements of other BoundsExplainer
 	 */
-	BoundsExplanator& operator=(const BoundsExplanator& other);
+	BoundsExplainer& operator=( const BoundsExplainer& other );
 
 	/*
 	 * Get the explanations vector
 	 */
-	std::vector<SingleVarBoundsExplanator>& getExplanations();
+	std::vector<SingleVarBoundsExplainer>& getExplanations();
 
 	/*
 	 * Adds a zero explanation at the end
@@ -129,7 +129,7 @@ public:
 	/*
 	 * Resets an explanation
 	 */
-	void resetExplanation ( unsigned var, bool isUpper);
+	void resetExplanation ( unsigned var, bool isUpper );
 
 	/*
 	 * Artificially updates an explanation, without using the recursive rule
@@ -139,7 +139,7 @@ public:
 private:
 	unsigned _varsNum;
 	unsigned _rowsNum;
-	std::vector<SingleVarBoundsExplanator> _bounds;
+	std::vector<SingleVarBoundsExplainer> _bounds;
 
 	/*
 	  A helper function which adds a multiplication of an array by scalar to another array

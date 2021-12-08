@@ -326,7 +326,7 @@ void Tableau::setDimensions( unsigned m, unsigned n )
     	if( _boundsExplanator )
 			delete _boundsExplanator;
 
-		_boundsExplanator = new BoundsExplanator(_n, _m);  // Reset whenever new dimensions are set.
+		_boundsExplanator = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
 		if ( !_boundsExplanator )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
@@ -2113,7 +2113,7 @@ void Tableau::addRow()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		for ( SingleVarBoundsExplanator& explanation : _boundsExplanator->getExplanations() )
+		for ( SingleVarBoundsExplainer& explanation : _boundsExplanator->getExplanations() )
 			explanation.addEntry( 0 );
 		_boundsExplanator->addZeroExplanation();
 	}
@@ -2708,7 +2708,7 @@ int Tableau::getInfeasibleVar() const
     return -1;
 }
 
-SingleVarBoundsExplanator* Tableau::explainBound( const unsigned variable ) const
+SingleVarBoundsExplainer* Tableau::explainBound( const unsigned variable ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
     return &_boundsExplanator->returnWholeVarExplanation( variable );
@@ -2793,12 +2793,12 @@ void Tableau::injectExplanation( const unsigned var, const std::vector<double>& 
 	_boundsExplanator->injectExplanation( var, expl, isUpper );
 }
 
-BoundsExplanator* Tableau::getAllBoundsExplanations() const
+BoundsExplainer* Tableau::getAllBoundsExplanations() const
 {
 	return _boundsExplanator;
 }
 
-void Tableau::setAllBoundsExplanations( BoundsExplanator* boundsExplanations )
+void Tableau::setAllBoundsExplanations( BoundsExplainer* boundsExplanations )
 {
 	*_boundsExplanator = *boundsExplanations;
 }

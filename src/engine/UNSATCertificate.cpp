@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundsExplanator.cpp
+/*! \file BoundsExplainer.cpp
  ** \verbatim
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
@@ -156,7 +156,7 @@ bool CertificateNode::certifyContradiction() const
 {
 	ASSERT( isValidLeaf() && !_hasSATSolution );
 	unsigned var = _contradiction->var;
-	SingleVarBoundsExplanator& varExpl = *_contradiction->explanation;
+	SingleVarBoundsExplainer& varExpl = *_contradiction->explanation;
 
 	std::vector<double> ubExpl ( varExpl.getLength() );
 	std::vector<double> lbExpl ( varExpl.getLength() );

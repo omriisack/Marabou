@@ -25,7 +25,7 @@
 #include "SparseMatrix.h"
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 
 #define TABLEAU_LOG( x, ... ) LOG( GlobalConfiguration::TABLEAU_LOGGING, "Tableau: %s\n", x )
 
@@ -457,9 +457,9 @@ public:
     /*
      * Returns the content of the object containing all explanations for variable bounds in the tableau.
      */
-	BoundsExplanator* getAllBoundsExplanations() const;
+	BoundsExplainer* getAllBoundsExplanations() const;
 
-	void setAllBoundsExplanations( BoundsExplanator* boundsExplanations );
+	void setAllBoundsExplanations( BoundsExplainer* boundsExplanations );
 
 	/*
 	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
@@ -697,7 +697,7 @@ private:
     /*
       Returns the bounds explanation of a variable in the tableau
     */
-    SingleVarBoundsExplanator* explainBound( unsigned variable ) const;
+    SingleVarBoundsExplainer* explainBound( unsigned variable ) const;
 
     /*
      Update a bound explanation according to a row in the Tableau
@@ -727,7 +727,7 @@ private:
 	/*
       Explanator of all bounds 
     */
-    BoundsExplanator *_boundsExplanator;
+    BoundsExplainer *_boundsExplanator;
 
 };
 

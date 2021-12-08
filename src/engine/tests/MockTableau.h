@@ -627,7 +627,7 @@ public:
     {
     }
 
-    SingleVarBoundsExplanator* explainBound( const unsigned /* variable */ ) const
+    SingleVarBoundsExplainer* explainBound( const unsigned /* variable */ ) const
     {
     	return NULL;
     }
@@ -649,12 +649,12 @@ public:
     	return true;
 	}
 
-	BoundsExplanator* getAllBoundsExplanations() const
+	BoundsExplainer* getAllBoundsExplanations() const
 	{
     	return NULL;
 	}
 
-	void setAllBoundsExplanations( BoundsExplanator* /* boundsExplanations */ )
+	void setAllBoundsExplanations(BoundsExplainer* /* boundsExplanations */ )
 	{
 	}
 

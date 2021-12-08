@@ -2508,7 +2508,7 @@ void Engine::printBoundsExplanation( const unsigned var )
 
     printf( "The explanation of variable x%d\n", var );
     unsigned m = _tableau->getM();
-    SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
+    SingleVarBoundsExplainer* certificate = new SingleVarBoundsExplainer( m );
     *certificate = *_tableau->explainBound(var);
     std::vector<double> expl = std::vector<double>( m, 0 );
     certificate->getVarBoundExplanation( expl, true );
@@ -2579,7 +2579,7 @@ bool Engine::certifyInfeasibility( const unsigned var, bool toPrint ) const
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-	SingleVarBoundsExplanator *certificate = _tableau->explainBound( var );
+	SingleVarBoundsExplainer *certificate = _tableau->explainBound( var );
 	std::vector<double> expl ( _tableau->getM() );
 	certificate->getVarBoundExplanation( expl, isUpper );
 	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
@@ -2591,7 +2591,7 @@ double Engine::extractVarExplanationCoefficient ( const unsigned var, const bool
 	unsigned m = _tableau->getM();
 	double c = 0;
 
-	auto* certificate = new SingleVarBoundsExplanator( m );
+	auto* certificate = new SingleVarBoundsExplainer( m );
 	*certificate = *_tableau->explainBound( var );
 
 	// Retrieve bound explanation
@@ -2710,7 +2710,7 @@ void Engine::explainSimplexFailure()
 	certifyInfeasibility( inf, true );
 	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
 
-	SingleVarBoundsExplanator* temp = new SingleVarBoundsExplanator( _tableau->getN() );
+	SingleVarBoundsExplainer* temp = new SingleVarBoundsExplainer( _tableau->getN() );
 	*temp = *_tableau->explainBound( inf );
 	Contradiction* tempCont = new Contradiction();
 	*tempCont = { ( unsigned ) inf, temp };
