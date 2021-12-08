@@ -15,21 +15,20 @@
 #include "TableauRow.h"
 #include "vector"
 #include "SparseUnsortedList.h"
-#include "stack"
 #include "assert.h"
 
 
 /*
-  A class which encapsulates the bounds explanations of a single variable 
+ * A class which encapsulates the bounds explanations of a single variable
 */
 class SingleVarBoundsExplanator {
 public:
-	SingleVarBoundsExplanator( const unsigned length );
+	explicit SingleVarBoundsExplanator( unsigned length );
 
 	/*
-	  Puts the values of a bound explanation in the array bound.
+	* Puts the values of a bound explanation in the array bound.
 	*/
-	void getVarBoundExplanation( std::vector<double>& bound, const  bool isUpper ) const;
+	void getVarBoundExplanation( std::vector<double>& bound,  bool isUpper ) const;
 
 	/*
 	 * returns the length of the explanation
@@ -37,14 +36,14 @@ public:
 	unsigned getLength() const;
 
 	/*
-	  Updates the values of the bound explanation according to newBound 
-	*/
-	void updateVarBoundExplanation(const std::vector<double>& newBound, const  bool isUpper );
+	 * Updates the values of the bound explanation according to newBound
+	 */
+	void updateVarBoundExplanation(const std::vector<double>& newBound,  bool isUpper );
 
 	/*
 	 * Updates all coefficients to be in *= alpha
 	 */
-	void multiplyAllCoefficients( const double alpha, const bool isUpper );
+	void multiplyAllCoefficients( double alpha, bool isUpper );
 
 	/*
 	 * Deep copy of SingleVarBoundsExplanator
@@ -55,6 +54,11 @@ public:
 	 * Adds an entry for an explanation with given coefficient
 	 */
 	void addEntry( double coefficient );
+
+	/*
+	 * Asserts that all lengths are consistent
+	 */
+	void assertLengthConsistency() const;
 
 	unsigned _upperRecLevel; // For debugging purpose, TODO delete upon completing
 	unsigned _lowerRecLevel;
@@ -71,42 +75,46 @@ private:
 */
 class BoundsExplanator {
 public:
-	BoundsExplanator( const unsigned varsNum, const unsigned rowsNum );
+	BoundsExplanator( unsigned varsNum, unsigned rowsNum );
+
+	/*
+	 * Returns the number of rows
+	 */
+	unsigned getRowsNum() const;
+
+	/*
+ 	* Returns the number of variables
+ 	*/
+	unsigned getVarsNum() const;
+	/*
+	  Puts the values of a bound explanation in the array bound.
+	*/
+	void getOneBoundExplanation ( std::vector<double>& bound, unsigned var, bool isUpper ) const;
 
 	/*
 	  Puts the values of a bound explanation in the array bound.
 	*/
-	void getOneBoundExplanation ( std::vector<double>& bound, const unsigned var, const bool isUpper ) const;
-
-	/*
-	  Puts the values of a bound explanation in the array bound.
-	*/
-	SingleVarBoundsExplanator& returnWholeVarExplanation( const unsigned var );
+	SingleVarBoundsExplanator& returnWholeVarExplanation( unsigned var );
 
 	/*
 	  Given a row, updates the values of the bound explanations of its lhs according to the row
 	*/
-	void updateBoundExplanation( const TableauRow& row, const bool isUpper );
+	void updateBoundExplanation( const TableauRow& row, bool isUpper );
 
 	/*
 	  Given a row, updates the values of the bound explanations of a var according to the row
 	*/
-	void updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned varIndex );
+	void updateBoundExplanation( const TableauRow& row, bool isUpper, unsigned varIndex );
 
 	/*
 	Given a row as SparseUnsortedList, updates the values of the bound explanations of a var according to the row
 	*/
-	void updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var );
+	void updateBoundExplanationSparse( const SparseUnsortedList& row, bool isUpper, unsigned var );
 
 	/*
 	 * Copies all elements of other BoundsExplanator
 	 */
 	BoundsExplanator& operator=(const BoundsExplanator& other);
-
-	/*
-	* Multiplies the explanation vector of a var by scalar alpha
-	*/
-	void multiplyExplanationCoefficients( const unsigned var, const double alpha, const bool isUpper );
 
 	/*
 	 * Get the explanations vector
@@ -121,12 +129,12 @@ public:
 	/*
 	 * Resets an explanation
 	 */
-	void resetExplanation (const unsigned var, const bool isUpper);
+	void resetExplanation ( unsigned var, bool isUpper);
 
 	/*
 	 * Artificially updates an explanation, without using the recursive rule
 	 */
-	void injectExplanation(unsigned var, SingleVarBoundsExplanator& expl);
+	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper );
 
 private:
 	unsigned _varsNum;
@@ -136,7 +144,7 @@ private:
 	/*
 	  A helper function which adds a multiplication of an array by scalar to another array
 	*/
-	void addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, const double scalar ) const;
+	void addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, double scalar ) const;
 
 	/*
 	  Upon receiving a row, extract coefficients of the original tableau's equations that creates the row

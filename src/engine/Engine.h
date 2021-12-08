@@ -39,6 +39,8 @@
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
 #include "UNSATCertificate.h"
+#include "SymbolicBoundTighteningType.h"
+#include "SmtLibWriter.h"
 
 #include <atomic>
 #include <assert.h>
@@ -174,8 +176,14 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
+    /*
+	 * Returns the current explanation of a var
+	 */
 	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
 
+	/*
+	 * Update the ground bounds
+	 */
     void updateGroundUpperBound(unsigned var, double value );
     void updateGroundLowerBound(unsigned var, double value );
 
@@ -203,6 +211,11 @@ public:
 	* Returns true iff the value can be the tightest bound of a variable
 	 */
 	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
+
+	/*
+	 * Removes all PLC explanations in current UNSAT certificate node
+	 */
+	void removePLCExplanationsFromCurrentCertificateNode();
 
 private:
     enum BasisRestorationRequired {
@@ -601,7 +614,7 @@ private:
     void extractSolutionFromGurobi( InputQuery &inputQuery );
 
     /*
-     Prints coefficents of Simplex equations that witness UNSAT
+     Prints coefficients of Simplex equations that witness UNSAT
     */
     void printBoundsExplanation( unsigned var );
 
@@ -615,17 +628,18 @@ private:
     std::vector<double> _groundLowerBounds;
     CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
+	SmtLibWriter _smtWriter;
+
     /*
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
     */
-    bool certifyInfeasibility( unsigned var ) const;
+	bool certifyInfeasibility( const unsigned var, bool toPrint ) const;
 
     /*
-     Returns the value of a variable bound, as expressed by the bounds explanator and the initial bounds
+     Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
     */
     double getExplainedBound( unsigned var,  bool isUpper ) const;
-
 
     /*
      * Returns the coefficient of a var according to its explanation of isUpper bound
@@ -637,7 +651,7 @@ private:
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-	bool validateBounds(const unsigned var, const double epsilon, const double M, bool isUpper, bool toPrint) const;
+    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds
@@ -665,6 +679,11 @@ private:
  	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
+
+	/*
+	 * Delegates leaves with certification error to SMTLIB format
+	 */
+	void delegateProblematicLeaf();
 
 };
 

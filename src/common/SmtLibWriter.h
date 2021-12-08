@@ -25,94 +25,52 @@
 class SmtLibWriter
 {
 public:
+	SmtLibWriter();
+	~SmtLibWriter();
+
 	/*
- 	* Adds a SMTLIB header to the SMTLIB instance
+	 * Add a new instance to be written in SMTLIB format
+	 */
+	void addInstance();
+
+	/*
+ 	* Adds a SMTLIB header to the current SMTLIB instance
 	* n is used to declare all variables
  	*/
-	static void addHeader( unsigned n, List<String> &instance )
-	{
-		instance.append( "(set-logic QF_LRA)\n" );
-		for ( unsigned i = 0; i < n; ++i )
-			instance.append( "(declare-fun x" + std::to_string( i ) + " () Real)\n" );
-	}
+	void addHeader( unsigned n );
 
 	/*
- 	* Adds a SMTLIB footer to the SMTLIB instance
+ 	* Adds a SMTLIB footer to the current SMTLIB instance
  	*/
-	static void addFooter( List<String> &instance )
-	{
-		instance.append(  "(check-sat)\n" );
-		instance.append(  "(exit)\n" );
-	}
+	void addFooter();
 
 	/*
-	 * Adds a line representing ReLU constraint, in SMTLIB format, to the SMTLIB instance
+	 * Adds a line representing ReLU constraint, in SMTLIB format, to the current SMTLIB instance
 	 */
-	static void addReLUConstraint( unsigned b, unsigned f, PhaseStatus status, List<String> &instance )
-	{
-		if ( status == PHASE_NOT_FIXED )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " (ite (>= x" + std::to_string( b ) + " 0) x" + std::to_string( b )+ " 0 ) ) )\n" );
-		else if ( status == RELU_PHASE_ACTIVE )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " x" + std::to_string( b ) + " ) )\n" );
-		else if ( status == RELU_PHASE_INACTIVE )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " 0 ) )\n" );
-	}
+	void addReLUConstraint( unsigned b, unsigned f );
 
 	/*
- 	* Adds a line representing a Tableau Row, in SMTLIB format, to the SMTLIB instance
+ 	* Adds a line representing a Tableau Row, in SMTLIB format, to the current SMTLIB instance
  	*/
-	static void addTableauRow( const SparseUnsortedList &row, List<String> &instance )
-	{
-		unsigned size = row.getSize(), counter = 0;
-		String assertRowLine = "(assert ( = 0";
-		for ( auto &entry : row )
-		{
-			if ( counter != size - 1 )
-				assertRowLine += " ( + ( * " + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
-			else
-				assertRowLine += " ( * " + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
-			++counter;
-		}
-
-		assertRowLine += std::string( counter + 1, ')' );
-		instance.append( assertRowLine + "\n" );
-	}
+	void addTableauRow( const SparseUnsortedList &row );
 
 	/*
- 	* Adds lines representing a the ground upper bounds, in SMTLIB format, to the SMTLIB instance
+ 	* Adds lines representing a the ground upper bounds, in SMTLIB format, to the current SMTLIB instance
  	*/
-	static void addGroundUpperBounds( const std::vector<double> &bounds,List<String> &instance )
-	{
-		unsigned n = bounds.size();
-		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( <= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
-	}
+	void addGroundUpperBounds( const std::vector<double> &bounds );
 
 	/*
- 	* Adds lines representing a the ground lower bounds, in SMTLIB format, to the SMTLIB instance
+ 	* Adds lines representing a the ground lower bounds, in SMTLIB format, to the current SMTLIB instance
  	*/
-	static void addGroundLowerBounds( const std::vector<double> &bounds, List<String> &instance )
-	{
-		unsigned n = bounds.size();
-		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( >= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
-	}
+	void addGroundLowerBounds( const std::vector<double> &bounds );
 
 	/*
 	 * Write the instances to files
 	 */
-	static void writeInstanceToFile( const std::string &directory, unsigned delegationNumber , const List<String>& instance )
-	{
-		std::ofstream file ( directory + "delegated" + std::to_string( delegationNumber ) + ".smtlib");
-		for ( const String &s : instance )
-			file << s;
-		file.close();
-	}
+	void writeInstancesToFiles( const std::string &directory );
 
-	static std::string signedValue( double val )
-	{
-		return val > 0 ? std::to_string( val ) : "( - " + std::to_string( abs( val ) ) + " )";
-	}
+private:
+	List<List<String>> _instances;
 };
 
 #endif //MARABOU_SMTLIBWRITER_H
