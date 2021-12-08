@@ -132,7 +132,7 @@ public:
 	/*
 	 * get a pointer to a child by a head split, or NULL if not found
 	 */
-	CertificateNode* getChildBySplit( PiecewiseLinearCaseSplit &split ) const;
+	CertificateNode* getChildBySplit( const PiecewiseLinearCaseSplit &split ) const;
 
 	/*
 	 * Sets value of _hasSATSolution to be true

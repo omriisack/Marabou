@@ -234,7 +234,7 @@ public:
     	return 0;
 	}
 
-	virtual void removePLCExplanationsFromCurrentCertificateNode()
+	void removePLCExplanationsFromCurrentCertificateNode()
 	{
 	}
 };

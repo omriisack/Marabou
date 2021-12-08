@@ -189,13 +189,10 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 														 const List<unsigned int> constraintVars,
 														 const PiecewiseLinearFunctionType constraintType )
 {
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-		return;
-	// TODO re-consider design of this function
-	//Make sure the bound is the tightest learned
-	if ( !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ))
 		return;
 
+	// TODO re-consider design of this function
 	// Register new ground bound, update certificate, and reset explanation
 	auto* PLCExpl = new PLCExplanation();
 

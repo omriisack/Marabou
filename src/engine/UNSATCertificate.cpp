@@ -347,7 +347,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 /*
  * get a pointer to a child by a head split, or NULL if not found
  */
-CertificateNode* CertificateNode::getChildBySplit( PiecewiseLinearCaseSplit& split) const
+CertificateNode* CertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit& split) const
 {
 	for ( CertificateNode* child : _children )
 		if ( child->_headSplit == split )

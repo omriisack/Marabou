@@ -156,9 +156,10 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false,
 																	 getParticipatingVariables(), getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
 
+			// After updating to active phase
             unsigned partner = ( variable == _f ) ? _b : _f;
             _constraintBoundTightener->registerTighterLowerBound( partner, bound, tighteningRow );
         }
@@ -169,7 +170,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false,
 																	 getParticipatingVariables(), getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
         }
 
@@ -180,9 +181,10 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, false,
 																	 getParticipatingVariables(), getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+			else
 				_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
+			// After updating to inactive phase
             _constraintBoundTightener->registerTighterUpperBound( _b, -bound, tighteningRow );
         }
 
@@ -191,7 +193,6 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         {
         	if ( GlobalConfiguration :: PROOF_CERTIFICATE )
 			{
-				// TODO consider more cases
 				if ( _phaseStatus == RELU_PHASE_INACTIVE )
 					_constraintBoundTightener->registerTighterUpperBound( _aux, -bound, tighteningRow );
 				else
@@ -209,7 +210,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 			if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				_constraintBoundTightener->externalExplanationUpdate( _f, 0, false, variable, false,
 																	 getParticipatingVariables(), getType() );
-			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+			else
             	_constraintBoundTightener->registerTighterLowerBound( _f, 0 );
         }
     }
@@ -237,11 +238,10 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 
 		if ( variable == _f )
         {
-			// TODO consider more cases
             // Any bound that we learned of f should be propagated to b
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
-				if ( _phaseStatus == RELU_PHASE_ACTIVE || FloatUtils::isZero( bound ) )
+				if ( _phaseStatus == RELU_PHASE_ACTIVE )
 					_constraintBoundTightener->registerTighterUpperBound( _b, bound, tighteningRow );
 				else
 					_constraintBoundTightener->externalExplanationUpdate( _b, bound, true, variable, true,
@@ -262,25 +262,13 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 				else
 					_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
+				// Aux's range is minus the range of b
+				// After updating to inactive phase
                 if ( _auxVarInUse )
-                {
-                	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-					{
-						// Aux's range is minus the range of b
-						// TODO review again
-						if ( !getLowerBound( _f ) )
-							_constraintBoundTightener->registerTighterLowerBound( _aux, -bound, tighteningRow );
-                        else
-							_constraintBoundTightener->externalExplanationUpdate( _aux, -bound, false, variable, true,
-																				 getParticipatingVariables(), getType() );
-                    }
-                	else
-						_constraintBoundTightener->registerTighterLowerBound( _aux, -bound );
-                }
+					_constraintBoundTightener->registerTighterLowerBound( _aux, -bound, tighteningRow );
             }
             else
             {
-				// TODO relaxed for now - should be ok on any case
                 // b has a positive upper bound, propagate to f
 				if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				{

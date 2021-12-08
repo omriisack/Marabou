@@ -1732,7 +1732,7 @@ void Engine::applyAllConstraintTightenings()
         else
 			_tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
-	checkGroundBounds();
+
     // All updates to IT and GB registered by the CBT need to be updated
 //    if ( GlobalConfiguration::PROOF_CERTIFICATE )
 //		for ( const auto &tightening : entailedTightenings )
@@ -1745,6 +1745,7 @@ void Engine::applyAllBoundTightenings()
 
     applyAllRowTightenings();
     applyAllConstraintTightenings();
+    checkGroundBounds();
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.addTimeForApplyingStoredTightenings( TimeUtils::timePassed( start, end ) );
 }
@@ -2774,12 +2775,9 @@ int Engine::updateFirstInfeasibleBasic()
 		}
 	}
 
-	if ( !hadBreak )
-		curBasicVar = -1;
-
 	backup.clear();
 	delete costRow;
-	return curBasicVar;
+	return hadBreak ? curBasicVar : -1;
 }
 
 CertificateNode* Engine::getUNSATCertificateCurrentPointer() const

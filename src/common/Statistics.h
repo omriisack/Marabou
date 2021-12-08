@@ -315,7 +315,7 @@ private:
     bool _timedOut;
 
 	// Number of search-tree leaves that should be delegated
-	unsigned long long _numDelegatedLeaves;
+	unsigned _numDelegatedLeaves;
 
     // Printing helpers
     double printPercents( unsigned long long part, unsigned long long total ) const;

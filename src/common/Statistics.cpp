@@ -290,7 +290,7 @@ void Statistics::print()
     printf( "\tNumber of tightened bounds: %llu\n", _numTighteningsFromSymbolicBoundTightening );
 
     printf( "\t--- Proof Certificate ---\n" );
-	printf("\tNumber of leaves to delegate: %llu\n", _numDelegatedLeaves );
+	printf("\tNumber of leaves to delegate: %u\n", _numDelegatedLeaves );
 
 }
 
