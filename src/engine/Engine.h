@@ -40,6 +40,7 @@
 #include "Statistics.h"
 #include "UNSATCertificate.h"
 #include "SymbolicBoundTighteningType.h"
+#include "SmtLibWriter.h"
 
 #include <atomic>
 #include <assert.h>
@@ -613,7 +614,7 @@ private:
     void extractSolutionFromGurobi( InputQuery &inputQuery );
 
     /*
-     Prints coefficents of Simplex equations that witness UNSAT
+     Prints coefficients of Simplex equations that witness UNSAT
     */
     void printBoundsExplanation( unsigned var );
 
@@ -627,6 +628,7 @@ private:
     std::vector<double> _groundLowerBounds;
     CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
+	SmtLibWriter _smtWriter;
 
     /*
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
@@ -677,6 +679,11 @@ private:
  	* Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
+
+	/*
+	 * Delegates leaves with certification error to SMTLIB format
+	 */
+	void delegateProblematicLeaf();
 
 };
 

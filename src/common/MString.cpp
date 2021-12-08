@@ -181,7 +181,11 @@ void String::replaceAll( const String &toReplace, const String &replaceWith )
         _super.replace( find( toReplace ), toReplace.length(), replaceWith._super );
 }
 
-std::ostream &operator<<( std::ostream &stream, const String &string );
+std::ostream& operator<<( std::ostream &stream, const String &string )
+{
+	stream << string._super;
+	return stream;
+}
 
 //
 // Local Variables:

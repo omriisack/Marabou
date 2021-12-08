@@ -62,12 +62,12 @@ Engine::Engine()
     , _isGurobyEnabled( Options::get()->gurobiEnabled() )
     , _isSkipLpTighteningAfterSplit( Options::get()->getBool( Options::SKIP_LP_TIGHTENING_AFTER_SPLIT ) )
     , _milpSolverBoundTighteningType( Options::get()->getMILPSolverBoundTighteningType() )
-
     , _initialTableau {}
     , _groundUpperBounds {}
     , _groundLowerBounds {}
     , _UNSATCertificate( NULL )
     , _UNSATCertificateCurrentPointer( NULL )
+    , _smtWriter()
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -2699,9 +2699,7 @@ void Engine::explainSimplexFailure()
 
 	if ( inf < 0 )
 	{
-		assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-		_UNSATCertificateCurrentPointer->shouldDelegate();
-		_statistics.incNumDelegatedLeaves();
+		delegateProblematicLeaf();
 		return;
 	}
 
@@ -2821,4 +2819,37 @@ void Engine::removePLCExplanationsFromCurrentCertificateNode()
 {
 	assert( _UNSATCertificateCurrentPointer );
 	_UNSATCertificateCurrentPointer->removePLCExplanations();
+}
+
+void Engine::delegateProblematicLeaf()
+{
+	// Mark leaf with toDelegate Flag
+	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+	_UNSATCertificateCurrentPointer->shouldDelegate();
+
+	// Write to smtWriter
+	SparseUnsortedList tempRow;
+	unsigned m = _tableau->getM(), b, f;
+	_smtWriter.addInstance();
+	_smtWriter.addHeader( _tableau->getN() );
+	_smtWriter.addGroundUpperBounds( _groundUpperBounds );
+	_smtWriter.addGroundLowerBounds( _groundLowerBounds );
+
+	for ( unsigned i = 0; i < m; ++i )
+	{
+		_tableau->getSparseARow( i, &tempRow );
+		_smtWriter.addTableauRow( tempRow );
+	}
+
+	for ( auto &constraint : _plConstraints )
+		if ( constraint->getType() == PiecewiseLinearFunctionType::RELU && !constraint->phaseFixed() )
+		{
+			auto vars = constraint->getParticipatingVariables();
+			b = vars.front();
+			vars.popBack();
+			f = vars.back();
+			_smtWriter.addReLUConstraint( b, f );
+		}
+	_smtWriter.addFooter();
+	_statistics.incNumDelegatedLeaves();
 }

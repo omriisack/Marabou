@@ -232,6 +232,7 @@ bool CertificateNode::certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &s
 
 	if ( splits.size() != 2 )
 		return false;
+
 	auto firstSplitTightenings = splits.front().getBoundTightenings(), secondSplitTightenings = splits.back().getBoundTightenings();
 	if ( firstSplitTightenings.size() != 2 || secondSplitTightenings.size() != 2 )
 		return false;
@@ -272,7 +273,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 		for ( auto& con : _problemConstraints )
 		{
 			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && expl->_constraintVars == con._constraintVars )
-			{
+			{   //TODO reconsider designs
 				std::vector<unsigned> conVec( con._constraintVars.begin(), con._constraintVars.end() );
 				b = conVec[0], f = conVec[1], aux = conVec[2];
 				conVec.clear();

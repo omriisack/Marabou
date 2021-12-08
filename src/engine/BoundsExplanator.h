@@ -15,19 +15,18 @@
 #include "TableauRow.h"
 #include "vector"
 #include "SparseUnsortedList.h"
-#include "stack"
 #include "assert.h"
 
 
 /*
-  A class which encapsulates the bounds explanations of a single variable 
+ * A class which encapsulates the bounds explanations of a single variable
 */
 class SingleVarBoundsExplanator {
 public:
 	explicit SingleVarBoundsExplanator( unsigned length );
 
 	/*
-	  Puts the values of a bound explanation in the array bound.
+	* Puts the values of a bound explanation in the array bound.
 	*/
 	void getVarBoundExplanation( std::vector<double>& bound,  bool isUpper ) const;
 
@@ -37,8 +36,8 @@ public:
 	unsigned getLength() const;
 
 	/*
-	  Updates the values of the bound explanation according to newBound 
-	*/
+	 * Updates the values of the bound explanation according to newBound
+	 */
 	void updateVarBoundExplanation(const std::vector<double>& newBound,  bool isUpper );
 
 	/*

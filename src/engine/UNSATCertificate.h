@@ -269,6 +269,4 @@ public:
 		return derived_bound;
 	}
 };
-
-
 #endif //__UNSATCertificate_h__
