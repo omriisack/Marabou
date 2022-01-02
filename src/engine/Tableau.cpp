@@ -1653,7 +1653,7 @@ void Tableau::storeState( TableauState &state ) const
     // Store bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*state._boundsExplanator = *_boundsExplainer;
+		*state._boundsExplainer = *_boundsExplainer;
 	}
 }
 
@@ -1703,7 +1703,7 @@ void Tableau::restoreState( const TableauState &state )
     // Restore bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*_boundsExplainer = *state._boundsExplanator;
+		*_boundsExplainer = *state._boundsExplainer;
     	ASSERT( _boundsExplainer->getRowsNum() == _m );
 		ASSERT( _boundsExplainer->getVarsNum() == _n );
 	}
@@ -2636,7 +2636,7 @@ int Tableau::getInfeasibleRow( TableauRow& row )
 		{
      		Tableau::getTableauRow( i, &row );
             if ( computeRowBound( row, true ) < _lowerBounds[basicVar] || computeRowBound( row, false ) > _upperBounds[basicVar] )
-                return (int) i;
+                return ( int ) i;
         }
     }
 	return -1;

@@ -121,11 +121,9 @@ public:
     Map<unsigned, unsigned> _mergedVariables;
 
     /*
-     * Explanator for all bounds
+     * Explainer for all bounds
      */
-    BoundsExplainer *_boundsExplanator;
-
-    int _infeasibleVar;
+    BoundsExplainer *_boundsExplainer;
 };
 
 #endif // __TableauState_h__

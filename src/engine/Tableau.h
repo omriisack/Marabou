@@ -705,7 +705,7 @@ private:
     void updateExplanation( const TableauRow& row, bool isUpper ) const;
 
     /*
-    Update a bound explanation of a specific var in a row 
+    Update a bound explanation of a specific var in a row
    */
     void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const;
 
@@ -725,7 +725,8 @@ private:
 	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const;
 
 	/*
-      Explainer of all bounds
+     * Explainer of all bounds
+     * TODO consider moving to engine for better design
     */
     BoundsExplainer *_boundsExplainer;
 

@@ -248,12 +248,7 @@ public:
 	{
 	}
 
-	unsigned getSmtStackDepth() const
-	{
-    	return 0;
-	}
-
-	unsigned computeBoundLevel( unsigned /* var */, bool /* isUpper */ ) const
+	unsigned computeExplanationDecisionLevel( unsigned /* var */, bool /* isUpper */ ) const
 	{
 		return 0;
 	}
