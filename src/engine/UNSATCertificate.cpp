@@ -23,8 +23,8 @@ CertificateNode::CertificateNode( const std::vector<std::vector<double>> &initia
 	, _contradiction ( NULL )
 	, _headSplit( )
 	, _hasSATSolution( false )
-	, _wasVisited ( false )
-	, _shouldDelegate(false )
+	, _wasVisited( false )
+	, _shouldDelegate( false )
 	, _initialTableau( initialTableau )
 	, _groundUpperBounds( groundUBs )
 	, _groundLowerBounds( groundLBs )
@@ -40,7 +40,7 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 	, _headSplit( std::move( split ) )
 	, _hasSATSolution( false )
 	, _wasVisited ( false )
-	, _shouldDelegate (false)
+	, _shouldDelegate( false )
 	, _initialTableau( 0 )
 	, _groundUpperBounds( 0 )
 	, _groundLowerBounds( 0 )
@@ -55,15 +55,15 @@ CertificateNode::~CertificateNode()
 			delete child;
 			child = NULL;
 		}
-
+	_children.clear();
 	removePLCExplanations();
 
 	if ( _contradiction )
 	{
-		if ( _contradiction->explanation )
+		if ( _contradiction->_explanation )
 		{
-			delete _contradiction->explanation;
-			_contradiction->explanation = NULL;
+			delete _contradiction->_explanation;
+			_contradiction->_explanation = NULL;
 		}
 
 		delete _contradiction;
@@ -98,6 +98,24 @@ const PiecewiseLinearCaseSplit& CertificateNode::getSplit() const
 {
 	return _headSplit;
 }
+
+const std::list<PLCExplanation*>& CertificateNode::getPLCExplanations() const
+{
+	return _PLCExplanations;
+}
+
+void CertificateNode::makeLeaf()
+{
+	for ( auto child : _children )
+		if ( child )
+		{
+			delete child;
+			child = NULL;
+		}
+
+	_children.clear();
+}
+
 
 void CertificateNode::passChangesToChildren()
 {
@@ -155,8 +173,8 @@ bool CertificateNode::certify()
 bool CertificateNode::certifyContradiction() const
 {
 	ASSERT( isValidLeaf() && !_hasSATSolution );
-	unsigned var = _contradiction->var;
-	SingleVarBoundsExplainer& varExpl = *_contradiction->explanation;
+	unsigned var = _contradiction->_var;
+	SingleVarBoundsExplainer& varExpl = *_contradiction->_explanation;
 
 	std::vector<double> ubExpl ( varExpl.getLength() );
 	std::vector<double> lbExpl ( varExpl.getLength() );
@@ -333,7 +351,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 		if ( !tighteningMatched )
 		{
 			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete when completing
-			return false;
+			//return false;
 		}
 
 		// If so, update the ground bounds and continue

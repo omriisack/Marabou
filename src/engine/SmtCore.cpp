@@ -151,10 +151,11 @@ void SmtCore::performSplit()
 		_engine->setUNSATCertificateCurrentPointer( firstSplitChild );
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
 	}
-    _engine->applySplit( *split );
+	_stack.append( stackEntry ); //TODO moved here so depth will be accurate when applying the split
     stackEntry->_activeSplit = *split;
 
     // Store the remaining splits on the stack, for later
+    _engine->applySplit( *split );
     stackEntry->_engineState = stateBeforeSplits;
     ++split;
     while ( split != splits.end() )
@@ -163,7 +164,6 @@ void SmtCore::performSplit()
         ++split;
     }
 
-    _stack.append( stackEntry );
     if ( _statistics )
     {
         _statistics->setCurrentStackDepth( getStackDepth() );
@@ -198,6 +198,8 @@ bool SmtCore::popSplit()
 
     // Remove any entries that have no alternatives
     String error;
+	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+
     while ( _stack.back()->_alternativeSplits.empty() )
     {
         if ( checkSkewFromDebuggingSolution() )
@@ -206,7 +208,6 @@ bool SmtCore::popSplit()
             printf( "Error! Popping from a compliant stack\n" );
             throw MarabouError( MarabouError::DEBUGGING_ERROR );
         }
-		CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 		{
 			ASSERT( currentCertificateNode );
@@ -218,14 +219,14 @@ bool SmtCore::popSplit()
 
         if ( _stack.empty() )
             return false;
-
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-		{
-			// In case that the current pointer is not the root
-			ASSERT( currentCertificateNode );
-			_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
-		}
     }
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	{
+		// In case that the current pointer is not the root
+		ASSERT( currentCertificateNode );
+		_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+	}
 
     if ( checkSkewFromDebuggingSolution() )
     {
@@ -492,4 +493,35 @@ bool SmtCore::pickSplitPLConstraint()
     if ( _needToSplit )
         _constraintForSplitting = _engine->pickSplitPLConstraint();
     return _constraintForSplitting != NULL;
+}
+
+bool SmtCore::backjump( unsigned backjumpLevel )
+{
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !backjumpLevel )
+		return true;
+
+	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+	// Remove any entries that have no alternatives
+
+	for ( unsigned  i = 0; i < backjumpLevel; ++i)
+	{
+		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		{
+			ASSERT( currentCertificateNode );
+			currentCertificateNode = currentCertificateNode->getParent();
+		}
+
+		delete _stack.back()->_engineState;
+		delete _stack.back();
+		_stack.popBack();
+	}
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	{
+		// In case that the current pointer is not the root
+		ASSERT( currentCertificateNode );
+		_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+	}
+
+	return true;
 }

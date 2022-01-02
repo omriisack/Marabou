@@ -75,7 +75,10 @@ Statistics::Statistics()
     , _totalTimeApplyingStoredTighteningsMicro( 0 )
     , _totalTimeSmtCoreMicro( 0 )
     , _timedOut( false )
-    , _numDelegatedLeaves (0 )
+    , _numDelegatedLeaves( 0 )
+    , _numCertifiedLeaves( 0 )
+    , _totalJumps( 0 )
+    , _certificationTime ( 0 )
 {
 }
 
@@ -290,7 +293,10 @@ void Statistics::print()
     printf( "\tNumber of tightened bounds: %llu\n", _numTighteningsFromSymbolicBoundTightening );
 
     printf( "\t--- Proof Certificate ---\n" );
+	printf("\tNumber of certified leaves: %lu\n", _numCertifiedLeaves );
 	printf("\tNumber of leaves to delegate: %u\n", _numDelegatedLeaves );
+	printf("\tAvg. jump level: %lf\n", _numPops ? _totalJumps / _numPops : 0.0 );
+
 
 }
 
@@ -690,12 +696,42 @@ void Statistics::incNumTighteningsFromSymbolicBoundTightening( unsigned incremen
     _numTighteningsFromSymbolicBoundTightening += increment;
 }
 
+unsigned Statistics::getNumDelegatedLeaves() const
+{
+	return _numDelegatedLeaves;
+}
+
 void Statistics::incNumDelegatedLeaves()
 {
 	++_numDelegatedLeaves;
 }
 
+void Statistics::incNumCertifiedLeaves()
+{
+	++_numCertifiedLeaves;
+}
 
+void Statistics::incTotalJumpLevel( unsigned level )
+{
+	_totalJumps += level;
+}
+
+
+void Statistics::addCertificationTime( unsigned long long time )
+{
+    _certificationTime += time;
+}
+
+void Statistics::printfCertificationTime() const
+{
+
+	unsigned seconds = _certificationTime / 1000000;
+	unsigned minutes = seconds / 60;
+	unsigned hours = minutes / 60;
+
+	printf( "\tCertification Total time: %llu milli (%02u:%02u:%02u)\n",
+			_certificationTime / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
+}
 //
 // Local Variables:
 // compile-command: "make -C ../.. "

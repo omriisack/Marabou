@@ -25,6 +25,26 @@
 // For now only relevant to ReLU constraints
 struct PLCExplanation
 {
+	void copyContent( PLCExplanation *other )
+	{
+		_causingVar = other->_causingVar;
+		_affectedVar = other->_affectedVar;
+		_bound = other->_bound;
+		_isCausingBoundUpper = other->_isCausingBoundUpper;
+		_isAffectedBoundUpper = other->_isAffectedBoundUpper;
+		_constraintType = other->_constraintType;
+		_decisionLevel = other->_decisionLevel;
+
+		_explanation.clear();
+		_explanation.resize( other->_explanation.size() );
+		std::copy( other->_explanation.begin(), other->_explanation.end(), _explanation.begin() );
+
+		_constraintVars.clear();
+		for( auto var : other->_constraintVars )
+			_constraintVars.append( var );
+
+	}
+
 	unsigned _causingVar;
 	unsigned _affectedVar;
 	double _bound;
@@ -33,12 +53,18 @@ struct PLCExplanation
 	std::vector<double> _explanation;
 	PiecewiseLinearFunctionType _constraintType;
 	List<unsigned> _constraintVars;
+	unsigned _decisionLevel;
 };
 
 struct Contradiction
 {
-	unsigned var;
-	SingleVarBoundsExplainer* explanation;
+	void copyContent( Contradiction* other)
+	{
+		_var = other->_var;
+		*_explanation = *( other->_explanation );
+	}
+	unsigned _var;
+	SingleVarBoundsExplainer* _explanation;
 };
 
 struct ProblemConstraint
@@ -70,14 +96,14 @@ public:
 	bool certify();
 
 	/*
+ 	* Adds a child to the tree
+ 	*/
+	void addChild( CertificateNode* child );
+
+	/*
 	 * Sets the leaf certificate as input
 	 */
 	void setContradiction( Contradiction *certificate );
-
-	/*
-	 * Adds a child to the tree
-	 */
-	void addChild( CertificateNode* child );
 
 	/*
 	 * Gets the leaf certificate of the node
@@ -93,6 +119,11 @@ public:
  	* Returns the parent of a node
  	*/
 	const PiecewiseLinearCaseSplit& getSplit() const;
+
+	/*
+	 * Gets the PLC explanations of the node
+	 */
+	const std::list<PLCExplanation*>& getPLCExplanations() const;
 
 	/*
 	 * Certifies a contradiction
@@ -154,6 +185,11 @@ public:
  	*/
 	void removePLCExplanations();
 
+	/*
+	 * Deletes all offsprings of the node and makes it a leaf
+	 */
+	void makeLeaf();
+
 private:
 
 	std::list<CertificateNode*> _children;
@@ -204,59 +240,36 @@ public:
 							   const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
 		ASSERT( groundLBs.size() == groundUBs.size() );
-		ASSERT( initialTableau.size() == expl.size());
+		ASSERT( initialTableau.size() == expl.size() );
 		ASSERT( groundLBs.size() == initialTableau[0].size() - 1 );
 		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
 
 		double derived_bound = 0, scalar = 0, temp;
-		unsigned n = groundUBs.size(), m = expl.size();
+		unsigned n = groundUBs.size();
 		std::vector<double> explCopy ( expl );
 
 		// If explanation is all zeros, return original bound
-		bool allZeros = true;
-		for( unsigned i = 0; i < expl.size(); ++i )
-			if ( !FloatUtils::isZero( expl[i] ) )
-				allZeros = false;
-			else
-				explCopy[i] = 0;
+		//TODO maybe add an allZero bit to explanations to improve efficiency
+		bool allZeros = std::all_of( expl.begin(), expl.end(), [] ( double x ) { return FloatUtils::isZero( x ); } );
 
 		if ( allZeros )
 			return isUpper ? groundUBs[var] : groundLBs[var];
 
 		// Create linear combination of original rows implied from explanation
-		std::vector<double> explanationRowsCombination = std::vector<double>( n, 0 );
-
-		for ( unsigned i = 0; i < m; ++i )
-		{
-			for ( unsigned j = 0; j < n; ++j )
-				if ( !FloatUtils::isZero( initialTableau[i][j] ) )
-					explanationRowsCombination[j] += initialTableau[i][j] * explCopy[i];
-
-			scalar += initialTableau[i][n] * explCopy[i];
-		}
-
-		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
-		// We have: var = - Sum (ci * xi) - (c - 1) * var
-		explanationRowsCombination[var] -=1;
-		for ( unsigned i = 0; i < n; ++i )
-			if ( !FloatUtils::isZero( explanationRowsCombination[i] ) )
-				explanationRowsCombination[i] *= -1;
-			else
-				explanationRowsCombination[i] = 0;
-
-		explanationRowsCombination[var] = 0;
-		scalar /= -1;
+		std::vector<double> explRowsCombination = std::vector<double>( n, 0 );
+		UNSATCertificateUtils::getExplanationRowCombination( explRowsCombination, expl, initialTableau );
+		explRowsCombination[var] = 0;
 
 		// Set the bound derived from the linear combination, using original bounds.
 		for ( unsigned i = 0; i < n; ++i )
 		{
-			temp = explanationRowsCombination[i];
+			temp = explRowsCombination[i];
 			if ( !FloatUtils::isZero( temp ) )
 			{
 				if ( isUpper )
-					temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundUBs[i] : groundLBs[i];
+					temp *= FloatUtils::isPositive( explRowsCombination[i] ) ? groundUBs[i] : groundLBs[i];
 				else
-					temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundLBs[i] : groundUBs[i];
+					temp *= FloatUtils::isPositive( explRowsCombination[i] ) ? groundLBs[i] : groundUBs[i];
 
 				if ( !FloatUtils::isZero( temp ) )
 					derived_bound += temp;
@@ -264,9 +277,36 @@ public:
 		}
 
 		derived_bound += scalar;
-		explanationRowsCombination.clear();
+		explRowsCombination.clear();
 		explCopy.clear();
 		return derived_bound;
+	}
+
+
+	static void getExplanationRowCombination( std::vector<double> &explRowsCombination, const std::vector<double> &expl,
+											   const std::vector<std::vector<double>> &initialTableau )
+	{
+		ASSERT( explRowsCombination.size() == initialTableau[0].size() - 1 );
+		ASSERT( explRowsCombination.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
+
+		unsigned n = explRowsCombination.size(), m = expl.size();
+		for ( unsigned i = 0; i < m; ++i )
+		{
+			for ( unsigned j = 0; j < n; ++j )
+				if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( expl[i]) )
+					explRowsCombination[j] += initialTableau[i][j] * expl[i];
+
+		}
+
+		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
+		// We have: var = - Sum (ci * xi) - (c - 1) * var
+		for ( unsigned i = 0; i < n; ++i )
+			if ( !FloatUtils::isZero( explRowsCombination[i] ) )
+				explRowsCombination[i] *= -1;
+			else
+				explRowsCombination[i] = 0;
+
+
 	}
 };
 #endif //__UNSATCertificate_h__

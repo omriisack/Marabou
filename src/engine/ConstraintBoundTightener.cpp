@@ -194,6 +194,7 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 
 	// TODO re-consider design of this function
 	// Register new ground bound, update certificate, and reset explanation
+	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, isCausingBoundUpper );
 	auto* PLCExpl = new PLCExplanation();
 
 	PLCExpl->_causingVar = causingVar;
@@ -204,10 +205,11 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;
 	PLCExpl->_isCausingBoundUpper = isCausingBoundUpper;
 	PLCExpl->_constraintType = constraintType;
-
+	PLCExpl->_decisionLevel = decisionLevel;
 	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
 
-	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value ); // Function resets explanation as well
+	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel ); // Function resets explanation as well
+	_tableau.resetExplanation( var, isAffectedBoundUpper );
 	isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
 }
 

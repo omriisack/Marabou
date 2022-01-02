@@ -42,6 +42,8 @@ public:
     std::vector<double> _groundUpperBounds;
 	std::vector<double> _groundLowerBounds;
 
+	std::vector<unsigned> _upperDecisionLevels;
+	std::vector<unsigned> _lowerDecisionLevels;
     /*
       A unique ID allocated to every state that is stored, for
       debugging purposes. These are assigned by the SMT core.

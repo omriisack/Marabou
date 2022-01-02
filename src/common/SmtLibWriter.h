@@ -67,7 +67,7 @@ public:
 	/*
 	 * Write the instances to files
 	 */
-	void writeInstancesToFiles( const std::string &directory );
+	void writeLastInstanceToFile(const std::string &directory );
 
 private:
 	List<List<String>> _instances;

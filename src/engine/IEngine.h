@@ -110,9 +110,14 @@ public:
 	/*
 	 * Update the ground bounds
 	 */
-	virtual void updateGroundUpperBound( unsigned var, double value ) = 0;
-	virtual void updateGroundLowerBound( unsigned var, double value ) = 0;
+	virtual void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel ) = 0;
+	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
 
+	/*
+ 	* Return the ground bounds
+ 	*/
+	virtual double getGroundUpperBound( unsigned var ) const = 0;
+	virtual double getGroundLowerBound( unsigned var ) const = 0;
 	/*
 	 * Get the current pointer in the UNSAT certificate
 	 */
@@ -131,7 +136,7 @@ public:
 	/*
 	 * Certify the UNSAT certificate
 	 */
-	virtual bool certifyUNSATCertificate() const = 0;
+	virtual bool certifyUNSATCertificate() = 0;
 
 	/*
   	 * Returns true iff the value can be the tightest bound of a variable
@@ -142,6 +147,12 @@ public:
 	 * Removes all PLC explanations in current UNSAT certificate node
 	 */
 	virtual void removePLCExplanationsFromCurrentCertificateNode() = 0;
+
+	/*
+	* Computes the decision level of an explanations
+	*/
+	virtual unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const = 0;
+
 };
 
 #endif // __IEngine_h__

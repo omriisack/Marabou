@@ -147,8 +147,15 @@ public:
     /*
      * Proof certificate statistics
      */
-    void incNumDelegatedLeaves();
-    /*
+	unsigned getNumDelegatedLeaves() const;
+	void incNumDelegatedLeaves();
+	void incNumCertifiedLeaves();
+	void incTotalJumpLevel( unsigned level );
+	void addCertificationTime( unsigned long long time );
+	void printfCertificationTime() const;
+
+
+	/*
       For debugging purposes
     */
     void printStartingIteration( unsigned long long iteration, String message );
@@ -316,6 +323,12 @@ private:
 
 	// Number of search-tree leaves that should be delegated
 	unsigned _numDelegatedLeaves;
+	unsigned long _numCertifiedLeaves;
+	double _totalJumps;
+
+
+	// Total amount of time spent for certifying the UNSAT certificate
+	unsigned long long _certificationTime;
 
     // Printing helpers
     double printPercents( unsigned long long part, unsigned long long total ) const;

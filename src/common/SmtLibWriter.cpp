@@ -84,15 +84,11 @@ void SmtLibWriter::addGroundLowerBounds( const std::vector<double> &bounds )
 		instance.append( " (assert ( >= x" + std::to_string( i ) + " " + std::to_string( bounds[i] ) + " ) )\n" );
 }
 
-void SmtLibWriter::writeInstancesToFiles( const std::string &directory )
+void SmtLibWriter::writeLastInstanceToFile( const std::string &directory )
 {
-	unsigned counter = 0;
-	for( auto &instance : _instances )
-	{
-		std::ofstream file ( directory + "Delegated" + std::to_string( counter ) + ".smtlib"); //TODO be exact
-		for ( String &s : instance )
-			file << s;
-		file.close();
-		++counter;
-	}
+	auto instance = _instances.back();
+	std::ofstream file ( directory + "_delegated.smtlib"); //TODO be exact or replace with a function that writes down all files at once
+	for ( String &s : instance )
+		file << s;
+	file.close();
 }

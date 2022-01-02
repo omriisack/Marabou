@@ -184,9 +184,14 @@ public:
 	/*
 	 * Update the ground bounds
 	 */
-    void updateGroundUpperBound(unsigned var, double value );
-    void updateGroundLowerBound(unsigned var, double value );
+    void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel );
+    void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel );
 
+	/*
+	 * Return the ground bounds
+	 */
+	double getGroundUpperBound( unsigned var ) const;
+	double getGroundLowerBound( unsigned var ) const;
     /*
      * Get the current pointer of the UNSAT certificate
      */
@@ -205,7 +210,7 @@ public:
 	/*
 	 * Certify the UNSAT certificate
 	 */
-	bool certifyUNSATCertificate() const;
+	bool certifyUNSATCertificate();
 
 	/*
 	* Returns true iff the value can be the tightest bound of a variable
@@ -216,6 +221,11 @@ public:
 	 * Removes all PLC explanations in current UNSAT certificate node
 	 */
 	void removePLCExplanationsFromCurrentCertificateNode();
+
+	/*
+	* Computes the decision level of an explanations
+	*/
+	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
 
 private:
     enum BasisRestorationRequired {
@@ -626,6 +636,8 @@ private:
     std::vector<std::vector<double>> _initialTableau;
     std::vector<double> _groundUpperBounds;
     std::vector<double> _groundLowerBounds;
+    std::vector<unsigned> _upperDecisionLevels;
+	std::vector<unsigned> _lowerDecisionLevels;
     CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
 	SmtLibWriter _smtWriter;
@@ -634,17 +646,12 @@ private:
      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
      Asserts the computed bound is epsilon close to the real one.
     */
-	bool certifyInfeasibility( const unsigned var, bool toPrint ) const;
+	bool certifyInfeasibility( const unsigned var ) const;
 
     /*
      Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
     */
     double getExplainedBound( unsigned var,  bool isUpper ) const;
-
-    /*
-     * Returns the coefficient of a var according to its explanation of isUpper bound
-     */
-    double extractVarExplanationCoefficient( unsigned var, bool isUpper ) const;
 
 	/*
 	 Validates that explanations epsilon close to real bounds of a given var
@@ -685,6 +692,16 @@ private:
 	 */
 	void delegateProblematicLeaf();
 
+	/*
+ 	* Computes jump level based on decision levels of UNSAT certificate for the leaf
+ 	*/
+	unsigned computeJumpLevel( unsigned infVar );
+
+	/*
+ 	* Earses all UNSAT certificate info between current leaf and jump level.
+	 * Moves pointer to correct place and sets the relevant contradction
+ 	*/
+	void performJumpForUNSATCertificate( unsigned jumpSize );
 };
 
 #endif // __Engine_h__

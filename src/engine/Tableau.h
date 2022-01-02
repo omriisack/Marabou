@@ -725,9 +725,9 @@ private:
 	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const;
 
 	/*
-      Explanator of all bounds 
+      Explainer of all bounds
     */
-    BoundsExplainer *_boundsExplanator;
+    BoundsExplainer *_boundsExplainer;
 
 };
 

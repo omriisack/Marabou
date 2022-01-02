@@ -202,12 +202,22 @@ public:
     	return 0.0;
 	}
 
-	void updateGroundUpperBound(unsigned /* var */, double /* value */ )
+	void updateGroundUpperBound(unsigned /* var */, double /* value */, unsigned /*decision level*/ )
 	{
 	}
 
-	void updateGroundLowerBound(unsigned /*var*/, double /*value*/ )
+	void updateGroundLowerBound(unsigned /*var*/, double /*value*/, unsigned /*decision level*/ )
 	{
+	}
+
+	double getGroundUpperBound( unsigned /* var */ ) const
+	{
+    	return 0.0;
+	}
+
+	double getGroundLowerBound( unsigned /* var */ ) const
+	{
+		return 0.0;
 	}
 
 	CertificateNode* getUNSATCertificateCurrentPointer() const
@@ -224,7 +234,7 @@ public:
 		return NULL;
 	}
 
-	bool certifyUNSATCertificate() const
+	bool certifyUNSATCertificate()
 	{
     	return true;
 	}
@@ -236,6 +246,16 @@ public:
 
 	void removePLCExplanationsFromCurrentCertificateNode()
 	{
+	}
+
+	unsigned getSmtStackDepth() const
+	{
+    	return 0;
+	}
+
+	unsigned computeBoundLevel( unsigned /* var */, bool /* isUpper */ ) const
+	{
+		return 0;
 	}
 };
 

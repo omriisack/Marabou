@@ -19,6 +19,7 @@
 #include "PrecisionRestorer.h"
 #include "MarabouError.h"
 #include "SmtCore.h"
+#include "UNSATCertificate.h"
 
 void PrecisionRestorer::storeInitialEngineState( const IEngine &engine )
 {
@@ -117,12 +118,20 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 		}
 
         // Tighten bounds to be as explained bounds, in order to avoid inaccuracies
+        // In case that bounds explanations are not tight enough, reset the explanation to use ground bounds
         for ( unsigned i = 0; i < targetN; ++i )
         {
         	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
-				tableau.tightenLowerBoundNaively( i, engine.getExplainedBound( i, false ) );
-				tableau.tightenUpperBoundNaively( i, engine.getExplainedBound( i, true ) );
+				if ( FloatUtils::gte( engine.getExplainedBound( i, false ), engine.getGroundLowerBound( i ) ) )
+					tableau.tightenLowerBoundNaively( i,  engine.getExplainedBound( i, false ) );
+				else
+					tableau.resetExplanation( i, false );
+
+				if ( FloatUtils::lte( engine.getExplainedBound( i, true ),  engine.getGroundUpperBound( i ) ) )
+					tableau.tightenUpperBoundNaively( i,engine.getExplainedBound( i, true ) );
+        		else
+        			tableau.resetExplanation( i, true );
 			}
 			else
 			{

@@ -10,8 +10,8 @@
  ** [[ Add lengthier description here ]]
  **/
 
-#ifndef __BoundsExplanator_h__
-#define __BoundsExplanator_h__
+#ifndef __BoundsExplainer_h__
+#define __BoundsExplainer_h__
 #include "TableauRow.h"
 #include "vector"
 #include "SparseUnsortedList.h"
@@ -31,7 +31,7 @@ public:
 	void getVarBoundExplanation( std::vector<double>& bound,  bool isUpper ) const;
 
 	/*
-	 * returns the length of the explanation
+	 * Returns the length of the explanation
 	 */
 	unsigned getLength() const;
 
@@ -39,11 +39,6 @@ public:
 	 * Updates the values of the bound explanation according to newBound
 	 */
 	void updateVarBoundExplanation( const std::vector<double>& newBound,  bool isUpper );
-
-	/*
-	 * Updates all coefficients to be in *= alpha
-	 */
-	void multiplyAllCoefficients( double alpha, bool isUpper );
 
 	/*
 	 * Deep copy of SingleVarBoundsExplainer
@@ -162,4 +157,4 @@ private:
 	void extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients, double ci ) const;
 
 };
-#endif // __BoundsExplanator_h__
+#endif // __BoundsExplainer_h__

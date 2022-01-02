@@ -37,6 +37,7 @@ SingleVarBoundsExplainer& SingleVarBoundsExplainer::operator=( const SingleVarBo
 
 	std::copy( other._lower.begin(), other._lower.end(), _lower.begin() );
 	std::copy( other._upper.begin(), other._upper.end(), _upper.begin() );
+
 	_lowerRecLevel = other._lowerRecLevel;
 	_upperRecLevel = other._upperRecLevel;
 
@@ -53,7 +54,6 @@ void SingleVarBoundsExplainer::getVarBoundExplanation( std::vector<double>& boun
 	std::copy( temp.begin(), temp.end(), bound.begin() );
 }
 
-
 unsigned SingleVarBoundsExplainer::getLength() const
 {
 	return _length;
@@ -64,14 +64,6 @@ void SingleVarBoundsExplainer::updateVarBoundExplanation( const std::vector<doub
 	assert( newBound.size() == _length );
 	std::vector<double>& temp = isUpper ? _upper : _lower;
 	std::copy( newBound.begin(), newBound.end(), temp.begin() );
-}
-
-
-void SingleVarBoundsExplainer::multiplyAllCoefficients( const double alpha, const bool isUpper )
-{
-	std::vector<double>& temp = isUpper ? _upper : _lower;
-	for ( unsigned i = 0; i < _length; ++i )
-		temp[i] *= alpha;
 }
 
 void SingleVarBoundsExplainer::addEntry( const double coefficient )
@@ -121,7 +113,6 @@ BoundsExplainer& BoundsExplainer::operator=( const BoundsExplainer& other )
 	return *this;
 }
 
-
 void BoundsExplainer::getOneBoundExplanation( std::vector<double>& bound, const unsigned var, const bool isUpper ) const
 {
 	_bounds[var].getVarBoundExplanation( bound, isUpper );
@@ -160,7 +151,7 @@ void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool 
 
 		// TODO delete when completing
 		tempLevel = tempUpper? _bounds[tempVar]._upperRecLevel : _bounds[tempVar]._lowerRecLevel;
-		if (tempLevel > maxLevel)
+		if ( tempLevel > maxLevel )
 			maxLevel = tempLevel;
 	}
 
@@ -172,6 +163,7 @@ void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool 
 		_bounds[var]._upperRecLevel = maxLevel;
 	else
 		_bounds[var]._lowerRecLevel = maxLevel;
+
 	tempBound.clear();
 	rowCoefficients.clear();
 	sum.clear();
@@ -260,6 +252,8 @@ void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& ro
 		tempUpper =  ( isUpper && FloatUtils::isPositive( realCoefficient ) ) ||  ( !isUpper && FloatUtils::isNegative( realCoefficient ) ); // If coefficient of lhs and var are different, use same bound
 		getOneBoundExplanation( tempBound, entry._index, tempUpper );
 		addVecTimesScalar( sum, tempBound, realCoefficient);
+
+		//TODO delete when done
 		tempLevel = tempUpper? _bounds[entry._index]._upperRecLevel : _bounds[entry._index]._lowerRecLevel;
 		if ( tempLevel > maxLevel )
 			maxLevel = tempLevel;

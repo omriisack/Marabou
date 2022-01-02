@@ -60,7 +60,7 @@ Tableau::Tableau()
     , _statistics( NULL )
     , _costFunctionManager( NULL )
     , _rhsIsAllZeros( true )
-    , _boundsExplanator( NULL )
+    , _boundsExplainer( NULL )
 {
 }
 
@@ -209,10 +209,10 @@ void Tableau::freeMemoryIfNeeded()
         _workN = NULL;
     }
 
-    if ( _boundsExplanator )
+    if ( _boundsExplainer )
     {
-        delete _boundsExplanator;
-        _boundsExplanator = NULL;
+        delete _boundsExplainer;
+		_boundsExplainer = NULL;
     }
 }
 
@@ -323,11 +323,11 @@ void Tableau::setDimensions( unsigned m, unsigned n )
 
     if( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-    	if( _boundsExplanator )
-			delete _boundsExplanator;
+    	if( _boundsExplainer )
+			delete _boundsExplainer;
 
-		_boundsExplanator = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
-		if ( !_boundsExplanator )
+		_boundsExplainer = new BoundsExplainer(_n, _m );  // Reset whenever new dimensions are set.
+		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
 
@@ -1653,7 +1653,7 @@ void Tableau::storeState( TableauState &state ) const
     // Store bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*state._boundsExplanator = *_boundsExplanator;
+		*state._boundsExplanator = *_boundsExplainer;
 	}
 }
 
@@ -1703,9 +1703,9 @@ void Tableau::restoreState( const TableauState &state )
     // Restore bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*_boundsExplanator = *state._boundsExplanator;
-    	ASSERT(_boundsExplanator->getRowsNum() == _m);
-		ASSERT(_boundsExplanator->getVarsNum() == _n);
+		*_boundsExplainer = *state._boundsExplanator;
+    	ASSERT( _boundsExplainer->getRowsNum() == _m );
+		ASSERT( _boundsExplainer->getVarsNum() == _n );
 	}
 
 
@@ -2113,9 +2113,9 @@ void Tableau::addRow()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		for ( SingleVarBoundsExplainer& explanation : _boundsExplanator->getExplanations() )
+		for ( SingleVarBoundsExplainer& explanation : _boundsExplainer->getExplanations() )
 			explanation.addEntry( 0 );
-		_boundsExplanator->addZeroExplanation();
+		_boundsExplainer->addZeroExplanation();
 	}
 
 }
@@ -2711,25 +2711,25 @@ int Tableau::getInfeasibleVar() const
 SingleVarBoundsExplainer* Tableau::explainBound( const unsigned variable ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-    return &_boundsExplanator->returnWholeVarExplanation( variable );
+    return &_boundsExplainer->returnWholeVarExplanation( variable );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanation( row, isUpper );
+        _boundsExplainer->updateBoundExplanation( row, isUpper );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanation( row, isUpper, var );
+        _boundsExplainer->updateBoundExplanation( row, isUpper, var );
 }
 
 void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanationSparse( row, isUpper, var );
+        _boundsExplainer->updateBoundExplanationSparse( row, isUpper, var );
 }
 
 double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
@@ -2784,23 +2784,23 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 
 void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 {
-	_boundsExplanator->resetExplanation( var, isUpper );
+	_boundsExplainer->resetExplanation( var, isUpper );
 }
 
 void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
 {
 	ASSERT( expl.size() == _m );
-	_boundsExplanator->injectExplanation( var, expl, isUpper );
+	_boundsExplainer->injectExplanation( var, expl, isUpper );
 }
 
 BoundsExplainer* Tableau::getAllBoundsExplanations() const
 {
-	return _boundsExplanator;
+	return _boundsExplainer;
 }
 
 void Tableau::setAllBoundsExplanations( BoundsExplainer* boundsExplanations )
 {
-	*_boundsExplanator = *boundsExplanations;
+	*_boundsExplainer = *boundsExplanations;
 }
 
 
