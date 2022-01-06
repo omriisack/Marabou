@@ -189,16 +189,19 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 														 const List<unsigned int> constraintVars,
 														 const PiecewiseLinearFunctionType constraintType )
 {
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ))
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
 		return;
 
 	// TODO re-consider design of this function
 	// Register new ground bound, update certificate, and reset explanation
 	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, isCausingBoundUpper );
 	auto* PLCExpl = new PLCExplanation();
+	PLCExpl->_explanation = new double[_m];
+	auto explVec = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
 
 	PLCExpl->_causingVar = causingVar;
-	PLCExpl->_explanation = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
+	PLCExpl->_length = _m;
+	std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
 	PLCExpl->_constraintVars = constraintVars;
 	PLCExpl->_affectedVar = var;
 	PLCExpl->_bound = value;

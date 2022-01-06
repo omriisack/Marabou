@@ -690,7 +690,7 @@ private:
 	/*
 	 * Delegates leaves with certification error to SMTLIB format
 	 */
-	void delegateProblematicLeaf();
+	void markLeafToDelegate();
 
 	/*
  	* Computes jump level based on decision levels of UNSAT certificate for the leaf

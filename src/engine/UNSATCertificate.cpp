@@ -25,6 +25,7 @@ CertificateNode::CertificateNode( const std::vector<std::vector<double>> &initia
 	, _hasSATSolution( false )
 	, _wasVisited( false )
 	, _shouldDelegate( false )
+	, _delegationNumber( 0 )
 	, _initialTableau( initialTableau )
 	, _groundUpperBounds( groundUBs )
 	, _groundLowerBounds( groundLBs )
@@ -33,7 +34,7 @@ CertificateNode::CertificateNode( const std::vector<std::vector<double>> &initia
 
 CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSplit split )
 	: _children ( 0 )
-	, _problemConstraints( parent->_problemConstraints )
+	, _problemConstraints()
 	, _parent( parent )
 	, _PLCExplanations( 0 )
 	, _contradiction ( NULL )
@@ -41,6 +42,7 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 	, _hasSATSolution( false )
 	, _wasVisited ( false )
 	, _shouldDelegate( false )
+	, _delegationNumber( 0 )
 	, _initialTableau( 0 )
 	, _groundUpperBounds( 0 )
 	, _groundLowerBounds( 0 )
@@ -117,11 +119,14 @@ void CertificateNode::makeLeaf()
 }
 
 
-void CertificateNode::passChangesToChildren()
+void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitConstraint )
 {
 	for ( auto* child : _children )
 	{
 		child->copyInitials( _initialTableau, _groundUpperBounds, _groundLowerBounds );
+		for ( auto &con : _problemConstraints )
+			if ( &con != childrenSplitConstraint )
+				child->addProblemConstraint( con._type, con._constraintVars );
 	}
 }
 
@@ -139,6 +144,9 @@ bool CertificateNode::certify()
 
 	// Check if it is a leaf, and if so use contradiction to certify
 	// return true iff it is certified
+	if ( _shouldDelegate )
+		writeLeafToFile();
+
 	if ( _hasSATSolution || _shouldDelegate )
 		return true;
 
@@ -158,10 +166,11 @@ bool CertificateNode::certify()
 	for ( auto& child : _children )
 		childrenSplits.append( child->_headSplit );
 
-	if ( !certifySingleVarSplits( childrenSplits ) && !certifyReLUSplits( childrenSplits ) )
+	auto *childrenSplitConstraint = getCorrespondingReLUConstraint( childrenSplits );
+	if ( !certifySingleVarSplits( childrenSplits ) && !childrenSplitConstraint )
 		return false;
 
-	passChangesToChildren();
+	passChangesToChildren( childrenSplitConstraint );
 
 	for ( auto child : _children )
 		if ( !child->certify() )
@@ -194,7 +203,6 @@ double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vec
 {
 	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
-
 
 void CertificateNode::copyInitials( const std::vector<std::vector<double>> &initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
 {
@@ -245,15 +253,14 @@ void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, Li
 	_problemConstraints.append( { type, constraintVars } );
 }
 
-bool CertificateNode::certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &splits ) const
+ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits )
 {
-
 	if ( splits.size() != 2 )
-		return false;
+		return NULL;
 
 	auto firstSplitTightenings = splits.front().getBoundTightenings(), secondSplitTightenings = splits.back().getBoundTightenings();
 	if ( firstSplitTightenings.size() != 2 || secondSplitTightenings.size() != 2 )
-		return false;
+		return NULL;
 
 	// find the LB, it is b
 	auto &activeSplit = firstSplitTightenings.front()._type == Tightening::LB ? firstSplitTightenings : secondSplitTightenings;
@@ -264,18 +271,17 @@ bool CertificateNode::certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &s
 	unsigned f = inactiveSplit.back()._variable;
 
 	if ( inactiveSplit.front()._variable != b || inactiveSplit.back()._type == Tightening::LB || activeSplit.back()._type == Tightening::LB )
-		return false;
+		return NULL;
 	if ( FloatUtils::areDisequal( inactiveSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( inactiveSplit.front()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.front()._value, 0.0 ) )
-		return false;
+		return NULL;
 
 	// Certify that f = relu(b) + aux is in problem constraints
-	bool foundConstraint = false;
-
-	for ( auto& con : _problemConstraints )
+	ProblemConstraint *correspondingConstraint = NULL;
+	for ( ProblemConstraint& con : _problemConstraints )
 		if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && con._constraintVars.back() == aux )
-			foundConstraint = true;
+			correspondingConstraint = &con;
 
-	return foundConstraint;
+	return correspondingConstraint;
 }
 
 bool CertificateNode::certifyAllPLCExplanations( double epsilon )
@@ -285,7 +291,9 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 	for ( auto* expl : _PLCExplanations )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
-		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, expl->_explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+		auto explVec = std::vector<double>( expl->_length,0 );
+		std::copy( expl->_explanation, expl->_explanation + expl->_length, explVec.begin() );
+		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
 		for ( auto& con : _problemConstraints )
@@ -364,7 +372,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 }
 
 /*
- * get a pointer to a child by a head split, or NULL if not found
+ * Get a pointer to a child by a head split, or NULL if not found
  */
 CertificateNode* CertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit& split) const
 {
@@ -385,9 +393,10 @@ void CertificateNode::wasVisited()
 	_wasVisited = true;
 }
 
-void CertificateNode::shouldDelegate()
+void CertificateNode::shouldDelegate( unsigned delegationNumber )
 {
 	_shouldDelegate = true;
+	_delegationNumber = delegationNumber;
 }
 
 bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits) const
@@ -422,10 +431,45 @@ void CertificateNode::removePLCExplanations()
 	{
 		for ( auto expl : _PLCExplanations )
 		{
-			expl->_explanation.clear();
+			delete[] expl->_explanation;
 			delete expl;
 		}
 
 		_PLCExplanations.clear();
 	}
+}
+
+void CertificateNode::writeLeafToFile()
+{
+	assert( _children.empty() && _shouldDelegate );
+	List<String> leafInstance;
+
+	// Write to smtWriter
+	unsigned m = _initialTableau.size(), n = _groundUpperBounds.size() , b, f;
+	SmtLibWriter::addHeader( n, leafInstance );
+	SmtLibWriter::addGroundUpperBounds( _groundUpperBounds, leafInstance );
+	SmtLibWriter::addGroundLowerBounds( _groundLowerBounds, leafInstance );
+
+	for ( unsigned i = 0; i < m; ++i )
+	{
+		SparseUnsortedList tempRow = SparseUnsortedList();
+		for ( unsigned  j = 0; j < n; ++j ) //TODO consider improving
+			if ( !FloatUtils::isZero(_initialTableau[i][j]) )
+				tempRow.append( j, _initialTableau[i][j] );
+		SmtLibWriter::addTableauRow( tempRow, leafInstance );
+		tempRow.clear();
+	}
+
+	for ( auto &constraint : _problemConstraints )
+		if ( constraint._type == PiecewiseLinearFunctionType::RELU )
+		{
+			auto vars = constraint._constraintVars;
+			b = vars.front();
+			vars.popBack();
+			f = vars.back();
+			SmtLibWriter::addReLUConstraint( b, f, leafInstance );
+		}
+
+	SmtLibWriter::addFooter(leafInstance );
+	SmtLibWriter::writeInstanceToFile("", _delegationNumber, leafInstance );
 }

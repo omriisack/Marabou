@@ -807,6 +807,8 @@ double *Engine::createConstraintMatrix()
 
 		_groundUpperBounds = std::vector<double>( n );
 		_groundLowerBounds = std::vector<double>( n );
+		_groundUpperBounds.shrink_to_fit();
+		_groundLowerBounds.shrink_to_fit();
         for ( unsigned i = 0; i < n; ++i )
         {
 			_groundUpperBounds[i] = _preprocessedQuery.getUpperBound( i );
@@ -815,14 +817,17 @@ double *Engine::createConstraintMatrix()
 
 		_upperDecisionLevels = std::vector<unsigned>( n, 0 );
 		_lowerDecisionLevels = std::vector<unsigned>( n, 0 );
+		_upperDecisionLevels.shrink_to_fit();
+		_lowerDecisionLevels.shrink_to_fit();
 
         // Set vector of initial rows
         _initialTableau = std::vector<std::vector<double>>( m );
- 
+ 		_initialTableau.shrink_to_fit();
         // Keep m vectors of n+1 numbers, where the last coefficient in each row corresponds to scalar
         for ( const auto& equation : equations )
         {
             _initialTableau[count] = std::vector<double>( n + 1, 0 );
+            _initialTableau[count].shrink_to_fit();
 
             for ( const auto& addend : equation._addends )
                 _initialTableau[count][addend._variable] = addend._coefficient;
@@ -1416,12 +1421,16 @@ void Engine::storeState( EngineState &state, bool storeAlsoTableauState ) const
 		state._groundUpperBounds = std::vector<double>( _groundUpperBounds.size(), 0 );
     	std::copy( _groundUpperBounds.begin(), _groundUpperBounds.end(), state._groundUpperBounds.begin() );
 		std::copy( _groundLowerBounds.begin(), _groundLowerBounds.end(), state._groundLowerBounds.begin() );
+		state._groundUpperBounds.shrink_to_fit();
+		state._groundLowerBounds.shrink_to_fit();
 
 
 		state._upperDecisionLevels = std::vector<unsigned>( _upperDecisionLevels.size(), 0 );
 		state._lowerDecisionLevels = std::vector<unsigned >( _lowerDecisionLevels.size(), 0 );
 		std::copy( _upperDecisionLevels.begin(), _upperDecisionLevels.end(), state._upperDecisionLevels.begin() );
 		std::copy( _lowerDecisionLevels.begin(), _lowerDecisionLevels.end(), state._lowerDecisionLevels.begin() );
+		state._upperDecisionLevels.shrink_to_fit();
+		state._lowerDecisionLevels.shrink_to_fit();
 
 		ASSERT( state._groundLowerBounds.size() == _tableau->getN() );
 		ASSERT( state._groundUpperBounds.size() == _tableau->getN() );
@@ -1458,7 +1467,8 @@ void Engine::restoreState( const EngineState &state )
 
 		std::copy( state._groundUpperBounds.begin(), state._groundUpperBounds.end(), _groundUpperBounds.begin() );
 		std::copy( state._groundLowerBounds.begin(), state._groundLowerBounds.end(), _groundLowerBounds.begin() );
-
+		_groundUpperBounds.shrink_to_fit();
+		_groundLowerBounds.shrink_to_fit();
 
 		_upperDecisionLevels.clear();
 		_lowerDecisionLevels.clear();
@@ -1467,6 +1477,8 @@ void Engine::restoreState( const EngineState &state )
 
 		std::copy( state._upperDecisionLevels.begin(), state._upperDecisionLevels.end(), _upperDecisionLevels.begin() );
 		std::copy( state._lowerDecisionLevels.begin(), state._lowerDecisionLevels.end(), _lowerDecisionLevels.begin() );
+		_upperDecisionLevels.shrink_to_fit();
+		_lowerDecisionLevels.shrink_to_fit();
 
 		ASSERT( _groundLowerBounds.size() == _tableau->getN() );
 		ASSERT( _groundUpperBounds.size() == _tableau->getN() );
@@ -2699,7 +2711,7 @@ void Engine::explainSimplexFailure()
 
 	if ( inf < 0 )
 	{
-		delegateProblematicLeaf();
+		markLeafToDelegate();
 		return;
 	}
 
@@ -2802,8 +2814,10 @@ bool Engine::certifyUNSATCertificate()
 	struct timespec certificationStart = TimeUtils::sampleMicro();
 	bool certificationSucceeded = _UNSATCertificate->certify();
 	struct timespec certificationEnd = TimeUtils::sampleMicro();
+
 	_statistics.addCertificationTime( TimeUtils::timePassed( certificationStart, certificationEnd ) );
 	_statistics.printfCertificationTime();
+
 	return certificationSucceeded;
 }
 
@@ -2831,41 +2845,14 @@ void Engine::removePLCExplanationsFromCurrentCertificateNode()
 	_UNSATCertificateCurrentPointer->removePLCExplanations();
 }
 
-void Engine::delegateProblematicLeaf()
+void Engine::markLeafToDelegate()
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
 
 	// Mark leaf with toDelegate Flag
 	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-	_UNSATCertificateCurrentPointer->shouldDelegate();
-
-	// Write to smtWriter
-	SparseUnsortedList tempRow;
-	unsigned m = _tableau->getM(), b, f;
-	_smtWriter.addInstance();
-	_smtWriter.addHeader( _tableau->getN() );
-	_smtWriter.addGroundUpperBounds( _groundUpperBounds );
-	_smtWriter.addGroundLowerBounds( _groundLowerBounds );
-
-	for ( unsigned i = 0; i < m; ++i )
-	{
-		_tableau->getSparseARow( i, &tempRow );
-		_smtWriter.addTableauRow( tempRow );
-	}
-
-	for ( auto &constraint : _plConstraints )
-		if ( constraint->getType() == PiecewiseLinearFunctionType::RELU && !constraint->phaseFixed() )
-		{
-			auto vars = constraint->getParticipatingVariables();
-			b = vars.front();
-			vars.popBack();
-			f = vars.back();
-			_smtWriter.addReLUConstraint( b, f );
-		}
-
-	_smtWriter.addFooter();
-	//TODO after finishing CDCL delete, and count only when search is done
+	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getNumDelegatedLeaves() );
 	_statistics.incNumDelegatedLeaves();
 }
 

@@ -25,52 +25,84 @@
 class SmtLibWriter
 {
 public:
-	SmtLibWriter();
-	~SmtLibWriter();
-
 	/*
-	 * Add a new instance to be written in SMTLIB format
-	 */
-	void addInstance();
-
-	/*
- 	* Adds a SMTLIB header to the current SMTLIB instance
+ 	* Adds a SMTLIB header to the SMTLIB instance
 	* n is used to declare all variables
  	*/
-	void addHeader( unsigned n );
+	static void addHeader( unsigned n, List<String> &instance )
+	{
+		instance.append( "(set-logic QF_LRA)\n" );
+		for ( unsigned i = 0; i < n; ++i )
+			instance.append( "(declare-fun x" + std::to_string( i ) + " () Real)\n" );
+	}
 
 	/*
- 	* Adds a SMTLIB footer to the current SMTLIB instance
+ 	* Adds a SMTLIB footer to the SMTLIB instance
  	*/
-	void addFooter();
+	static void addFooter( List<String> &instance )
+	{
+		instance.append(  "(check-sat)\n" );
+		instance.append(  "(exit)\n" );
+	}
 
 	/*
-	 * Adds a line representing ReLU constraint, in SMTLIB format, to the current SMTLIB instance
+	 * Adds a line representing ReLU constraint, in SMTLIB format, to the SMTLIB instance
 	 */
-	void addReLUConstraint( unsigned b, unsigned f );
+	static void addReLUConstraint( unsigned b, unsigned f, List<String> &instance )
+	{
+		instance.append(  "(assert (= x" + std::to_string( f ) + " (ite (>= x" + std::to_string( b ) + " 0) x" + std::to_string( b )+ " 0 ) ) )\n" );
+	}
 
 	/*
- 	* Adds a line representing a Tableau Row, in SMTLIB format, to the current SMTLIB instance
+ 	* Adds a line representing a Tableau Row, in SMTLIB format, to the SMTLIB instance
  	*/
-	void addTableauRow( const SparseUnsortedList &row );
+	static void addTableauRow( const SparseUnsortedList &row, List<String> &instance )
+	{
+		unsigned size = row.getSize(), counter = 0;
+		String assertRowLine = "(assert ( = 0";
+		for ( auto &entry : row )
+		{
+			if (counter != size - 1)
+				assertRowLine += " ( + ( * " + std::to_string( entry._value ) + " x" + std::to_string( entry._index ) + " )";
+			else
+				assertRowLine += " ( * " + std::to_string( entry._value ) + " x" + std::to_string( entry._index ) + " )";
+			++counter;
+		}
+
+		assertRowLine += std::string( counter + 2, ')' );
+		instance.append( assertRowLine + "\n" );
+	}
 
 	/*
- 	* Adds lines representing a the ground upper bounds, in SMTLIB format, to the current SMTLIB instance
+ 	* Adds lines representing a the ground upper bounds, in SMTLIB format, to the SMTLIB instance
  	*/
-	void addGroundUpperBounds( const std::vector<double> &bounds );
+	static void addGroundUpperBounds( const std::vector<double> &bounds,List<String> &instance )
+	{
+		unsigned n = bounds.size();
+		for ( unsigned i = 0; i < n; ++i)
+			instance.append( " (assert ( <= x" + std::to_string( i ) + " " + std::to_string( bounds[i] ) + " ) )\n" );
+	}
 
 	/*
- 	* Adds lines representing a the ground lower bounds, in SMTLIB format, to the current SMTLIB instance
+ 	* Adds lines representing a the ground lower bounds, in SMTLIB format, to the SMTLIB instance
  	*/
-	void addGroundLowerBounds( const std::vector<double> &bounds );
+	static void addGroundLowerBounds( const std::vector<double> &bounds, List<String> &instance )
+	{
+		unsigned n = bounds.size();
+		for ( unsigned i = 0; i < n; ++i)
+			instance.append( " (assert ( >= x" + std::to_string( i ) + " " + std::to_string( bounds[i] ) + " ) )\n" );
+	}
 
 	/*
 	 * Write the instances to files
 	 */
-	void writeLastInstanceToFile(const std::string &directory );
-
-private:
-	List<List<String>> _instances;
+	static void writeInstanceToFile( const std::string &directory, unsigned delegationNumber , const List<String>& instance )
+	{
+		std::ofstream file ( directory + "_delegated" + std::to_string( delegationNumber ) + ".smtlib");
+		for ( const String &s : instance )
+			file << s;
+		file.close();
+	}
 };
 
 #endif //MARABOU_SMTLIBWRITER_H

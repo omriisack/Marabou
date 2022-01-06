@@ -326,16 +326,10 @@ void Tableau::setDimensions( unsigned m, unsigned n )
     	if( _boundsExplainer )
 			delete _boundsExplainer;
 
-		_boundsExplainer = new BoundsExplainer(_n, _m );  // Reset whenever new dimensions are set.
+		_boundsExplainer = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
 		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
-
-	// Guy: the tableau dimensions can also change in addRow(). The
-	// most elegant way to be informed when this happens is to
-	// register the bound explanator to be a resizeWatcher, via the
-	// registerResizeWatcher mechanism. Then it will be notified
-	// whenever there's a change.
 }
 
 void Tableau::setConstraintMatrix( const double *A )

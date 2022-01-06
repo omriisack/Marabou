@@ -21,6 +21,8 @@ SingleVarBoundsExplainer::SingleVarBoundsExplainer( const unsigned length )
 	,_lower( _length, 0 )
 	,_upper( _length, 0)
 {
+	_lower.shrink_to_fit();
+	_upper.shrink_to_fit();
 }
 
 SingleVarBoundsExplainer& SingleVarBoundsExplainer::operator=( const SingleVarBoundsExplainer& other )

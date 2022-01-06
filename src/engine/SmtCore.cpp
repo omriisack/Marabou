@@ -131,7 +131,7 @@ void SmtCore::performSplit()
     ++_stateId;
     _engine->storeState( *stateBeforeSplits, true );
 
-	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
+	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
 		//Create children for UNSATCertificate current node, and assign a split to each of them

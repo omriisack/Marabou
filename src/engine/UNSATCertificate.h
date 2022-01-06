@@ -20,6 +20,7 @@
 #include <utility>
 #include "ReluConstraint.h"
 #include "PiecewiseLinearFunctionType.h"
+#include "SmtLibWriter.h"
 
 // Contains an explanation for a ground bound update during a run (i.e from ReLU phase-fixing)
 // For now only relevant to ReLU constraints
@@ -34,10 +35,12 @@ struct PLCExplanation
 		_isAffectedBoundUpper = other->_isAffectedBoundUpper;
 		_constraintType = other->_constraintType;
 		_decisionLevel = other->_decisionLevel;
+		_length = other->_length;
 
-		_explanation.clear();
-		_explanation.resize( other->_explanation.size() );
-		std::copy( other->_explanation.begin(), other->_explanation.end(), _explanation.begin() );
+		if ( _explanation )
+			delete [] _explanation;
+		_explanation = new double[_length];
+		std::copy( &other->_explanation[0], &other->_explanation[_length], &_explanation[0] );
 
 		_constraintVars.clear();
 		for( auto var : other->_constraintVars )
@@ -50,7 +53,8 @@ struct PLCExplanation
 	double _bound;
 	bool _isCausingBoundUpper;
 	bool _isAffectedBoundUpper;
-	std::vector<double> _explanation;
+	double *_explanation;
+	unsigned _length;
 	PiecewiseLinearFunctionType _constraintType;
 	List<unsigned> _constraintVars;
 	unsigned _decisionLevel;
@@ -146,9 +150,9 @@ public:
 	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars );
 
 	/*
- 	* Return true iff the splits are created from a valid PLC
+ 	* Return a pointer to the problem constraint representing the split
  	*/
-	bool certifyReLUSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
+	ProblemConstraint *getCorrespondingReLUConstraint(const List<PiecewiseLinearCaseSplit> &splits );
 
 	/*
 	 * Return true iff a list of splits represents a splits over a single variable
@@ -178,7 +182,7 @@ public:
 	/*
 	 * Sets value of _shouldDelegate to be true
 	 */
-	void shouldDelegate();
+	void shouldDelegate( unsigned delegationNumber );
 
 	/*
  	* Removes all PLC explanations
@@ -191,7 +195,6 @@ public:
 	void makeLeaf();
 
 private:
-
 	std::list<CertificateNode*> _children;
 	List<ProblemConstraint> _problemConstraints;
 	CertificateNode* _parent;
@@ -200,7 +203,8 @@ private:
 	PiecewiseLinearCaseSplit _headSplit;
 	bool _hasSATSolution; // Enables certifying correctness of UNSAT certificates built before concluding SAT.
 	bool _wasVisited; // Same TODO consider deleting when done
-	bool _shouldDelegate; // TODO replace with delegated proof
+	bool _shouldDelegate;
+	unsigned _delegationNumber;
 
 	std::vector<std::vector<double>> _initialTableau;
 	std::vector<double> _groundUpperBounds;
@@ -214,7 +218,7 @@ private:
 	/*
 	 * Inherits the initialTableau and ground bounds from parent, if exists
 	 */
-	void passChangesToChildren();
+	void passChangesToChildren(ProblemConstraint *childrenSplitConstraint);
 
 	/*
 	 * Checks if the node is a valid leaf
@@ -230,13 +234,16 @@ private:
 	 * Clear initial tableau and ground bounds
 	 */
 	void clearInitials();
-
+	/*
+	* Write a leaf marked to delegate to a smtlib file format
+	*/
+	void writeLeafToFile();
 };
 
 class UNSATCertificateUtils
 {
 public:
-	static double computeBound( unsigned var, bool isUpper, const  std::vector<double> &expl,
+	static double computeBound( unsigned var, bool isUpper, const std::vector<double> &expl,
 							   const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
 		ASSERT( groundLBs.size() == groundUBs.size() );
