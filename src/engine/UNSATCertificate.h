@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundsExplanator.cpp
+/*! \file BoundsExplainer.cpp
  ** \verbatim
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
@@ -15,11 +15,13 @@
 #ifndef __UNSATCertificate_h__
 #define __UNSATCertificate_h__
 
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 #include <assert.h>
 #include <utility>
 #include "ReluConstraint.h"
 #include "PiecewiseLinearFunctionType.h"
+#include "SmtLibWriter.h"
+#include "Options.h"
 
 // Contains an explanation for a ground bound update during a run (i.e from ReLU phase-fixing)
 // For now only relevant to ReLU constraints
@@ -30,15 +32,44 @@ struct PLCExplanation
 	double _bound;
 	bool _isCausingBoundUpper;
 	bool _isAffectedBoundUpper;
-	std::vector<double> _explanation;
+	double *_explanation;
+	unsigned _length;
 	PiecewiseLinearFunctionType _constraintType;
 	List<unsigned> _constraintVars;
+	unsigned _decisionLevel;
+
+	void copyContent( PLCExplanation *other )
+	{
+		_causingVar = other->_causingVar;
+		_affectedVar = other->_affectedVar;
+		_bound = other->_bound;
+		_isCausingBoundUpper = other->_isCausingBoundUpper;
+		_isAffectedBoundUpper = other->_isAffectedBoundUpper;
+		_constraintType = other->_constraintType;
+		_decisionLevel = other->_decisionLevel;
+		_length = other->_length;
+
+		if ( _explanation )
+			delete [] _explanation;
+		_explanation = new double[_length];
+		std::copy( &other->_explanation[0], &other->_explanation[_length], &_explanation[0] );
+
+		_constraintVars.clear();
+		for( auto var : other->_constraintVars )
+			_constraintVars.append( var );
+	}
 };
 
 struct Contradiction
 {
-	unsigned var;
-	SingleVarBoundsExplanator* explanation;
+	unsigned _var;
+	SingleVarBoundsExplainer* _explanation; //TODO switch to two arrays
+
+	void copyContent( Contradiction* other)
+	{
+		_var = other->_var;
+		*_explanation = *( other->_explanation );
+	}
 };
 
 struct ProblemConstraint
@@ -70,14 +101,14 @@ public:
 	bool certify();
 
 	/*
+ 	* Adds a child to the tree
+ 	*/
+	void addChild( CertificateNode* child );
+
+	/*
 	 * Sets the leaf certificate as input
 	 */
 	void setContradiction( Contradiction *certificate );
-
-	/*
-	 * Adds a child to the tree
-	 */
-	void addChild( CertificateNode* child );
 
 	/*
 	 * Gets the leaf certificate of the node
@@ -93,6 +124,11 @@ public:
  	* Returns the parent of a node
  	*/
 	const PiecewiseLinearCaseSplit& getSplit() const;
+
+	/*
+	 * Gets the PLC explanations of the node
+	 */
+	const std::list<PLCExplanation*>& getPLCExplanations() const;
 
 	/*
 	 * Certifies a contradiction
@@ -115,19 +151,24 @@ public:
 	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars );
 
 	/*
- 	* Return true iff the splits are created from a valid PLC
+ 	* Return a pointer to the problem constraint representing the split
  	*/
-	bool certifyReLUSplits( List<PiecewiseLinearCaseSplit> &splits ) const;
+	ProblemConstraint *getCorrespondingReLUConstraint(const List<PiecewiseLinearCaseSplit> &splits );
 
 	/*
-	 * Return true iff the changes in the ground bounds are certified
+	 * Return true iff a list of splits represents a splits over a single variable
+	 */
+	bool certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
+
+	/*
+	 * Return true iff the changes in the ground bounds are certified, with tolerance to errors with epsilon size at most
  	*/
-	bool certifyAllPLCExplanations();
+	bool certifyAllPLCExplanations( double epsilon );
 
 	/*
 	 * get a pointer to a child by a head split, or NULL if not found
 	 */
-	CertificateNode* getChildBySplit( PiecewiseLinearCaseSplit &split ) const;
+	CertificateNode* getChildBySplit( const PiecewiseLinearCaseSplit &split ) const;
 
 	/*
 	 * Sets value of _hasSATSolution to be true
@@ -139,8 +180,22 @@ public:
 	 */
 	void wasVisited();
 
-private:
+	/*
+	 * Sets value of _shouldDelegate to be true
+	 */
+	void shouldDelegate( unsigned delegationNumber );
 
+	/*
+ 	* Removes all PLC explanations
+ 	*/
+	void removePLCExplanations();
+
+	/*
+	 * Deletes all offsprings of the node and makes it a leaf
+	 */
+	void makeLeaf();
+
+private:
 	std::list<CertificateNode*> _children;
 	List<ProblemConstraint> _problemConstraints;
 	CertificateNode* _parent;
@@ -149,6 +204,8 @@ private:
 	PiecewiseLinearCaseSplit _headSplit;
 	bool _hasSATSolution; // Enables certifying correctness of UNSAT certificates built before concluding SAT.
 	bool _wasVisited; // Same TODO consider deleting when done
+	bool _shouldDelegate;
+	unsigned _delegationNumber;
 
 	std::vector<std::vector<double>> _initialTableau;
 	std::vector<double> _groundUpperBounds;
@@ -162,7 +219,7 @@ private:
 	/*
 	 * Inherits the initialTableau and ground bounds from parent, if exists
 	 */
-	void passChangesToChildren();
+	void passChangesToChildren(ProblemConstraint *childrenSplitConstraint);
 
 	/*
 	 * Checks if the node is a valid leaf
@@ -178,79 +235,76 @@ private:
 	 * Clear initial tableau and ground bounds
 	 */
 	void clearInitials();
-
+	/*
+	* Write a leaf marked to delegate to a smtlib file format
+	*/
+	void writeLeafToFile();
 };
 
 class UNSATCertificateUtils
 {
 public:
-	static double computeBound( unsigned var, bool isUpper, const  std::vector<double> &expl,
+	static double computeBound( unsigned var, bool isUpper, const std::vector<double> &expl,
 							   const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
 		ASSERT( groundLBs.size() == groundUBs.size() );
-		ASSERT( initialTableau.size() == expl.size());
-		ASSERT( groundLBs.size() == initialTableau[0].size() - 1 );
-		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
+		ASSERT( initialTableau.size() == expl.size() || expl.empty() );
+		ASSERT( groundLBs.size() == initialTableau[0].size() );
+		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() );
+		ASSERT( var < groundUBs.size() );
 
-		double derived_bound = 0, scalar = 0, temp;
-		unsigned n = groundUBs.size(), m = expl.size();
-		std::vector<double> explCopy ( expl );
+		double derived_bound = 0, temp;
+		unsigned n = groundUBs.size();
 
-		// If explanation is all zeros, return original bound
-		bool allZeros = true;
-		for( unsigned i = 0; i < expl.size(); ++i )
-			if ( !FloatUtils::isZero( expl[i] ) )
-				allZeros = false;
-			else
-				explCopy[i] = 0;
-
-		if ( allZeros )
+		if ( expl.empty() )
 			return isUpper ? groundUBs[var] : groundLBs[var];
 
+		std::vector<double> explCopy ( expl );
 		// Create linear combination of original rows implied from explanation
-		std::vector<double> explanationRowsCombination = std::vector<double>( n, 0 );
-
-		for ( unsigned i = 0; i < m; ++i )
-		{
-			for ( unsigned j = 0; j < n; ++j )
-				if ( !FloatUtils::isZero( initialTableau[i][j] ) )
-					explanationRowsCombination[j] += initialTableau[i][j] * explCopy[i];
-
-			scalar += initialTableau[i][n] * explCopy[i];
-		}
-
-		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
-		// We have: var = - Sum (ci * xi) - (c - 1) * var
-		explanationRowsCombination[var] -=1;
-		for ( unsigned i = 0; i < n; ++i )
-			if ( !FloatUtils::isZero( explanationRowsCombination[i] ) )
-				explanationRowsCombination[i] *= -1;
-			else
-				explanationRowsCombination[i] = 0;
-
-		explanationRowsCombination[var] = 0;
-		scalar /= -1;
+		std::vector<double> explRowsCombination;
+		UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, initialTableau );
 
 		// Set the bound derived from the linear combination, using original bounds.
 		for ( unsigned i = 0; i < n; ++i )
 		{
-			temp = explanationRowsCombination[i];
+			temp = explRowsCombination[i];
 			if ( !FloatUtils::isZero( temp ) )
 			{
 				if ( isUpper )
-					temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundUBs[i] : groundLBs[i];
+					temp *= FloatUtils::isPositive( explRowsCombination[i] ) ? groundUBs[i] : groundLBs[i];
 				else
-					temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundLBs[i] : groundUBs[i];
+					temp *= FloatUtils::isPositive( explRowsCombination[i] ) ? groundLBs[i] : groundUBs[i];
 
 				if ( !FloatUtils::isZero( temp ) )
 					derived_bound += temp;
 			}
 		}
 
-		derived_bound += scalar;
-		explanationRowsCombination.clear();
+		explRowsCombination.clear();
 		explCopy.clear();
 		return derived_bound;
+	}
+
+
+	static void getExplanationRowCombination( unsigned var, std::vector<double> &explRowsCombination, const std::vector<double> &expl,
+											   const std::vector<std::vector<double>> &initialTableau )
+	{
+		explRowsCombination = std::vector<double>(initialTableau[0].size(), 0 );
+		unsigned n = initialTableau[0].size(), m = expl.size();
+		for ( unsigned i = 0; i < m; ++i )
+			for ( unsigned j = 0; j < n; ++j )
+				if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( expl[i]) )
+					explRowsCombination[j] += initialTableau[i][j] * expl[i];
+
+		for ( unsigned i = 0; i < n; ++i )
+			if ( !FloatUtils::isZero( explRowsCombination[i] ) )
+				explRowsCombination[i] *= -1;
+			else
+				explRowsCombination[i] = 0;
+
+		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
+		// We have: var = - Sum (ci * xi) - (c - 1) * var
+		explRowsCombination[var] += 1;
 	}
 };
 #endif //__UNSATCertificate_h__

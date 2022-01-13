@@ -60,7 +60,7 @@ Tableau::Tableau()
     , _statistics( NULL )
     , _costFunctionManager( NULL )
     , _rhsIsAllZeros( true )
-    , _boundsExplanator( NULL )
+    , _boundsExplainer( NULL )
 {
 }
 
@@ -209,10 +209,10 @@ void Tableau::freeMemoryIfNeeded()
         _workN = NULL;
     }
 
-    if ( _boundsExplanator )
+    if ( _boundsExplainer )
     {
-        delete _boundsExplanator;
-        _boundsExplanator = NULL;
+        delete _boundsExplainer;
+		_boundsExplainer = NULL;
     }
 }
 
@@ -323,19 +323,13 @@ void Tableau::setDimensions( unsigned m, unsigned n )
 
     if( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-    	if( _boundsExplanator )
-			delete _boundsExplanator;
+    	if( _boundsExplainer )
+			delete _boundsExplainer;
 
-		_boundsExplanator = new BoundsExplanator(_n, _m);  // Reset whenever new dimensions are set.
-		if ( !_boundsExplanator )
+		_boundsExplainer = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
+		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
-
-	// Guy: the tableau dimensions can also change in addRow(). The
-	// most elegant way to be informed when this happens is to
-	// register the bound explanator to be a resizeWatcher, via the
-	// registerResizeWatcher mechanism. Then it will be notified
-	// whenever there's a change.
 }
 
 void Tableau::setConstraintMatrix( const double *A )
@@ -1653,7 +1647,7 @@ void Tableau::storeState( TableauState &state ) const
     // Store bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*state._boundsExplanator = *_boundsExplanator;
+		*state._boundsExplainer = *_boundsExplainer;
 	}
 }
 
@@ -1703,9 +1697,9 @@ void Tableau::restoreState( const TableauState &state )
     // Restore bounds explanations
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		*_boundsExplanator = *state._boundsExplanator;
-    	ASSERT(_boundsExplanator->getRowsNum() == _m);
-		ASSERT(_boundsExplanator->getVarsNum() == _n);
+		*_boundsExplainer = *state._boundsExplainer;
+    	ASSERT( _boundsExplainer->getRowsNum() == _m );
+		ASSERT( _boundsExplainer->getVarsNum() == _n );
 	}
 
 
@@ -1761,15 +1755,6 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-    /* TODO erase - since explanations are already updated via rowBoundTightener
-    // Update only for a basic var
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
-    {
-        TableauRow row = TableauRow( _n );
-        getTableauRow( _variableToIndex[variable], &row );
-        _boundsExplanator->updateBoundExplanation( row, false );
-    }
-    */
 }
 
 void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, double value )
@@ -1789,15 +1774,6 @@ void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, dou
         if ( _basicStatus[index] != oldStatus )
             _costFunctionManager->invalidateCostFunction();
     }
-    /* TODO erase - since explanations are already updated via rowBoundTightener
-    // Update only for a basic var
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _basicVariables.exists(variable) )
-    {
-        TableauRow row = TableauRow( _n );
-        getTableauRow( _variableToIndex[variable], &row );
-        _boundsExplanator->updateBoundExplanation( row, true );
-    }
-    */
 }
 
 void Tableau::tightenLowerBound( unsigned variable, double value )
@@ -2131,9 +2107,9 @@ void Tableau::addRow()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		for ( SingleVarBoundsExplanator& explanation : _boundsExplanator->getExplanations() )
+		for ( SingleVarBoundsExplainer& explanation : _boundsExplainer->getExplanations() )
 			explanation.addEntry( 0 );
-		_boundsExplanator->addZeroExplanation();
+		_boundsExplainer->addZeroExplanation();
 	}
 
 }
@@ -2654,7 +2630,7 @@ int Tableau::getInfeasibleRow( TableauRow& row )
 		{
      		Tableau::getTableauRow( i, &row );
             if ( computeRowBound( row, true ) < _lowerBounds[basicVar] || computeRowBound( row, false ) > _upperBounds[basicVar] )
-                return (int) i;
+                return ( int ) i;
         }
     }
 	return -1;
@@ -2681,13 +2657,13 @@ bool Tableau::checkCostFunctionSlack()
 	return true;
 }
 
-bool Tableau::checkSlack( unsigned rowIndex )
+bool Tableau::checkSlack( const unsigned rowIndex )
 {
 	TableauRow *row = new TableauRow( _n );
 	Tableau::getTableauRow( rowIndex, row );
     unsigned basicVar = row->_lhs;
 	bool needDecreasing =  FloatUtils::gt( _basicAssignment[rowIndex], _upperBounds[basicVar] ), needIncreasing = FloatUtils::lt( _basicAssignment[rowIndex], _lowerBounds[basicVar] );
-	assert( needDecreasing || needIncreasing );
+	ASSERT( needDecreasing || needIncreasing );
 	for ( unsigned i = 0; i < row->_size; ++i )
 	{
 		double curCoefficient = row->_row[i]._coefficient;
@@ -2726,28 +2702,28 @@ int Tableau::getInfeasibleVar() const
     return -1;
 }
 
-SingleVarBoundsExplanator* Tableau::explainBound( const unsigned variable ) const
+SingleVarBoundsExplainer* Tableau::explainBound( const unsigned variable ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-    return &_boundsExplanator->returnWholeVarExplanation( variable );
+    return &_boundsExplainer->returnWholeVarExplanation( variable );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanation( row, isUpper );
+        _boundsExplainer->updateBoundExplanation( row, isUpper );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanation( row, isUpper, var );
+        _boundsExplainer->updateBoundExplanation( row, isUpper, var );
 }
 
 void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundsExplanator->updateBoundExplanationSparse( row, isUpper, var );
+        _boundsExplainer->updateBoundExplanationSparse( row, isUpper, var );
 }
 
 double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
@@ -2762,18 +2738,18 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 
         multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
         multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
-        bound += multiplier;
+        bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
     }
 
 	bound += row._scalar;
     return bound;
 }
 
-double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var) const
+double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
-	assert ( !row.empty() && var < _n);
-	double ci = 0, realCoefficient;
-
+	ASSERT( !row.empty() && var < _n );
+	unsigned curVar;
+	double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
 	for ( const auto& entry : row )
 		if ( entry._index == var )
 		{
@@ -2781,10 +2757,8 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 			break;
 		}
 
-	assert( !FloatUtils::isZero( ci ) );
+	ASSERT( !FloatUtils::isZero( ci ) );
 
-	double bound = 0, curVal, multiplier;
-	unsigned curVar;
 	for ( const auto& entry : row )
 	{
 		curVar = entry._index;
@@ -2794,28 +2768,64 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 			continue;
 
 		realCoefficient = curVal / -ci;
+
+		if ( FloatUtils::isZero( realCoefficient ) )
+			continue;
+
 		multiplier = ( isUpper && FloatUtils::isPositive( realCoefficient ) ) || ( !isUpper && FloatUtils::isNegative( realCoefficient ) ) ? _upperBounds[curVar] : _lowerBounds[curVar];
-		bound += multiplier * realCoefficient;
+		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
+		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
 	}
 
 	return bound;
 }
 
-void Tableau::resetExplanation( const unsigned var, const bool isUpper )
+void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 {
-	_boundsExplanator->resetExplanation( var, isUpper );
+	_boundsExplainer->resetExplanation( var, isUpper );
+}
+
+void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
+{
+	ASSERT( expl.size() == _m || expl.empty() );
+	_boundsExplainer->injectExplanation( var, expl, isUpper );
+}
+
+BoundsExplainer* Tableau::getAllBoundsExplanations() const
+{
+	return _boundsExplainer;
+}
+
+void Tableau::setAllBoundsExplanations( BoundsExplainer* boundsExplanations )
+{
+	*_boundsExplainer = *boundsExplanations;
 }
 
 
-void Tableau::multiplyExplanationCoefficients ( const unsigned var, const double alpha, const bool isUpper )
+void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
 {
-	_boundsExplanator->multiplyExplanationCoefficients( var, alpha, isUpper );
+	ASSERT( variable < _n );
+
+	if ( _statistics )
+		_statistics->incNumTightenedBounds();
+
+	_upperBounds[variable] = value;
+	checkBoundsValid( variable );
+
+	updateVariableToComplyWithUpperBoundUpdate( variable, value );
 }
 
-void Tableau::injectExplanation( const unsigned var, SingleVarBoundsExplanator& expl )
+void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
 {
-	ASSERT( expl.getLength() == _m );
-	_boundsExplanator->injectExplanation( var, expl );
+	ASSERT( variable < _n );
+
+	if ( _statistics )
+		_statistics->incNumTightenedBounds();
+
+	_lowerBounds[variable] = value;
+	checkBoundsValid( variable );
+
+	updateVariableToComplyWithLowerBoundUpdate( variable, value );
 }
 
 //

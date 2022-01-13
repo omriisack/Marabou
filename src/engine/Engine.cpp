@@ -61,6 +61,8 @@ Engine::Engine()
     , _initialTableau {}
     , _groundUpperBounds {}
     , _groundLowerBounds {}
+    , _upperDecisionLevels {}
+    , _lowerDecisionLevels {}
     , _UNSATCertificate( NULL )
     , _UNSATCertificateCurrentPointer( NULL )
     , _smtWriter()
@@ -794,24 +796,33 @@ double *Engine::createConstraintMatrix()
 
 		_groundUpperBounds = std::vector<double>( n );
 		_groundLowerBounds = std::vector<double>( n );
+		_groundUpperBounds.shrink_to_fit();
+		_groundLowerBounds.shrink_to_fit();
         for ( unsigned i = 0; i < n; ++i )
         {
 			_groundUpperBounds[i] = _preprocessedQuery.getUpperBound( i );
 			_groundLowerBounds[i] = _preprocessedQuery.getLowerBound( i );
         }
 
+		_upperDecisionLevels = std::vector<unsigned>( n, 0 );
+		_lowerDecisionLevels = std::vector<unsigned>( n, 0 );
+		_upperDecisionLevels.shrink_to_fit();
+		_lowerDecisionLevels.shrink_to_fit();
+
         // Set vector of initial rows
         _initialTableau = std::vector<std::vector<double>>( m );
- 
-        // Keep m vectors of n+1 numbers, where the last coefficient in each row corresponds to scalar
+ 		_initialTableau.shrink_to_fit();
+        // Keep m vectors of n numbers
         for ( const auto& equation : equations )
         {
-            _initialTableau[count] = std::vector<double>( n + 1, 0 );
+            _initialTableau[count] = std::vector<double>( n, 0 );
+            _initialTableau[count].shrink_to_fit();
 
             for ( const auto& addend : equation._addends )
                 _initialTableau[count][addend._variable] = addend._coefficient;
 
-            _initialTableau[count][n] = equation._scalar;
+            // After Preprocessing, all scalars should be zero
+            ASSERT( FloatUtils::isZero( equation._scalar ) );
             ++count;
         }
     }
@@ -1348,10 +1359,20 @@ void Engine::storeState( EngineState &state, bool storeAlsoTableauState ) const
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		state._groundLowerBounds = std::vector<double> ( _groundLowerBounds.size(), 0 );
-		state._groundUpperBounds = std::vector<double> ( _groundUpperBounds.size(), 0 );
+		state._groundLowerBounds = std::vector<double>( _groundLowerBounds.size(), 0 );
+		state._groundUpperBounds = std::vector<double>( _groundUpperBounds.size(), 0 );
     	std::copy( _groundUpperBounds.begin(), _groundUpperBounds.end(), state._groundUpperBounds.begin() );
 		std::copy( _groundLowerBounds.begin(), _groundLowerBounds.end(), state._groundLowerBounds.begin() );
+		state._groundUpperBounds.shrink_to_fit();
+		state._groundLowerBounds.shrink_to_fit();
+
+
+		state._upperDecisionLevels = std::vector<unsigned>( _upperDecisionLevels.size(), 0 );
+		state._lowerDecisionLevels = std::vector<unsigned >( _lowerDecisionLevels.size(), 0 );
+		std::copy( _upperDecisionLevels.begin(), _upperDecisionLevels.end(), state._upperDecisionLevels.begin() );
+		std::copy( _lowerDecisionLevels.begin(), _lowerDecisionLevels.end(), state._lowerDecisionLevels.begin() );
+		state._upperDecisionLevels.shrink_to_fit();
+		state._lowerDecisionLevels.shrink_to_fit();
 
 		ASSERT( state._groundLowerBounds.size() == _tableau->getN() );
 		ASSERT( state._groundUpperBounds.size() == _tableau->getN() );
@@ -1383,11 +1404,23 @@ void Engine::restoreState( const EngineState &state )
 	{
 		_groundUpperBounds.clear();
 		_groundLowerBounds.clear();
-		_groundUpperBounds = std::vector<double> ( state._groundUpperBounds.size(), 0 );
-		_groundLowerBounds = std::vector<double> ( state._groundLowerBounds.size(), 0 );
+		_groundUpperBounds = std::vector<double>( state._groundUpperBounds.size(), 0 );
+		_groundLowerBounds = std::vector<double>( state._groundLowerBounds.size(), 0 );
 
 		std::copy( state._groundUpperBounds.begin(), state._groundUpperBounds.end(), _groundUpperBounds.begin() );
 		std::copy( state._groundLowerBounds.begin(), state._groundLowerBounds.end(), _groundLowerBounds.begin() );
+		_groundUpperBounds.shrink_to_fit();
+		_groundLowerBounds.shrink_to_fit();
+
+		_upperDecisionLevels.clear();
+		_lowerDecisionLevels.clear();
+		_upperDecisionLevels = std::vector<unsigned >( state._upperDecisionLevels.size(), 0 );
+		_lowerDecisionLevels = std::vector<unsigned >( state._lowerDecisionLevels.size(), 0 );
+
+		std::copy( state._upperDecisionLevels.begin(), state._upperDecisionLevels.end(), _upperDecisionLevels.begin() );
+		std::copy( state._lowerDecisionLevels.begin(), state._lowerDecisionLevels.end(), _lowerDecisionLevels.begin() );
+		_upperDecisionLevels.shrink_to_fit();
+		_lowerDecisionLevels.shrink_to_fit();
 
 		ASSERT( _groundLowerBounds.size() == _tableau->getN() );
 		ASSERT( _groundUpperBounds.size() == _tableau->getN() );
@@ -1608,31 +1641,31 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
         if ( bound._type == Tightening::LB )
         {
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && isBoundTightest(bound._variable, bound._value, false ) )
 			{
-            	if ( FloatUtils::gt( bound._value, _tableau->getLowerBound( variable ) ) )
-				{
-					_tableau->resetExplanation( variable, false );
-					_groundLowerBounds[variable] = bound._value;
-				}
+				_tableau->resetExplanation( variable, false );
+				_groundLowerBounds[variable] = bound._value;
+				_lowerDecisionLevels[variable] = _smtCore.getStackDepth();
+				_tableau->tightenLowerBound( variable, bound._value );
 			}
-            _tableau->tightenLowerBound( variable, bound._value );
+            else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+            	_tableau->tightenLowerBound( variable, bound._value );
         }
         else
         {
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
-			if ( GlobalConfiguration::PROOF_CERTIFICATE )
+			if ( GlobalConfiguration::PROOF_CERTIFICATE && isBoundTightest( bound._variable, bound._value, true ) )
 			{
-				if ( FloatUtils::lt( bound._value, _tableau->getUpperBound( variable ) ) )
-				{
-					_tableau->resetExplanation( variable, true );
-					_groundUpperBounds[variable] = bound._value;
-				}
+				_tableau->resetExplanation( variable, true );
+				_groundUpperBounds[variable] = bound._value;
+				_upperDecisionLevels[variable] = _smtCore.getStackDepth();
+				_tableau->tightenUpperBound( variable, bound._value );
 			}
-            _tableau->tightenUpperBound( variable, bound._value );
+			else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+            	_tableau->tightenUpperBound( variable, bound._value );
         }
     }
-	//validateAllBounds( 0.01, 1000000 );
+
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _UNSATCertificateCurrentPointer )
 		_UNSATCertificateCurrentPointer->wasVisited();
 
@@ -1686,7 +1719,8 @@ void Engine::applyAllBoundTightenings()
 
     applyAllRowTightenings();
     applyAllConstraintTightenings();
-    checkGroundBounds();
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    	checkGroundBounds();
     struct timespec end = TimeUtils::sampleMicro();
     _statistics.addTimeForApplyingStoredTightenings( TimeUtils::timePassed( start, end ) );
 }
@@ -1927,7 +1961,7 @@ List<unsigned> Engine::getInputVariables() const
 void Engine::performSymbolicBoundTightening()
 {
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
-         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE)
+         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE )
         return;
 
     struct timespec start = TimeUtils::sampleMicro();
@@ -2408,7 +2442,7 @@ void Engine::printBoundsExplanation( const unsigned var )
 
     printf( "The explanation of variable x%d\n", var );
     unsigned m = _tableau->getM();
-    SingleVarBoundsExplanator* certificate = new SingleVarBoundsExplanator( m );
+    SingleVarBoundsExplainer* certificate = new SingleVarBoundsExplainer( m );
     *certificate = *_tableau->explainBound(var);
     std::vector<double> expl = std::vector<double>( m, 0 );
     certificate->getVarBoundExplanation( expl, true );
@@ -2442,11 +2476,20 @@ int Engine::explainFailureWithTableau()
 
     if ( FloatUtils::isZero( newBound ) )
 		newBound = 0;
+	std::vector<double> backup = std::vector<double> ( _tableau->getM(), 0 );
 
     if ( FloatUtils::lt( newBound, _tableau->getLowerBound( var ) ) )
     {
+		_tableau->explainBound( var )->getVarBoundExplanation( backup, true );
 		_tableau->updateExplanation( boundUpdateRow, true );
-        return ( int ) var;
+
+		if ( certifyInfeasibility( var ) )
+		{
+			backup.clear();
+			return var;
+		}
+		else
+			_tableau->injectExplanation( var, backup, true ); // Restores previous certificate if the proof is wrong
     }
 	newBound = _tableau->computeRowBound( boundUpdateRow, false );
 
@@ -2455,56 +2498,34 @@ int Engine::explainFailureWithTableau()
 
     if ( FloatUtils::gt( newBound, _tableau->getUpperBound( var ) ) )
     {
-    	_tableau->updateExplanation( boundUpdateRow, false );
-		return  ( int ) var;
+		_tableau->explainBound( var )->getVarBoundExplanation( backup, true );
+		_tableau->updateExplanation( boundUpdateRow, false );
+
+		if ( certifyInfeasibility( var ) )
+		{
+			backup.clear();
+			return var;
+		}
+		else
+			_tableau->injectExplanation( var, backup, false ); // Restores previous certificate if the proof is wrong
     }
+
+	backup.clear();
 	return -1;
 }
 
-bool Engine::certifyInfeasibility( const unsigned var, bool toPrint ) const
+bool Engine::certifyInfeasibility( const unsigned var ) const
 {
     double computedUpper = getExplainedBound( var, true ), computedLower = getExplainedBound( var, false );
-    if ( computedLower > computedUpper )
-    	return true;
-
-	else if ( toPrint )
-    	printf("(Local) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
-	return false;
-    //TODO revert upon completing
-    //ASSERT( abs( computedUpper - _tableau->getUpperBound( var ) ) < epsilon );
-    //ASSERT( abs( computedLower - _tableau->getLowerBound( var ) ) < epsilon );
-
-    //ASSERT( FloatUtils::lt( computedUpper, computedLower ) );
+	return computedLower > computedUpper;
 }
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-	SingleVarBoundsExplanator *certificate = _tableau->explainBound( var );
+	SingleVarBoundsExplainer *certificate = _tableau->explainBound( var );
 	std::vector<double> expl ( _tableau->getM() );
 	certificate->getVarBoundExplanation( expl, isUpper );
 	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
-}
-
-
-double Engine::extractVarExplanationCoefficient ( const unsigned var, const bool isUpper ) const
-{
-	unsigned m = _tableau->getM();
-	double c = 0;
-
-	auto* certificate = new SingleVarBoundsExplanator( m );
-	*certificate = *_tableau->explainBound( var );
-
-	// Retrieve bound explanation
-	std::vector<double> expl = std::vector<double>( m, 0 );
-	certificate->getVarBoundExplanation( expl, isUpper );
-
-	for ( unsigned i = 0; i < m; ++i )
-		if ( !FloatUtils::isZero( expl[i] ) )
-			c += _initialTableau[i][var] * expl[i];
-
-	expl.clear();
-	delete certificate;
-	return c;
 }
 
 bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
@@ -2512,25 +2533,23 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return true;
 
-	auto certificate = _tableau->explainBound( var );
-	ASSERT( certificate->getLength() == _tableau->getM() );
-	certificate->assertLengthConsistency();
 	double explained, real;
+	explained = getExplainedBound( var, isUpper );
 	if ( isUpper )
 	{
-		explained = getExplainedBound( var, true ), real = _tableau->getUpperBound( var );
+		real = _tableau->getUpperBound( var );
 		if ( explained - real > epsilon || explained - real < -M  || abs(explained) > 10 * M )
 		{
-			printf( "Var %d. Computed Upper %.5lf, real %.5lf, rec level is %d\n", var, explained, real, certificate->_upperRecLevel );
+			printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
 			return false;
 		}
 	}
 	else
 	{
-		explained = getExplainedBound( var, false ), real = _tableau->getLowerBound( var );
+		real = _tableau->getLowerBound( var );
 		if ( explained - real  < -epsilon || explained - real > M || abs(explained) > 10 * M )
 		{
-			printf( "Var %d. Computed Lower  %.5lf, real %.5lf, rec level is %d\n", var, explained, real, certificate->_lowerRecLevel );
+			printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
 			return false;
 		}
 	}
@@ -2561,61 +2580,71 @@ const Preprocessor *Engine::getPreprocessor()
     return &_preprocessor;
 }
 
-void Engine::updateGroundUpperBound( const unsigned var, const double value )
+void Engine::updateGroundUpperBound( const unsigned var, const double value, unsigned decisionLevel )
 {
+	ASSERT( var < _tableau->getN() );
 	if ( FloatUtils::lt( value, _groundUpperBounds[var] ) )
 	{
 		_groundUpperBounds[var] = value;
-		_tableau->resetExplanation( var, true );
+		_upperDecisionLevels[var] = decisionLevel;
 	}
 }
 
-void Engine::updateGroundLowerBound( const unsigned var, const double value )
+void Engine::updateGroundLowerBound( const unsigned var, const double value, unsigned decisionLevel )
 {
+	ASSERT( var < _tableau->getN() );
 	if ( FloatUtils::gt( value, _groundLowerBounds[var] ) )
 	{
 		_groundLowerBounds[var] = value;
-		_tableau->resetExplanation( var, false );
+		_lowerDecisionLevels[var] = decisionLevel;
 	}
+}
+
+double Engine::getGroundUpperBound( unsigned var ) const
+{
+	return _groundUpperBounds[var];
+}
+
+double Engine::getGroundLowerBound( unsigned var ) const
+{
+	return _groundLowerBounds[var];
 }
 
 void Engine::explainSimplexFailure()
 {
-	if( !GlobalConfiguration::PROOF_CERTIFICATE )
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
 
 	applyAllBoundTightenings();
 
-	checkGroundBounds();
-	validateAllBounds( 0.01, 1000000 );
+//	checkGroundBounds();  //TODO keep commented when running on Cluster
+//	validateAllBounds( 0.01, 1000000 );
 
 	int inf = _tableau->getInfeasibleVar();
 
 	if ( inf < 0 )
 		inf = explainFailureWithTableau();
 
-	if ( inf < 0 || !certifyInfeasibility( inf, false ) )
+	if ( inf < 0 )
 		inf = explainFailureWithCostFunction();
 
 	if ( inf < 0 )
 	{
-		delegateProblematicLeaf();
+		markLeafToDelegate();
 		return;
 	}
 
-	assert ( ( unsigned ) inf < _tableau->getN() );
-	validateBounds( inf, 0.01, 1000000, true );
-	validateBounds( inf, 0.01, 1000000, false );
-	//printBoundsExplanation( inf );
-	certifyInfeasibility( inf, true );
-	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+	ASSERT( ( unsigned ) inf < _tableau->getN() );
+	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+	_statistics.incNumCertifiedLeaves();
 
-	SingleVarBoundsExplanator* temp = new SingleVarBoundsExplanator( _tableau->getN() );
+	SingleVarBoundsExplainer* temp = new SingleVarBoundsExplainer( _tableau->getN() );
 	*temp = *_tableau->explainBound( inf );
 	Contradiction* tempCont = new Contradiction();
 	*tempCont = { ( unsigned ) inf, temp };
 
 	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
+	performJumpForUNSATCertificate( computeJumpLevel( inf ) );
 }
 
 void Engine::checkGroundBounds() const
@@ -2623,8 +2652,8 @@ void Engine::checkGroundBounds() const
 	unsigned n = _tableau->getN();
 	for ( unsigned i = 0; i < n; ++i )
 	{
-		assert( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
-		assert( FloatUtils::gte( _groundUpperBounds[i], _tableau->getUpperBound( i ) ) );
+		ASSERT( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
+		ASSERT( FloatUtils::gte( _groundUpperBounds[i], _tableau->getUpperBound( i ) ) );
 	}
 }
 
@@ -2632,7 +2661,7 @@ int Engine::explainFailureWithCostFunction()
 {
 	int inf = updateFirstInfeasibleBasic();
 
-	if ( inf >= 0 && certifyInfeasibility( inf, false ) )
+	if ( inf >= 0 )
 		return inf;
 
 	// If for some reason, no basic var with contradicting explained bound is found, try recomputing the cost function
@@ -2643,11 +2672,11 @@ int Engine::explainFailureWithCostFunction()
 int Engine::updateFirstInfeasibleBasic()
 {
 	unsigned m = _tableau->getM();
-	int curBasicVar = -1;
-	double costBound, curCost;
-	bool curUpper = false, hadBreak = false;
+	int curBasicVar, inf = -1;
+	double curCost;
+	bool curUpper = false;
 	auto *costRow = _costFunctionManager->createRowOfCostFunction();
-	std::vector<double> backup = std::vector<double> ( m, 0 );
+	std::vector<double> backup = std::vector<double>( m, 0 );
 
 	for ( unsigned i = 0; i < m; ++i )
 	{
@@ -2659,23 +2688,17 @@ int Engine::updateFirstInfeasibleBasic()
 
 		curUpper = curCost < 0;
 		_tableau->explainBound( curBasicVar )->getVarBoundExplanation( backup, curUpper );
-		costBound = _tableau->computeSparseRowBound( *costRow, curUpper, curBasicVar );
-		if ( ( curUpper && FloatUtils::lt( costBound, _tableau->getLowerBound( curBasicVar ) ) ) || ( !curUpper && FloatUtils::gt( costBound, _tableau->getUpperBound( curBasicVar ) ) ) )
-		{
-			_tableau->updateExplanation( *costRow, curUpper, curBasicVar );
-			if ( certifyInfeasibility( curBasicVar, false ) ) // Ensures that the proof is correct
-			{
-				hadBreak = true;
-				break;
-			}
-			else
-				_tableau->injectExplanation( curBasicVar, backup, curUpper ); // Restores previous certificate if the proof is wrong
-		}
+		_tableau->updateExplanation( *costRow, curUpper, curBasicVar );
+
+		if ( certifyInfeasibility( curBasicVar ) ) // Ensures the proof is correct
+			inf = curBasicVar;
+		else
+			_tableau->injectExplanation( curBasicVar, backup, curUpper ); // Restores previous certificate if the proof is wrong
 	}
 
 	backup.clear();
 	delete costRow;
-	return hadBreak ? curBasicVar : -1;
+	return inf;
 }
 
 CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
@@ -2693,23 +2716,33 @@ CertificateNode* Engine::getUNSATCertificateRoot() const
 	return _UNSATCertificate;
 }
 
-bool Engine::certifyUNSATCertificate() const
+bool Engine::certifyUNSATCertificate()
 {
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		return _UNSATCertificate->certify();
-	return false;
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return false;
+
+	struct timespec certificationStart = TimeUtils::sampleMicro();
+	bool certificationSucceeded = _UNSATCertificate->certify();
+	struct timespec certificationEnd = TimeUtils::sampleMicro();
+
+	_statistics.addCertificationTime( TimeUtils::timePassed( certificationStart, certificationEnd ) );
+	_statistics.printfCertificationTime();
+
+	return certificationSucceeded;
 }
 
 bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
 {
 	double realBound;
 	ASSERT( var < _tableau->getN() );
+
 	if ( isUpper )
 	{
 		realBound = std::min( _rowBoundTightener->getUpperBound( var ), _tableau->getUpperBound( var ) );
 		realBound = std::min( realBound, _constraintBoundTightener->getUpperBound( var ) );
 		return FloatUtils::lt( value, realBound );
 	}
+
 	realBound = std::max( _rowBoundTightener->getLowerBound( var ), _tableau->getLowerBound( var ) );
 	realBound = std::max( realBound, _constraintBoundTightener->getLowerBound( var ) );
 	return FloatUtils::gt( value, realBound );
@@ -2717,39 +2750,121 @@ bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
 
 void Engine::removePLCExplanationsFromCurrentCertificateNode()
 {
-	assert( _UNSATCertificateCurrentPointer );
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return;
+
+	ASSERT( _UNSATCertificateCurrentPointer );
 	_UNSATCertificateCurrentPointer->removePLCExplanations();
 }
 
-void Engine::delegateProblematicLeaf()
+void Engine::markLeafToDelegate()
 {
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return;
+
 	// Mark leaf with toDelegate Flag
-	assert( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-	_UNSATCertificateCurrentPointer->shouldDelegate();
+	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getNumDelegatedLeaves() );
+	_statistics.incNumDelegatedLeaves();
+}
 
-	// Write to smtWriter
-	SparseUnsortedList tempRow;
-	unsigned m = _tableau->getM(), b, f;
-	_smtWriter.addInstance();
-	_smtWriter.addHeader( _tableau->getN() );
-	_smtWriter.addGroundUpperBounds( _groundUpperBounds );
-	_smtWriter.addGroundLowerBounds( _groundLowerBounds );
+unsigned Engine::computeJumpLevel( unsigned infVar )
+{
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return 0;
 
-	for ( unsigned i = 0; i < m; ++i )
+	unsigned contradictionLevel = std::max( computeExplanationDecisionLevel( infVar, true ), computeExplanationDecisionLevel( infVar, false ) );
+	ASSERT( _smtCore.getStackDepth() >= contradictionLevel );
+	unsigned jumpSize = _smtCore.getStackDepth() - contradictionLevel;
+
+	_statistics.incTotalJumpLevel( jumpSize );
+
+	return jumpSize;
+}
+
+void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
+{
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !jumpSize )
+		return;
+
+	//Use another pointer so popping can be performed as usual
+	CertificateNode* curCertificatePointer = _UNSATCertificateCurrentPointer;
+	std::list<PLCExplanation*> explOnPath = std::list<PLCExplanation*>( 0 );
+	std::list<PLCExplanation*> curExplList = std::list<PLCExplanation*>( 0 );
+
+	// Copy all proofs for PLC bound propagations from all nodes in the path to the parent.
+	// Maintain original order.
+	for ( unsigned i = 0; i < jumpSize; ++i )
 	{
-		_tableau->getSparseARow( i, &tempRow );
-		_smtWriter.addTableauRow( tempRow );
+		ASSERT( curCertificatePointer );
+		for ( const auto& expl : curCertificatePointer->getPLCExplanations() )
+			if ( expl->_decisionLevel <= _smtCore.getStackDepth() - jumpSize )
+			{
+				PLCExplanation *explCopy = new PLCExplanation();
+				explCopy->copyContent( expl );
+				curExplList.push_back( explCopy );
+			}
+
+		explOnPath.insert( explOnPath.cbegin(), curExplList.cbegin(), curExplList.cend() );
+		curExplList.clear();
+		curCertificatePointer = curCertificatePointer->getParent();
 	}
 
-	for ( auto &constraint : _plConstraints )
-		if ( constraint->getType() == PiecewiseLinearFunctionType::RELU && !constraint->phaseFixed() )
+	ASSERT( curCertificatePointer );
+
+	// Copy proofs for PLC bound propagations to the new leaf
+	for ( const auto &expl : explOnPath )
+		curCertificatePointer->addPLCExplanation( expl );
+	explOnPath.clear();
+
+	// Place contradiction in appropriate place, if original leaf had one
+	Contradiction* contradictionCopy = new Contradiction();
+	contradictionCopy->_explanation = new SingleVarBoundsExplainer( _tableau->getN() );
+	contradictionCopy->copyContent( _UNSATCertificateCurrentPointer->getContradiction() );
+	curCertificatePointer->setContradiction( contradictionCopy );
+
+	// Perform all pops
+	_smtCore.backjump( jumpSize );
+
+	ASSERT( curCertificatePointer == _UNSATCertificateCurrentPointer );
+
+	// Erase irrelevant info
+	curCertificatePointer->makeLeaf();
+}
+
+unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) const
+{
+	unsigned m = _tableau->getM(), n = _tableau->getN(), contradictionLevel = 0;
+	auto* certificate = new SingleVarBoundsExplainer( m );
+	*certificate = *_tableau->explainBound( var );
+
+	// Retrieve bound explanation
+	std::vector<double> expl = std::vector<double>( m, 0 );
+
+	certificate->getVarBoundExplanation( expl, isUpper );
+	if ( expl.empty() )
+	{
+		delete certificate;
+		expl.clear();
+		return isUpper ? _upperDecisionLevels[var] : _lowerDecisionLevels[var];
+	}
+
+	std::vector<double> explRowsCombination;
+	UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, _initialTableau );
+
+	for ( unsigned i = 0; i < n; ++i )
+	{
+		if ( !FloatUtils::isZero( explRowsCombination[i] ) )
 		{
-			auto vars = constraint->getParticipatingVariables();
-			b = vars.front();
-			vars.popBack();
-			f = vars.back();
-			_smtWriter.addReLUConstraint( b, f );
+			if ( isUpper )
+				contradictionLevel = std::max( contradictionLevel, explRowsCombination[i] > 0  ? _upperDecisionLevels[i] : _lowerDecisionLevels[i] );
+			else
+				contradictionLevel = std::max( contradictionLevel, explRowsCombination[i] < 0  ? _upperDecisionLevels[i] : _lowerDecisionLevels[i] );
 		}
-	_smtWriter.addFooter();
-	_statistics.incNumDelegatedLeaves();
+	}
+
+	expl.clear();
+	explRowsCombination.clear();
+	delete certificate;
+	return contradictionLevel;
 }

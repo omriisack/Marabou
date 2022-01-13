@@ -1018,8 +1018,11 @@ void ReluConstraint::updateScoreBasedOnPolarity()
 
 SparseUnsortedList ReluConstraint::createTighteningRow() const
 {
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+		return SparseUnsortedList();
+
 	//TODO consider making an object field (without invalid memory frees)
-	assert(_auxVarInUse && _constraintBoundTightener && _tableauAuxVar );
+	ASSERT( _auxVarInUse && _constraintBoundTightener && _tableauAuxVar );
 
 	SparseUnsortedList tighteningRow ( 4 );
 	// f = b + aux + counterpart (an additional aux variable of tableau)
