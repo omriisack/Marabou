@@ -123,7 +123,7 @@ void Marabou::solveQuery()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE && !_engine.certifyUNSATCertificate() )
     	printf("Error certifying UNSAT certificate\n"); //TODO call only in case of UNSAT when done
-    else
+    else if ( GlobalConfiguration::PROOF_CERTIFICATE )
     	printf("Certified\n");
 
     if ( _engine.getExitCode() == Engine::SAT )

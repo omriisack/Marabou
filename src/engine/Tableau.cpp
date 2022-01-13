@@ -2663,7 +2663,7 @@ bool Tableau::checkSlack( const unsigned rowIndex )
 	Tableau::getTableauRow( rowIndex, row );
     unsigned basicVar = row->_lhs;
 	bool needDecreasing =  FloatUtils::gt( _basicAssignment[rowIndex], _upperBounds[basicVar] ), needIncreasing = FloatUtils::lt( _basicAssignment[rowIndex], _lowerBounds[basicVar] );
-	assert( needDecreasing || needIncreasing );
+	ASSERT( needDecreasing || needIncreasing );
 	for ( unsigned i = 0; i < row->_size; ++i )
 	{
 		double curCoefficient = row->_row[i]._coefficient;
@@ -2747,7 +2747,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 
 double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
-	assert ( !row.empty() && var < _n );
+	ASSERT( !row.empty() && var < _n );
 	unsigned curVar;
 	double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
 	for ( const auto& entry : row )
@@ -2757,7 +2757,7 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 			break;
 		}
 
-	assert( !FloatUtils::isZero( ci ) );
+	ASSERT( !FloatUtils::isZero( ci ) );
 
 	for ( const auto& entry : row )
 	{
@@ -2768,6 +2768,10 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 			continue;
 
 		realCoefficient = curVal / -ci;
+
+		if ( FloatUtils::isZero( realCoefficient ) )
+			continue;
+
 		multiplier = ( isUpper && FloatUtils::isPositive( realCoefficient ) ) || ( !isUpper && FloatUtils::isNegative( realCoefficient ) ) ? _upperBounds[curVar] : _lowerBounds[curVar];
 		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
 		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
@@ -2783,7 +2787,7 @@ void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 
 void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
 {
-	ASSERT( expl.size() == _m );
+	ASSERT( expl.size() == _m || expl.empty() );
 	_boundsExplainer->injectExplanation( var, expl, isUpper );
 }
 

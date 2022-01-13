@@ -98,7 +98,7 @@ public:
 	 */
 	static void writeInstanceToFile( const std::string &directory, unsigned delegationNumber , const List<String>& instance )
 	{
-		std::ofstream file ( directory + "_delegated" + std::to_string( delegationNumber ) + ".smtlib");
+		std::ofstream file ( directory + "delegated" + std::to_string( delegationNumber ) + ".smtlib");
 		for ( const String &s : instance )
 			file << s;
 		file.close();

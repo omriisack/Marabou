@@ -50,18 +50,11 @@ public:
 	 */
 	void addEntry( double coefficient );
 
-	/*
-	 * Asserts that all lengths are consistent
-	 */
-	void assertLengthConsistency() const;
-
-	unsigned _upperRecLevel; // For debugging purpose, TODO delete upon completing
-	unsigned _lowerRecLevel;
-
 private:
 	unsigned _length;
-	std::vector<double> _lower;
 	std::vector<double> _upper;
+	std::vector<double> _lower;
+	friend class BoundsExplainer;
 };
 
 
@@ -81,10 +74,6 @@ public:
  	* Returns the number of variables
  	*/
 	unsigned getVarsNum() const;
-	/*
-	  Puts the values of a bound explanation in the array bound.
-	*/
-	void getOneBoundExplanation ( std::vector<double>& bound, unsigned var, bool isUpper ) const;
 
 	/*
 	  Puts the values of a bound explanation in the array bound.

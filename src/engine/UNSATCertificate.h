@@ -21,11 +21,23 @@
 #include "ReluConstraint.h"
 #include "PiecewiseLinearFunctionType.h"
 #include "SmtLibWriter.h"
+#include "Options.h"
 
 // Contains an explanation for a ground bound update during a run (i.e from ReLU phase-fixing)
 // For now only relevant to ReLU constraints
 struct PLCExplanation
 {
+	unsigned _causingVar;
+	unsigned _affectedVar;
+	double _bound;
+	bool _isCausingBoundUpper;
+	bool _isAffectedBoundUpper;
+	double *_explanation;
+	unsigned _length;
+	PiecewiseLinearFunctionType _constraintType;
+	List<unsigned> _constraintVars;
+	unsigned _decisionLevel;
+
 	void copyContent( PLCExplanation *other )
 	{
 		_causingVar = other->_causingVar;
@@ -45,30 +57,19 @@ struct PLCExplanation
 		_constraintVars.clear();
 		for( auto var : other->_constraintVars )
 			_constraintVars.append( var );
-
 	}
-
-	unsigned _causingVar;
-	unsigned _affectedVar;
-	double _bound;
-	bool _isCausingBoundUpper;
-	bool _isAffectedBoundUpper;
-	double *_explanation;
-	unsigned _length;
-	PiecewiseLinearFunctionType _constraintType;
-	List<unsigned> _constraintVars;
-	unsigned _decisionLevel;
 };
 
 struct Contradiction
 {
+	unsigned _var;
+	SingleVarBoundsExplainer* _explanation; //TODO switch to two arrays
+
 	void copyContent( Contradiction* other)
 	{
 		_var = other->_var;
 		*_explanation = *( other->_explanation );
 	}
-	unsigned _var;
-	SingleVarBoundsExplainer* _explanation;
 };
 
 struct ProblemConstraint
@@ -247,25 +248,21 @@ public:
 							   const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
 		ASSERT( groundLBs.size() == groundUBs.size() );
-		ASSERT( initialTableau.size() == expl.size() );
-		ASSERT( groundLBs.size() == initialTableau[0].size() - 1 );
-		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
+		ASSERT( initialTableau.size() == expl.size() || expl.empty() );
+		ASSERT( groundLBs.size() == initialTableau[0].size() );
+		ASSERT( groundLBs.size() == initialTableau[initialTableau.size() - 1].size() );
+		ASSERT( var < groundUBs.size() );
 
-		double derived_bound = 0, scalar = 0, temp;
+		double derived_bound = 0, temp;
 		unsigned n = groundUBs.size();
-		std::vector<double> explCopy ( expl );
 
-		// If explanation is all zeros, return original bound
-		//TODO maybe add an allZero bit to explanations to improve efficiency
-		bool allZeros = std::all_of( expl.begin(), expl.end(), [] ( double x ) { return FloatUtils::isZero( x ); } );
-
-		if ( allZeros )
+		if ( expl.empty() )
 			return isUpper ? groundUBs[var] : groundLBs[var];
 
+		std::vector<double> explCopy ( expl );
 		// Create linear combination of original rows implied from explanation
-		std::vector<double> explRowsCombination = std::vector<double>( n, 0 );
-		UNSATCertificateUtils::getExplanationRowCombination( explRowsCombination, expl, initialTableau );
-		explRowsCombination[var] = 0;
+		std::vector<double> explRowsCombination;
+		UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, initialTableau );
 
 		// Set the bound derived from the linear combination, using original bounds.
 		for ( unsigned i = 0; i < n; ++i )
@@ -283,37 +280,31 @@ public:
 			}
 		}
 
-		derived_bound += scalar;
 		explRowsCombination.clear();
 		explCopy.clear();
 		return derived_bound;
 	}
 
 
-	static void getExplanationRowCombination( std::vector<double> &explRowsCombination, const std::vector<double> &expl,
+	static void getExplanationRowCombination( unsigned var, std::vector<double> &explRowsCombination, const std::vector<double> &expl,
 											   const std::vector<std::vector<double>> &initialTableau )
 	{
-		ASSERT( explRowsCombination.size() == initialTableau[0].size() - 1 );
-		ASSERT( explRowsCombination.size() == initialTableau[initialTableau.size() - 1].size() - 1 );
-
-		unsigned n = explRowsCombination.size(), m = expl.size();
+		explRowsCombination = std::vector<double>(initialTableau[0].size(), 0 );
+		unsigned n = initialTableau[0].size(), m = expl.size();
 		for ( unsigned i = 0; i < m; ++i )
-		{
 			for ( unsigned j = 0; j < n; ++j )
 				if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( expl[i]) )
 					explRowsCombination[j] += initialTableau[i][j] * expl[i];
 
-		}
-
-		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
-		// We have: var = - Sum (ci * xi) - (c - 1) * var
 		for ( unsigned i = 0; i < n; ++i )
 			if ( !FloatUtils::isZero( explRowsCombination[i] ) )
 				explRowsCombination[i] *= -1;
 			else
 				explRowsCombination[i] = 0;
 
-
+		// Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
+		// We have: var = - Sum (ci * xi) - (c - 1) * var
+		explRowsCombination[var] += 1;
 	}
 };
 #endif //__UNSATCertificate_h__

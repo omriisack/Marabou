@@ -144,8 +144,8 @@ bool CertificateNode::certify()
 
 	// Check if it is a leaf, and if so use contradiction to certify
 	// return true iff it is certified
-	if ( _shouldDelegate )
-		writeLeafToFile();
+//	if ( _shouldDelegate ) //TODO uncomment
+//		writeLeafToFile();
 
 	if ( _hasSATSolution || _shouldDelegate )
 		return true;
@@ -441,7 +441,7 @@ void CertificateNode::removePLCExplanations()
 
 void CertificateNode::writeLeafToFile()
 {
-	assert( _children.empty() && _shouldDelegate );
+	ASSERT( _children.empty() && _shouldDelegate );
 	List<String> leafInstance;
 
 	// Write to smtWriter
@@ -471,5 +471,5 @@ void CertificateNode::writeLeafToFile()
 		}
 
 	SmtLibWriter::addFooter(leafInstance );
-	SmtLibWriter::writeInstanceToFile("", _delegationNumber, leafInstance );
+	SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
 }

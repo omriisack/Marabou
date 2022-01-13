@@ -391,7 +391,7 @@ double CostFunctionManager::getBasicCost( unsigned basicIndex ) const
 
 SparseUnsortedList* CostFunctionManager::createRowOfCostFunction() const
 {
-	SparseUnsortedList* costRow = new SparseUnsortedList();
+	SparseUnsortedList* costRow = new SparseUnsortedList( 0 );
 	for ( unsigned i = 0; i < _m; ++i )
 		if ( !FloatUtils::isZero( _basicCosts[i] ) )
 		{
