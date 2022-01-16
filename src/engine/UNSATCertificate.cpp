@@ -62,11 +62,8 @@ CertificateNode::~CertificateNode()
 
 	if ( _contradiction )
 	{
-		if ( _contradiction->_explanation )
-		{
-			delete _contradiction->_explanation;
-			_contradiction->_explanation = NULL;
-		}
+		_contradiction->_upperExplanation.clear();
+		_contradiction->_lowerExplanation.clear();
 
 		delete _contradiction;
 		_contradiction = NULL;
@@ -183,13 +180,9 @@ bool CertificateNode::certifyContradiction() const
 {
 	ASSERT( isValidLeaf() && !_hasSATSolution );
 	unsigned var = _contradiction->_var;
-	SingleVarBoundsExplainer& varExpl = *_contradiction->_explanation;
 
-	std::vector<double> ubExpl ( varExpl.getLength() );
-	std::vector<double> lbExpl ( varExpl.getLength() );
-
-	varExpl.getVarBoundExplanation( ubExpl, true );
-	varExpl.getVarBoundExplanation( lbExpl, false );
+	std::vector<double> ubExpl ( _contradiction->_upperExplanation );
+	std::vector<double> lbExpl ( _contradiction->_lowerExplanation );
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 
@@ -292,14 +285,15 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
 		auto explVec = std::vector<double>( expl->_length,0 );
-		std::copy( expl->_explanation, expl->_explanation + expl->_length, explVec.begin() );
+		if ( !explVec.empty() )
+			std::copy( expl->_explanation, expl->_explanation + expl->_length, explVec.begin() );
 		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
 		for ( auto& con : _problemConstraints )
 		{
 			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && expl->_constraintVars == con._constraintVars )
-			{   //TODO reconsider designs
+			{   //TODO reconsider design
 				std::vector<unsigned> conVec( con._constraintVars.begin(), con._constraintVars.end() );
 				b = conVec[0], f = conVec[1], aux = conVec[2];
 				conVec.clear();

@@ -63,12 +63,14 @@ struct PLCExplanation
 struct Contradiction
 {
 	unsigned _var;
-	SingleVarBoundsExplainer* _explanation; //TODO switch to two arrays
+	std::vector<double> _upperExplanation;
+	std::vector<double> _lowerExplanation;
 
 	void copyContent( Contradiction* other)
 	{
 		_var = other->_var;
-		*_explanation = *( other->_explanation );
+		_upperExplanation = std::vector<double>( other->_upperExplanation );
+		_lowerExplanation = std::vector<double>( other->_lowerExplanation );
 	}
 };
 
@@ -259,7 +261,6 @@ public:
 		if ( expl.empty() )
 			return isUpper ? groundUBs[var] : groundLBs[var];
 
-		std::vector<double> explCopy ( expl );
 		// Create linear combination of original rows implied from explanation
 		std::vector<double> explRowsCombination;
 		UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, initialTableau );
@@ -281,7 +282,6 @@ public:
 		}
 
 		explRowsCombination.clear();
-		explCopy.clear();
 		return derived_bound;
 	}
 

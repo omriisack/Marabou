@@ -2525,14 +2525,6 @@ void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
     }
 }
 
-std::vector<double> Engine::getVarCurrentBoundExplanation(unsigned var, bool isUpper ) const
-{
-	std::vector<double> expl( _tableau->getM(), 0 );
-	_tableau->explainBound( var )->getVarBoundExplanation( expl, isUpper );
-	return expl;
-}
-
-
 void Engine::printBoundsExplanation( const unsigned var )
 {
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
@@ -2543,23 +2535,19 @@ void Engine::printBoundsExplanation( const unsigned var )
 
     printf( "The explanation of variable x%d\n", var );
     unsigned m = _tableau->getM();
-    SingleVarBoundsExplainer* certificate = new SingleVarBoundsExplainer( m );
-    *certificate = *_tableau->explainBound(var);
-    std::vector<double> expl = std::vector<double>( m, 0 );
-    certificate->getVarBoundExplanation( expl, true );
+    std::vector<double> expl = _tableau->explainBound( var, true );
 
     printf( "Upper bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
         printf( "%.3lf ,", expl[i] );
     printf( "]\n" );
 
-    certificate->getVarBoundExplanation( expl, false );
+ 	expl = _tableau->explainBound( var, false );
     printf( "Lower bound explanation:\n[" );
     for ( unsigned i = 0; i < m; ++i )
         printf( "%.3lf ,", expl[i] );
     printf( "]\n" );
     expl.clear();
-	delete certificate;
 }
 
 int Engine::explainFailureWithTableau()
@@ -2577,21 +2565,13 @@ int Engine::explainFailureWithTableau()
 
     if ( FloatUtils::isZero( newBound ) )
 		newBound = 0;
-	std::vector<double> backup = std::vector<double> ( _tableau->getM(), 0 );
 
     if ( FloatUtils::lt( newBound, _tableau->getLowerBound( var ) ) )
     {
-		_tableau->explainBound( var )->getVarBoundExplanation( backup, true );
 		_tableau->updateExplanation( boundUpdateRow, true );
-
-		if ( certifyInfeasibility( var ) )
-		{
-			backup.clear();
-			return var;
-		}
-		else
-			_tableau->injectExplanation( var, backup, true ); // Restores previous certificate if the proof is wrong
+		return var;
     }
+
 	newBound = _tableau->computeRowBound( boundUpdateRow, false );
 
 	if ( FloatUtils::isZero( newBound ) )
@@ -2599,19 +2579,10 @@ int Engine::explainFailureWithTableau()
 
     if ( FloatUtils::gt( newBound, _tableau->getUpperBound( var ) ) )
     {
-		_tableau->explainBound( var )->getVarBoundExplanation( backup, true );
 		_tableau->updateExplanation( boundUpdateRow, false );
-
-		if ( certifyInfeasibility( var ) )
-		{
-			backup.clear();
-			return var;
-		}
-		else
-			_tableau->injectExplanation( var, backup, false ); // Restores previous certificate if the proof is wrong
+		return var;
     }
 
-	backup.clear();
 	return -1;
 }
 
@@ -2623,10 +2594,7 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-	SingleVarBoundsExplainer *certificate = _tableau->explainBound( var );
-	std::vector<double> expl ( _tableau->getM() );
-	certificate->getVarBoundExplanation( expl, isUpper );
-	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+	return UNSATCertificateUtils::computeBound( var, isUpper, _tableau->explainBound( var, isUpper ), _initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
 bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
@@ -2739,10 +2707,8 @@ void Engine::explainSimplexFailure()
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
 	_statistics.incNumCertifiedLeaves();
 
-	SingleVarBoundsExplainer* temp = new SingleVarBoundsExplainer( _tableau->getN() );
-	*temp = *_tableau->explainBound( inf );
 	Contradiction* tempCont = new Contradiction();
-	*tempCont = { ( unsigned ) inf, temp };
+	*tempCont = { ( unsigned ) inf, std::vector<double>( _tableau->explainBound( inf, true ) ), std::vector<double>( _tableau->explainBound( inf, false ) )  };
 
 	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
 	performJumpForUNSATCertificate( computeJumpLevel( inf ) );
@@ -2775,9 +2741,9 @@ int Engine::updateFirstInfeasibleBasic()
 	unsigned m = _tableau->getM();
 	int curBasicVar, inf = -1;
 	double curCost;
-	bool curUpper = false;
+	bool curUpper;
 	auto *costRow = _costFunctionManager->createRowOfCostFunction();
-	std::vector<double> backup = std::vector<double>( m, 0 );
+	std::vector<double> backup;
 
 	for ( unsigned i = 0; i < m; ++i )
 	{
@@ -2788,13 +2754,14 @@ int Engine::updateFirstInfeasibleBasic()
 			continue;
 
 		curUpper = curCost < 0;
-		_tableau->explainBound( curBasicVar )->getVarBoundExplanation( backup, curUpper );
+		backup = std::vector<double>( _tableau->explainBound( curBasicVar, curUpper ) );
 		_tableau->updateExplanation( *costRow, curUpper, curBasicVar );
-
 		if ( certifyInfeasibility( curBasicVar ) ) // Ensures the proof is correct
+		{
 			inf = curBasicVar;
-		else
-			_tableau->injectExplanation( curBasicVar, backup, curUpper ); // Restores previous certificate if the proof is wrong
+			break;
+		}
+		_tableau->injectExplanation( backup, curBasicVar, curUpper ); // Restores previous certificate if the proof is wrong
 	}
 
 	backup.clear();
@@ -2920,7 +2887,6 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 
 	// Place contradiction in appropriate place, if original leaf had one
 	Contradiction* contradictionCopy = new Contradiction();
-	contradictionCopy->_explanation = new SingleVarBoundsExplainer( _tableau->getN() );
 	contradictionCopy->copyContent( _UNSATCertificateCurrentPointer->getContradiction() );
 	curCertificatePointer->setContradiction( contradictionCopy );
 
@@ -2935,20 +2901,13 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 
 unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) const
 {
-	unsigned m = _tableau->getM(), n = _tableau->getN(), contradictionLevel = 0;
-	auto* certificate = new SingleVarBoundsExplainer( m );
-	*certificate = *_tableau->explainBound( var );
+	unsigned n = _tableau->getN(), contradictionLevel = 0;
 
 	// Retrieve bound explanation
-	std::vector<double> expl = std::vector<double>( m, 0 );
+	std::vector<double> expl = _tableau->explainBound( var, isUpper );
 
-	certificate->getVarBoundExplanation( expl, isUpper );
 	if ( expl.empty() )
-	{
-		delete certificate;
-		expl.clear();
 		return isUpper ? _upperDecisionLevels[var] : _lowerDecisionLevels[var];
-	}
 
 	std::vector<double> explRowsCombination;
 	UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, _initialTableau );
@@ -2966,6 +2925,5 @@ unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) 
 
 	expl.clear();
 	explRowsCombination.clear();
-	delete certificate;
 	return contradictionLevel;
 }

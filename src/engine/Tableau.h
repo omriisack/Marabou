@@ -672,12 +672,6 @@ private:
    */
     int getInfeasibleVar() const;
 
-    /*
-     * Checks that the slack of a given row lhs is empty
-     * TODO delete function when completing
-     */
-	bool checkSlack( unsigned rowIndex );
-
 	/*
  	* Checks that the slack of a given row lhs is empty
 	* TODO delete function when completing
@@ -697,7 +691,7 @@ private:
     /*
       Returns the bounds explanation of a variable in the tableau
     */
-    SingleVarBoundsExplainer* explainBound( unsigned variable ) const;
+	const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const;
 
     /*
      Update a bound explanation according to a row in the Tableau
@@ -722,7 +716,7 @@ private:
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/
-	void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const;
+	void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const;
 
 	/*
      * Explainer of all bounds

@@ -627,9 +627,10 @@ public:
     {
     }
 
-    SingleVarBoundsExplainer* explainBound( const unsigned /* variable */ ) const
+    std::vector<double> _mockExpl = std::vector<double>( 0 );
+    const std::vector<double>& explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
     {
-    	return NULL;
+	   return _mockExpl;
     }
 
 	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ ) const

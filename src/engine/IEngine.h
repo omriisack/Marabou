@@ -97,10 +97,6 @@ public:
     */
     virtual PiecewiseLinearConstraint *pickSplitPLConstraintSnC( SnCDivideStrategy
                                                                  strategy ) = 0;
-	/*
-	 * Returns the current explanation of a var
-	 */
-    virtual std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const = 0;
 
 	/*
  	Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds

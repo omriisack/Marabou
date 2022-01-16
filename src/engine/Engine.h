@@ -176,11 +176,6 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
-    /*
-	 * Returns the current explanation of a var
-	 */
-	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
-
 	/*
 	 * Update the ground bounds
 	 */

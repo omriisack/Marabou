@@ -191,12 +191,6 @@ public:
             return NULL;
     }
 
-
-	std::vector<double> getVarCurrentBoundExplanation(unsigned /* var */, bool /* isUpper */ ) const
-	{
-    	return std::vector<double> ( 0,0 );
-	}
-
 	double getExplainedBound( unsigned /* var */,  bool /* isUpper */ ) const
 	{
     	return 0.0;
@@ -229,7 +223,7 @@ public:
 	{
 	}
 
-	CertificateNode*  getUNSATCertificateRoot() const
+	CertificateNode* getUNSATCertificateRoot() const
 	{
 		return NULL;
 	}

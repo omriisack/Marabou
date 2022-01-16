@@ -186,12 +186,12 @@ public:
     virtual int getInfeasibleVar() const = 0;
     virtual double computeRowBound( const TableauRow& row, bool isUpper ) const = 0;
     virtual double computeSparseRowBound( const SparseUnsortedList& row,  bool isUpper,  unsigned var) const = 0;
-    virtual SingleVarBoundsExplainer* explainBound( unsigned variable ) const = 0;
+    virtual const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const = 0;
     virtual void updateExplanation( const TableauRow& row, bool isUpper ) const = 0;
     virtual void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const = 0;
     virtual void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const = 0;
 	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
-    virtual void injectExplanation( unsigned var, const std::vector<double>& expl, bool isUpper ) const = 0;
+    virtual void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
 	virtual BoundsExplainer* getAllBoundsExplanations() const = 0;
 	virtual void setAllBoundsExplanations( BoundsExplainer* boundsExplanations ) = 0;

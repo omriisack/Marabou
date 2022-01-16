@@ -2106,12 +2106,7 @@ void Tableau::addRow()
     }
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-		for ( SingleVarBoundsExplainer& explanation : _boundsExplainer->getExplanations() )
-			explanation.addEntry( 0 );
-		_boundsExplainer->addZeroExplanation();
-	}
-
+		_boundsExplainer->addVariable();
 }
 
 void Tableau::registerToWatchVariable( VariableWatcher *watcher, unsigned variable )
@@ -2657,43 +2652,6 @@ bool Tableau::checkCostFunctionSlack()
 	return true;
 }
 
-bool Tableau::checkSlack( const unsigned rowIndex )
-{
-	TableauRow *row = new TableauRow( _n );
-	Tableau::getTableauRow( rowIndex, row );
-    unsigned basicVar = row->_lhs;
-	bool needDecreasing =  FloatUtils::gt( _basicAssignment[rowIndex], _upperBounds[basicVar] ), needIncreasing = FloatUtils::lt( _basicAssignment[rowIndex], _lowerBounds[basicVar] );
-	ASSERT( needDecreasing || needIncreasing );
-	for ( unsigned i = 0; i < row->_size; ++i )
-	{
-		double curCoefficient = row->_row[i]._coefficient;
-		unsigned var = row->_row[i]._var;
-
-		if ( FloatUtils::isZero( curCoefficient ) )
-			continue;
-		// Cases slack vars should be pressed against lower bounds
-		else if ( ( FloatUtils::isPositive( curCoefficient ) && needDecreasing ) || ( FloatUtils::isNegative( curCoefficient ) && needIncreasing ) )
-		{
-			if ( !( FloatUtils::areEqual( getValue( var ), _lowerBounds[var] ) ) )
-			{
-				delete row;
-				return false;
-			}
-		}
-		// Cases slack vas should be pressed against upper bounds
-		else if ( ( FloatUtils::isPositive( curCoefficient ) && needIncreasing ) || ( FloatUtils::isNegative( curCoefficient ) && needDecreasing ) )
-		{
-			if ( !( FloatUtils::areEqual( getValue( var ), _upperBounds[var] ) ) )
-			{
-				delete row;
-				return false;
-			}
-		}
-	}
-	delete row;
-	return true;
-}
-
 int Tableau::getInfeasibleVar() const
 {
     for (unsigned i = 0; i < _n; ++i)
@@ -2702,10 +2660,10 @@ int Tableau::getInfeasibleVar() const
     return -1;
 }
 
-SingleVarBoundsExplainer* Tableau::explainBound( const unsigned variable ) const
+const std::vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-    return &_boundsExplainer->returnWholeVarExplanation( variable );
+    return _boundsExplainer->returnWholeVarExplanation( variable, isUpper );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
@@ -2772,7 +2730,7 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 		if ( FloatUtils::isZero( realCoefficient ) )
 			continue;
 
-		multiplier = ( isUpper && FloatUtils::isPositive( realCoefficient ) ) || ( !isUpper && FloatUtils::isNegative( realCoefficient ) ) ? _upperBounds[curVar] : _lowerBounds[curVar];
+		multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ? _upperBounds[curVar] : _lowerBounds[curVar];
 		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
 		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
 	}
@@ -2785,10 +2743,10 @@ void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 	_boundsExplainer->resetExplanation( var, isUpper );
 }
 
-void Tableau::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper ) const
+void Tableau::injectExplanation(  const std::vector<double>& expl, const unsigned var, const bool isUpper ) const
 {
 	ASSERT( expl.size() == _m || expl.empty() );
-	_boundsExplainer->injectExplanation( var, expl, isUpper );
+	_boundsExplainer->injectExplanation( expl, var, isUpper );
 }
 
 BoundsExplainer* Tableau::getAllBoundsExplanations() const

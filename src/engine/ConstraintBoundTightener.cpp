@@ -192,16 +192,23 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
 		return;
 
-	// TODO re-consider design of this function
+	// TODO re-consider design
 	// Register new ground bound, update certificate, and reset explanation
 	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, isCausingBoundUpper );
 	auto* PLCExpl = new PLCExplanation();
-	PLCExpl->_explanation = new double[_m];
-	auto explVec = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
+	auto explVec = _tableau.explainBound( causingVar, isCausingBoundUpper );
 
 	PLCExpl->_causingVar = causingVar;
-	PLCExpl->_length = _m;
-	std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
+	PLCExpl->_length = explVec.size();
+
+	if ( explVec.empty() )
+		PLCExpl->_explanation = NULL;
+	else
+	{
+		PLCExpl->_explanation = new double[ explVec.size() ];
+		std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
+	}
+
 	PLCExpl->_constraintVars = constraintVars;
 	PLCExpl->_affectedVar = var;
 	PLCExpl->_bound = value;
