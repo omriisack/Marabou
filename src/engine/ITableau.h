@@ -182,6 +182,19 @@ public:
     virtual unsigned getVariableAfterMerging( unsigned variable ) const = 0;
     virtual void postContextPopHook() = 0;
 
+    bool isOptimizing() const
+    {
+        return _optimizing;
+    }
+
+    void toggleOptimization( bool optimizing )
+    {
+        _optimizing = optimizing;
+    }
+
+protected:
+    bool _optimizing = false;
+
 
     virtual BasicStatus getInfeasibleRow( TableauRow& row ) = 0;
     virtual int getInfeasibleVar() const = 0;

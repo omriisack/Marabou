@@ -68,6 +68,16 @@ public:
     bool solve( unsigned timeoutInSeconds = 0 );
 
     /*
+      Minimize the cost function with respect to the current set of linear constraints.
+    */
+    void minimizeHeuristicCost( const Map<unsigned, double> &heuristicCost );
+
+    /*
+      Compute the cost function with the current assignment.
+    */
+    double computeHeuristicCost( const Map<unsigned, double> &heuristicCost );
+
+    /*
       Process the input query and pass the needed information to the
       underlying tableau. Return false if query is found to be infeasible,
       true otherwise.
@@ -241,6 +251,7 @@ public:
 	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
 
 private:
+
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
         STRONG_RESTORATION_NEEDED = 1,
@@ -458,12 +469,15 @@ private:
      */
     String _queryId;
 
+    Map<unsigned, double> _heuristicCost;
 
     /*
       Perform a simplex step: compute the cost function, pick the
       entering and leaving variables and perform a pivot.
+      Return true only if the current assignment is optimal
+      with respect to _heuristicCost.
     */
-    void performSimplexStep();
+    bool performSimplexStep();
 
     /*
       Perform a constraint-fixing step: select a violated piece-wise
