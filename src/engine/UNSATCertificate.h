@@ -63,14 +63,13 @@ struct PLCExplanation
 struct Contradiction
 {
 	unsigned _var;
-	std::vector<double> _upperExplanation;
-	std::vector<double> _lowerExplanation;
+	double *_upperExplanation;
+	double *_lowerExplanation;
 
-	void copyContent( Contradiction* other)
+	~Contradiction()
 	{
-		_var = other->_var;
-		_upperExplanation = std::vector<double>( other->_upperExplanation );
-		_lowerExplanation = std::vector<double>( other->_lowerExplanation );
+		delete [] _upperExplanation;
+		delete [] _lowerExplanation;
 	}
 };
 

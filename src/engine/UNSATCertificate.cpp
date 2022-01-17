@@ -62,9 +62,6 @@ CertificateNode::~CertificateNode()
 
 	if ( _contradiction )
 	{
-		_contradiction->_upperExplanation.clear();
-		_contradiction->_lowerExplanation.clear();
-
 		delete _contradiction;
 		_contradiction = NULL;
 	}
@@ -141,8 +138,8 @@ bool CertificateNode::certify()
 
 	// Check if it is a leaf, and if so use contradiction to certify
 	// return true iff it is certified
-//	if ( _shouldDelegate ) //TODO uncomment
-//		writeLeafToFile();
+	if ( _shouldDelegate )
+		writeLeafToFile();
 
 	if ( _hasSATSolution || _shouldDelegate )
 		return true;
@@ -181,8 +178,23 @@ bool CertificateNode::certifyContradiction() const
 	ASSERT( isValidLeaf() && !_hasSATSolution );
 	unsigned var = _contradiction->_var;
 
-	std::vector<double> ubExpl ( _contradiction->_upperExplanation );
-	std::vector<double> lbExpl ( _contradiction->_lowerExplanation );
+	std::vector<double> ubExpl;
+	std::vector<double> lbExpl;
+	if ( _contradiction->_upperExplanation )
+	{
+		ubExpl = std::vector<double>( _initialTableau.size(), 0 );
+		std::copy( _contradiction->_upperExplanation,_contradiction->_upperExplanation + _initialTableau.size(), ubExpl.begin() );
+	}
+	else
+		ubExpl = std::vector<double>( 0, 0 );
+
+	if ( _contradiction->_lowerExplanation )
+	{
+		lbExpl = std::vector<double>( _initialTableau.size(), 0 );
+		std::copy( _contradiction->_lowerExplanation, _contradiction->_lowerExplanation + _initialTableau.size(), lbExpl.begin() );
+	}
+	else
+		lbExpl = std::vector<double>( 0, 0 );
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 

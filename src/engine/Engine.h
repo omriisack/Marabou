@@ -683,9 +683,23 @@ private:
 	int updateFirstInfeasibleBasic();
 
 	/*
+	 * Updates an explanation of a bound according to a row, and checks for an explained contradiction.
+	 * If found, return true.
+	 * If not, revert and return false
+	 * TODO check how to create one generalized function
+	 */
+	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
+	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
+
+	/*
 	 * Delegates leaves with certification error to SMTLIB format
 	 */
 	void markLeafToDelegate();
+
+	/*
+	 * Writes the details of a contradiction to the UNSAT certificate
+ 	*/
+	void writeContradictionToCertificate( unsigned infVar );
 
 	/*
  	* Computes jump level based on decision levels of UNSAT certificate for the leaf

@@ -833,7 +833,6 @@ double *Engine::createConstraintMatrix()
                 _initialTableau[count][addend._variable] = addend._coefficient;
 
             // After Preprocessing, all scalars should be zero
-            ASSERT( FloatUtils::isZero( equation._scalar ) );
             ++count;
         }
     }
@@ -2556,32 +2555,16 @@ int Engine::explainFailureWithTableau()
     TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
     // If an infeasible basic is lower than its lower bound, then it cannot be increased.
     // Thus the upper bound imposed by the row is too low
-    if ( _tableau->getInfeasibleRow( boundUpdateRow ) < 0 )
+    int infeasibilityValue = _tableau->getInfeasibleRow( boundUpdateRow );
+    if ( infeasibilityValue == ITableau::BETWEEN )
     	return -1;
 
     unsigned var = boundUpdateRow._lhs;
-    double newBound;
-	newBound = _tableau->computeRowBound( boundUpdateRow, true );
+    std::vector<double> backup;
 
-    if ( FloatUtils::isZero( newBound ) )
-		newBound = 0;
-
-    if ( FloatUtils::lt( newBound, _tableau->getLowerBound( var ) ) )
-    {
-		_tableau->updateExplanation( boundUpdateRow, true );
+    // Attempt to update upper bound iff the basic var is below it lb
+    if ( explainAndCheckContradiction( var, infeasibilityValue == ITableau::BELOW_LB, &boundUpdateRow ) )
 		return var;
-    }
-
-	newBound = _tableau->computeRowBound( boundUpdateRow, false );
-
-	if ( FloatUtils::isZero( newBound ) )
-		newBound = 0;
-
-    if ( FloatUtils::gt( newBound, _tableau->getUpperBound( var ) ) )
-    {
-		_tableau->updateExplanation( boundUpdateRow, false );
-		return var;
-    }
 
 	return -1;
 }
@@ -2686,32 +2669,30 @@ void Engine::explainSimplexFailure()
 
 	applyAllBoundTightenings();
 
-//	checkGroundBounds();  //TODO keep commented when running on Cluster
+//	checkGroundBounds();  // TODO keep commented when running on Cluster
 //	validateAllBounds( 0.01, 1000000 );
 
-	int inf = _tableau->getInfeasibleVar();
+	int infVar = _tableau->getInfeasibleVar();
 
-	if ( inf < 0 )
-		inf = explainFailureWithTableau();
+	if (infVar < 0 )
+		infVar = explainFailureWithTableau();
 
-	if ( inf < 0 )
-		inf = explainFailureWithCostFunction();
+	if (infVar < 0 )
+		infVar = explainFailureWithCostFunction();
 
-	if ( inf < 0 )
+	if (infVar < 0 )
 	{
 		markLeafToDelegate();
 		return;
 	}
 
-	ASSERT( ( unsigned ) inf < _tableau->getN() );
+	ASSERT(( unsigned ) infVar < _tableau->getN() );
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
 	_statistics.incNumCertifiedLeaves();
 
-	Contradiction* tempCont = new Contradiction();
-	*tempCont = { ( unsigned ) inf, std::vector<double>( _tableau->explainBound( inf, true ) ), std::vector<double>( _tableau->explainBound( inf, false ) )  };
+	//performJumpForUNSATCertificate( computeJumpLevel( infVar ) );
 
-	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
-	performJumpForUNSATCertificate( computeJumpLevel( inf ) );
+	writeContradictionToCertificate( infVar );
 }
 
 void Engine::checkGroundBounds() const
@@ -2726,10 +2707,10 @@ void Engine::checkGroundBounds() const
 
 int Engine::explainFailureWithCostFunction()
 {
-	int inf = updateFirstInfeasibleBasic();
+	int infVar = updateFirstInfeasibleBasic();
 
-	if ( inf >= 0 )
-		return inf;
+	if ( infVar >= 0 )
+		return infVar;
 
 	// If for some reason, no basic var with contradicting explained bound is found, try recomputing the cost function
 	_costFunctionManager->computeCoreCostFunction();
@@ -2739,12 +2720,10 @@ int Engine::explainFailureWithCostFunction()
 int Engine::updateFirstInfeasibleBasic()
 {
 	unsigned m = _tableau->getM();
-	int curBasicVar, inf = -1;
+	int curBasicVar, infVar = -1;
 	double curCost;
 	bool curUpper;
 	auto *costRow = _costFunctionManager->createRowOfCostFunction();
-	std::vector<double> backup;
-
 	for ( unsigned i = 0; i < m; ++i )
 	{
 		curBasicVar = _tableau->basicIndexToVariable( i );
@@ -2753,21 +2732,49 @@ int Engine::updateFirstInfeasibleBasic()
 		if ( FloatUtils::isZero( curCost ) )
 			continue;
 
-		curUpper = curCost < 0;
-		backup = std::vector<double>( _tableau->explainBound( curBasicVar, curUpper ) );
-		_tableau->updateExplanation( *costRow, curUpper, curBasicVar );
-		if ( certifyInfeasibility( curBasicVar ) ) // Ensures the proof is correct
-		{
-			inf = curBasicVar;
-			break;
-		}
-		_tableau->injectExplanation( backup, curBasicVar, curUpper ); // Restores previous certificate if the proof is wrong
+		curUpper = ( curCost < 0 );
+		if ( explainAndCheckContradiction( curBasicVar, curUpper, costRow ) )
+			infVar = curBasicVar;
 	}
 
-	backup.clear();
 	delete costRow;
-	return inf;
+	return infVar;
 }
+
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row )
+{
+	auto backup = std::vector<double>( _tableau->explainBound( var, isUpper ) );
+	_tableau->updateExplanation( *row, isUpper, var );
+
+	if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
+	{
+		backup.clear();
+		return true;
+	}
+
+	_tableau->injectExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+
+	backup.clear();
+	return false;
+}
+
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row )
+{
+	auto backup = std::vector<double>( _tableau->explainBound( var, isUpper ) );
+	_tableau->updateExplanation( *row, isUpper, var );
+
+	if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
+	{
+		backup.clear();
+		return true;
+	}
+
+	_tableau->injectExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+
+	backup.clear();
+	return false;
+}
+
 
 CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
 {
@@ -2836,6 +2843,32 @@ void Engine::markLeafToDelegate()
 	_statistics.incNumDelegatedLeaves();
 }
 
+void Engine::writeContradictionToCertificate( unsigned infVar )
+{
+	Contradiction* tempCont = new Contradiction();
+	auto upperExpl = _tableau->explainBound( infVar, true );
+	auto lowerExpl = _tableau->explainBound( infVar, false );
+	tempCont->_var = infVar;
+
+	if ( upperExpl.empty() )
+		tempCont->_upperExplanation = NULL;
+	else
+	{
+		tempCont->_upperExplanation = new double[upperExpl.size()];
+		std::copy( upperExpl.begin(), upperExpl.end(), tempCont->_upperExplanation );
+	}
+
+	if ( lowerExpl.empty() )
+		tempCont->_lowerExplanation = NULL;
+	else
+	{
+		tempCont->_lowerExplanation = new double[lowerExpl.size()];
+		std::copy(lowerExpl.begin(), lowerExpl.end(), tempCont->_lowerExplanation );
+	}
+
+	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
+}
+
 unsigned Engine::computeJumpLevel( unsigned infVar )
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
@@ -2884,11 +2917,6 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 	for ( const auto &expl : explOnPath )
 		curCertificatePointer->addPLCExplanation( expl );
 	explOnPath.clear();
-
-	// Place contradiction in appropriate place, if original leaf had one
-	Contradiction* contradictionCopy = new Contradiction();
-	contradictionCopy->copyContent( _UNSATCertificateCurrentPointer->getContradiction() );
-	curCertificatePointer->setContradiction( contradictionCopy );
 
 	// Perform all pops
 	_smtCore.backjump( jumpSize );

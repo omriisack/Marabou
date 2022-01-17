@@ -2615,20 +2615,26 @@ bool Tableau::areLinearlyDependent( unsigned x1, unsigned x2, double &coefficien
     return true;
 }
 
-int Tableau::getInfeasibleRow( TableauRow& row )
+ITableau::BasicStatus Tableau::getInfeasibleRow( TableauRow& row )
 {
 	unsigned basicVar;
     for ( unsigned i = 0; i < _m; ++i )
 	{
 		basicVar = _basicIndexToVariable[i];
-        if ( FloatUtils::lt( _basicAssignment[i], _lowerBounds[basicVar] ) || FloatUtils::gt( _basicAssignment[i], _upperBounds[basicVar] ) )
+        if ( FloatUtils::lt( _basicAssignment[i], _lowerBounds[basicVar] )  )
 		{
      		Tableau::getTableauRow( i, &row );
-            if ( computeRowBound( row, true ) < _lowerBounds[basicVar] || computeRowBound( row, false ) > _upperBounds[basicVar] )
-                return ( int ) i;
+            if ( computeRowBound( row, true ) < _lowerBounds[basicVar]  )
+                return Tableau::BELOW_LB;
         }
+        else if ( FloatUtils::gt( _basicAssignment[i], _upperBounds[basicVar] ) )
+		{
+			Tableau::getTableauRow( i, &row );
+			if ( computeRowBound( row, false ) > _upperBounds[basicVar] )
+				return Tableau::ABOVE_UB;
+		}
     }
-	return -1;
+	return Tableau::BETWEEN;
 }
 
 bool Tableau::checkCostFunctionSlack()

@@ -596,9 +596,9 @@ public:
         return 0;
     }
 
-    int getInfeasibleRow( TableauRow& /* row */ )
+	ITableau::BasicStatus getInfeasibleRow( TableauRow& /* row */ )
     {
-    	return 0;
+    	return ITableau::BETWEEN;
     }
 
     int getInfeasibleVar() const
@@ -641,7 +641,7 @@ public:
 	{
 	}
 
-	void injectExplanation( unsigned /* var */, const std::vector<double>& /* expl */, bool /*isUpper*/ ) const
+	void injectExplanation( const std::vector<double>& /* expl */, unsigned /* var */,  bool /*isUpper*/ ) const
 	{
 	}
 

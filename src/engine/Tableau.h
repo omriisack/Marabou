@@ -661,10 +661,10 @@ private:
 
     /*
       Finds a row with its basic variable either too high or too low,
-      puts it in  the input parameter, and returns the index of the row
-      If none found return -1
+      puts it in  the input parameter, and returns the corresponding basic status
+      If none found return TABLEAU::BETWEEN
     */
-    int getInfeasibleRow( TableauRow& row );
+    BasicStatus getInfeasibleRow( TableauRow& row );
 
     /*
      Returns a variable with infeasible bounds, if exists
