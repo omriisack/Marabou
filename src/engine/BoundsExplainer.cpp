@@ -260,4 +260,5 @@ void BoundsExplainer::injectExplanation( const std::vector<double>& expl, unsign
 	if ( temp->size() != expl.size() )
 		temp->resize( expl.size() );
 
-	std::copy( expl.begin(), expl.end(), temp->begin() );}
+	std::copy( expl.begin(), expl.end(), temp->begin() );
+}

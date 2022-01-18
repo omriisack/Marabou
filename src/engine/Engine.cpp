@@ -2560,7 +2560,6 @@ int Engine::explainFailureWithTableau()
     	return -1;
 
     unsigned var = boundUpdateRow._lhs;
-    std::vector<double> backup;
 
     // Attempt to update upper bound iff the basic var is below it lb
     if ( explainAndCheckContradiction( var, infeasibilityValue == ITableau::BELOW_LB, &boundUpdateRow ) )
@@ -2674,13 +2673,13 @@ void Engine::explainSimplexFailure()
 
 	int infVar = _tableau->getInfeasibleVar();
 
-	if (infVar < 0 )
+	if ( infVar < 0 || !certifyInfeasibility( infVar ) )
 		infVar = explainFailureWithTableau();
 
-	if (infVar < 0 )
+	if ( infVar < 0 )
 		infVar = explainFailureWithCostFunction();
 
-	if (infVar < 0 )
+	if ( infVar < 0 )
 	{
 		markLeafToDelegate();
 		return;
@@ -2734,7 +2733,10 @@ int Engine::updateFirstInfeasibleBasic()
 
 		curUpper = ( curCost < 0 );
 		if ( explainAndCheckContradiction( curBasicVar, curUpper, costRow ) )
+		{
 			infVar = curBasicVar;
+			break;
+		}
 	}
 
 	delete costRow;
@@ -2840,6 +2842,7 @@ void Engine::markLeafToDelegate()
 	// Mark leaf with toDelegate Flag
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
 	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getNumDelegatedLeaves() );
+	removePLCExplanationsFromCurrentCertificateNode(); // Info is not used in case of delegation
 	_statistics.incNumDelegatedLeaves();
 }
 

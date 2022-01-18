@@ -2660,8 +2660,8 @@ bool Tableau::checkCostFunctionSlack()
 
 int Tableau::getInfeasibleVar() const
 {
-    for (unsigned i = 0; i < _n; ++i)
-        if ( !FloatUtils::lte( _lowerBounds[i], _upperBounds[i] ) )
+    for ( unsigned i = 0; i < _n; ++i )
+        if ( _lowerBounds[i] > _upperBounds[i] )
             return ( int ) i;
     return -1;
 }
@@ -2749,7 +2749,7 @@ void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 	_boundsExplainer->resetExplanation( var, isUpper );
 }
 
-void Tableau::injectExplanation(  const std::vector<double>& expl, const unsigned var, const bool isUpper ) const
+void Tableau::injectExplanation( const std::vector<double>& expl, const unsigned var, const bool isUpper ) const
 {
 	ASSERT( expl.size() == _m || expl.empty() );
 	_boundsExplainer->injectExplanation( expl, var, isUpper );

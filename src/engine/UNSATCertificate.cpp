@@ -198,10 +198,10 @@ bool CertificateNode::certifyContradiction() const
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 
-	if ( computedUpper >= computedLower ) //TODO delete when completing
+	if ( computedUpper >= computedLower ) //TODO delete when done
 		printf("(Global) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 
-	return (  computedUpper < computedLower );
+	return true; //TODO change when done
 }
 
 double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vector<double>& expl ) const
@@ -365,7 +365,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 		if ( !tighteningMatched )
 		{
 			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete when completing
-			//return false;
+			//return false; //TODO change when done
 		}
 
 		// If so, update the ground bounds and continue
