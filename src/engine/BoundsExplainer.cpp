@@ -78,7 +78,7 @@ BoundsExplainer& BoundsExplainer::operator=( const BoundsExplainer& other )
 	return *this;
 }
 
-const std::vector<double>& BoundsExplainer::returnWholeVarExplanation( const unsigned var, const bool isUpper )
+const std::vector<double>& BoundsExplainer::getExplanation( const unsigned var, const bool isUpper )
 {
 	ASSERT ( var < _varsNum );
 	return isUpper ? _upperBoundsExplanations[var] : _lowerBoundsExplanations[var];

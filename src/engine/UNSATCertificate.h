@@ -33,31 +33,9 @@ struct PLCExplanation
 	bool _isCausingBoundUpper;
 	bool _isAffectedBoundUpper;
 	double *_explanation;
-	unsigned _length;
 	PiecewiseLinearFunctionType _constraintType;
 	List<unsigned> _constraintVars;
 	unsigned _decisionLevel;
-
-	void copyContent( PLCExplanation *other )
-	{
-		_causingVar = other->_causingVar;
-		_affectedVar = other->_affectedVar;
-		_bound = other->_bound;
-		_isCausingBoundUpper = other->_isCausingBoundUpper;
-		_isAffectedBoundUpper = other->_isAffectedBoundUpper;
-		_constraintType = other->_constraintType;
-		_decisionLevel = other->_decisionLevel;
-		_length = other->_length;
-
-		if ( _explanation )
-			delete [] _explanation;
-		_explanation = new double[_length];
-		std::copy( &other->_explanation[0], &other->_explanation[_length], &_explanation[0] );
-
-		_constraintVars.clear();
-		for( auto var : other->_constraintVars )
-			_constraintVars.append( var );
-	}
 };
 
 struct Contradiction
@@ -87,7 +65,7 @@ public:
 	/*
 	 * Constructor for the root
 	 */
-	CertificateNode( const std::vector<std::vector<double>> &_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
+	CertificateNode( std::vector<std::vector<double>> *_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
 	 * Constructor for a regular node
@@ -189,12 +167,18 @@ public:
 	/*
  	* Removes all PLC explanations
  	*/
-	void removePLCExplanations();
+	void deletePLCExplanations();
 
 	/*
 	 * Deletes all offsprings of the node and makes it a leaf
 	 */
 	void makeLeaf();
+
+	/*
+ 	* Removes all PLCExplanations above a certain decision level WITHOUT deleting them
+ 	* ASSUMPTION - explanations pointers are kept elsewhere before removal
+ 	*/
+	void removePLCExplanations( unsigned decisionLevel );
 
 private:
 	std::list<CertificateNode*> _children;
@@ -208,19 +192,19 @@ private:
 	bool _shouldDelegate;
 	unsigned _delegationNumber;
 
-	std::vector<std::vector<double>> _initialTableau;
+	std::vector<std::vector<double>>* _initialTableau;
 	std::vector<double> _groundUpperBounds;
 	std::vector<double> _groundLowerBounds;
 
 	/*
 	 * Copies initial tableau and ground bounds
 	 */
-	void copyInitials ( const std::vector<std::vector<double>> &_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
+	void copyGB ( std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
 	 * Inherits the initialTableau and ground bounds from parent, if exists
 	 */
-	void passChangesToChildren(ProblemConstraint *childrenSplitConstraint);
+	void passChangesToChildren( ProblemConstraint *childrenSplitConstraint );
 
 	/*
 	 * Checks if the node is a valid leaf
@@ -232,10 +216,6 @@ private:
 	 */
 	bool isValidNoneLeaf() const;
 
-	/*
-	 * Clear initial tableau and ground bounds
-	 */
-	void clearInitials();
 	/*
 	* Write a leaf marked to delegate to a smtlib file format
 	*/

@@ -2669,7 +2669,7 @@ int Tableau::getInfeasibleVar() const
 const std::vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-    return _boundsExplainer->returnWholeVarExplanation( variable, isUpper );
+    return _boundsExplainer->getExplanation( variable, isUpper );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const

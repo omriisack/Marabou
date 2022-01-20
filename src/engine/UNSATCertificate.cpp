@@ -15,7 +15,7 @@
 #include <utility>
 
 
-CertificateNode::CertificateNode( const std::vector<std::vector<double>> &initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
+CertificateNode::CertificateNode(  std::vector<std::vector<double>> *initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
 	: _children ( 0 )
 	, _problemConstraints()
 	, _parent( NULL )
@@ -43,7 +43,7 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 	, _wasVisited ( false )
 	, _shouldDelegate( false )
 	, _delegationNumber( 0 )
-	, _initialTableau( 0 )
+	, _initialTableau( NULL )
 	, _groundUpperBounds( 0 )
 	, _groundLowerBounds( 0 )
 {
@@ -51,6 +51,16 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 
 CertificateNode::~CertificateNode()
 {
+	if ( _initialTableau )
+	{
+		for ( auto& row : *_initialTableau )
+			row.clear();
+		_initialTableau->clear();
+	}
+
+	_groundUpperBounds.clear();
+	_groundLowerBounds.clear();
+
 	for ( auto child : _children )
 		if ( child )
 		{
@@ -58,15 +68,13 @@ CertificateNode::~CertificateNode()
 			child = NULL;
 		}
 	_children.clear();
-	removePLCExplanations();
+	deletePLCExplanations();
 
 	if ( _contradiction )
 	{
 		delete _contradiction;
 		_contradiction = NULL;
 	}
-
-	clearInitials();
 }
 
 void CertificateNode::setContradiction( Contradiction* contradiction )
@@ -105,6 +113,7 @@ void CertificateNode::makeLeaf()
 	for ( auto child : _children )
 		if ( child )
 		{
+			child->_initialTableau = NULL; //Clear reference to root tableau so it will not be deleted
 			delete child;
 			child = NULL;
 		}
@@ -117,7 +126,9 @@ void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitCon
 {
 	for ( auto* child : _children )
 	{
-		child->copyInitials( _initialTableau, _groundUpperBounds, _groundLowerBounds );
+		child->copyGB( _groundUpperBounds, _groundLowerBounds );
+		child->_initialTableau = _initialTableau;
+
 		for ( auto &con : _problemConstraints )
 			if ( &con != childrenSplitConstraint )
 				child->addProblemConstraint( con._type, con._constraintVars );
@@ -176,25 +187,22 @@ bool CertificateNode::certify()
 bool CertificateNode::certifyContradiction() const
 {
 	ASSERT( isValidLeaf() && !_hasSATSolution );
-	unsigned var = _contradiction->_var;
+	unsigned var = _contradiction->_var, m = _initialTableau->size();
 
-	std::vector<double> ubExpl;
-	std::vector<double> lbExpl;
+	std::vector<double> ubExpl = std::vector<double>( 0, 0 );
+	std::vector<double> lbExpl = std::vector<double>( 0, 0 );
+
 	if ( _contradiction->_upperExplanation )
 	{
-		ubExpl = std::vector<double>( _initialTableau.size(), 0 );
-		std::copy( _contradiction->_upperExplanation,_contradiction->_upperExplanation + _initialTableau.size(), ubExpl.begin() );
+		ubExpl = std::vector<double>( m, 0 );
+		std::copy( _contradiction->_upperExplanation,_contradiction->_upperExplanation + m, ubExpl.begin() );
 	}
-	else
-		ubExpl = std::vector<double>( 0, 0 );
 
 	if ( _contradiction->_lowerExplanation )
 	{
-		lbExpl = std::vector<double>( _initialTableau.size(), 0 );
-		std::copy( _contradiction->_lowerExplanation, _contradiction->_lowerExplanation + _initialTableau.size(), lbExpl.begin() );
+		lbExpl = std::vector<double>( m, 0 );
+		std::copy( _contradiction->_lowerExplanation, _contradiction->_lowerExplanation + m, lbExpl.begin() );
 	}
-	else
-		lbExpl = std::vector<double>( 0, 0 );
 
 	double computedUpper = explainBound( var, true, ubExpl ), computedLower = explainBound( var, false, lbExpl );
 
@@ -206,18 +214,14 @@ bool CertificateNode::certifyContradiction() const
 
 double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vector<double>& expl ) const
 {
-	return UNSATCertificateUtils::computeBound( var, isUpper, expl, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+	return UNSATCertificateUtils::computeBound( var, isUpper, expl, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
-void CertificateNode::copyInitials( const std::vector<std::vector<double>> &initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs )
+void CertificateNode::copyGB( std::vector<double> &groundUBs, std::vector<double> &groundLBs )
 {
-	clearInitials();
-	for ( auto& row : initialTableau )
-	{
-		auto rowCopy = std::vector<double> ( row.size() );
-		std::copy( row.begin(), row.end(), rowCopy.begin() );
-		_initialTableau.push_back( rowCopy );
-	}
+
+	_groundUpperBounds.clear();
+	_groundLowerBounds.clear();
 
 	_groundUpperBounds.resize( groundUBs.size() );
 	_groundLowerBounds.resize( groundLBs.size() );
@@ -237,21 +241,10 @@ bool CertificateNode::isValidNoneLeaf() const
 	return !_contradiction && !_children.empty();
 }
 
-void CertificateNode::clearInitials()
-{
-	for ( auto& row : _initialTableau )
-		row.clear();
-	_initialTableau.clear();
-
-	_groundUpperBounds.clear();
-	_groundLowerBounds.clear();
-}
-
 void CertificateNode::addPLCExplanation( PLCExplanation* expl )
 {
 	_PLCExplanations.push_back( expl );
 }
-
 
 void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars )
 {
@@ -296,10 +289,16 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 	for ( auto* expl : _PLCExplanations )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
-		auto explVec = std::vector<double>( expl->_length,0 );
-		if ( !explVec.empty() )
-			std::copy( expl->_explanation, expl->_explanation + expl->_length, explVec.begin() );
-		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+		unsigned length = _initialTableau->size();
+		auto explVec = std::vector<double>( 0,0 );
+
+		if ( expl->_explanation )
+		{
+			explVec = std::vector<double>( length,0 );
+			std::copy( expl->_explanation, expl->_explanation + length, explVec.begin() );
+		}
+
+		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
 		for ( auto& con : _problemConstraints )
@@ -431,7 +430,7 @@ bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSpli
 	return true;
 }
 
-void CertificateNode::removePLCExplanations()
+void CertificateNode::deletePLCExplanations()
 {
 	if ( !_PLCExplanations.empty() )
 	{
@@ -451,7 +450,7 @@ void CertificateNode::writeLeafToFile()
 	List<String> leafInstance;
 
 	// Write to smtWriter
-	unsigned m = _initialTableau.size(), n = _groundUpperBounds.size() , b, f;
+	unsigned m = _initialTableau->size(), n = _groundUpperBounds.size() , b, f;
 	SmtLibWriter::addHeader( n, leafInstance );
 	SmtLibWriter::addGroundUpperBounds( _groundUpperBounds, leafInstance );
 	SmtLibWriter::addGroundLowerBounds( _groundLowerBounds, leafInstance );
@@ -460,8 +459,8 @@ void CertificateNode::writeLeafToFile()
 	{
 		SparseUnsortedList tempRow = SparseUnsortedList();
 		for ( unsigned  j = 0; j < n; ++j ) //TODO consider improving
-			if ( !FloatUtils::isZero(_initialTableau[i][j]) )
-				tempRow.append( j, _initialTableau[i][j] );
+			if ( !FloatUtils::isZero( ( *_initialTableau )[i][j]) )
+				tempRow.append( j, ( *_initialTableau )[i][j] );
 		SmtLibWriter::addTableauRow( tempRow, leafInstance );
 		tempRow.clear();
 	}
@@ -478,4 +477,10 @@ void CertificateNode::writeLeafToFile()
 
 	SmtLibWriter::addFooter(leafInstance );
 	SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
+}
+
+
+void CertificateNode::removePLCExplanations( unsigned decisionLevel )
+{
+	_PLCExplanations.remove_if( [decisionLevel] ( PLCExplanation* expl ){ return expl->_decisionLevel <= decisionLevel; } );
 }

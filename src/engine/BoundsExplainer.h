@@ -38,7 +38,7 @@ public:
 	/*
 	  Puts the values of a bound explanation in the array bound.
 	*/
-	const std::vector<double>& returnWholeVarExplanation( unsigned var, bool isUpper );
+	const std::vector<double>& getExplanation( unsigned var, bool isUpper );
 
 	/*
 	  Given a row, updates the values of the bound explanations of its lhs according to the row
@@ -68,7 +68,7 @@ public:
 	/*
 	 * Resets an explanation
 	 */
-	void resetExplanation ( unsigned var, bool isUpper );
+	void resetExplanation( unsigned var, bool isUpper );
 
 	/*
 	 * Artificially updates an explanation, without using the recursive rule

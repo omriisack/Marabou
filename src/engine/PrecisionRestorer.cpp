@@ -126,12 +126,18 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 				if ( FloatUtils::gte( engine.getExplainedBound( i, false ), engine.getGroundLowerBound( i ) ) )
 					tableau.tightenLowerBoundNaively( i,  engine.getExplainedBound( i, false ) );
 				else
+				{
 					tableau.resetExplanation( i, false );
+					tableau.tightenLowerBoundNaively( i, engine.getGroundLowerBound( i ) );
+				}
 
-				if ( FloatUtils::lte( engine.getExplainedBound( i, true ),  engine.getGroundUpperBound( i ) ) )
+				if ( FloatUtils::lte( engine.getExplainedBound( i, true ), engine.getGroundUpperBound( i ) ) )
 					tableau.tightenUpperBoundNaively( i,engine.getExplainedBound( i, true ) );
         		else
-        			tableau.resetExplanation( i, true );
+				{
+					tableau.resetExplanation( i, true );
+					tableau.tightenUpperBoundNaively( i, engine.getGroundUpperBound( i ) );
+				}
 			}
 			else
 			{

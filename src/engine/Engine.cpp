@@ -809,6 +809,7 @@ double *Engine::createConstraintMatrix()
 		_groundLowerBounds = std::vector<double>( n );
 		_groundUpperBounds.shrink_to_fit();
 		_groundLowerBounds.shrink_to_fit();
+
         for ( unsigned i = 0; i < n; ++i )
         {
 			_groundUpperBounds[i] = _preprocessedQuery.getUpperBound( i );
@@ -1195,7 +1196,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
         }
 		if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		{
-			_UNSATCertificate = new CertificateNode( _initialTableau, _groundUpperBounds, _groundLowerBounds );
+			_UNSATCertificate = new CertificateNode( &_initialTableau, _groundUpperBounds, _groundLowerBounds );
 			for ( auto& plConstraint : _plConstraints )
 				_UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables() );
 			_UNSATCertificateCurrentPointer = _UNSATCertificate;
@@ -2831,7 +2832,7 @@ void Engine::removePLCExplanationsFromCurrentCertificateNode()
 		return;
 
 	ASSERT( _UNSATCertificateCurrentPointer );
-	_UNSATCertificateCurrentPointer->removePLCExplanations();
+	_UNSATCertificateCurrentPointer->deletePLCExplanations();
 }
 
 void Engine::markLeafToDelegate()
@@ -2903,12 +2904,9 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 		ASSERT( curCertificatePointer );
 		for ( const auto& expl : curCertificatePointer->getPLCExplanations() )
 			if ( expl->_decisionLevel <= _smtCore.getStackDepth() - jumpSize )
-			{
-				PLCExplanation *explCopy = new PLCExplanation();
-				explCopy->copyContent( expl );
-				curExplList.push_back( explCopy );
-			}
+				curExplList.push_back( expl );
 
+		curCertificatePointer->removePLCExplanations( _smtCore.getStackDepth() - jumpSize );
 		explOnPath.insert( explOnPath.cbegin(), curExplList.cbegin(), curExplList.cend() );
 		curExplList.clear();
 		curCertificatePointer = curCertificatePointer->getParent();

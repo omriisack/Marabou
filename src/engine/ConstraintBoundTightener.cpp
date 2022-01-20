@@ -199,7 +199,6 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 	auto explVec = _tableau.explainBound( causingVar, isCausingBoundUpper );
 
 	PLCExpl->_causingVar = causingVar;
-	PLCExpl->_length = explVec.size();
 
 	if ( explVec.empty() )
 		PLCExpl->_explanation = NULL;
