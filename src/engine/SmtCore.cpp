@@ -113,8 +113,8 @@ void SmtCore::performSplit()
 
     if ( _statistics )
     {
-        _statistics->incNumSplits();
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Before storing the state of the engine, we:
@@ -166,9 +166,15 @@ void SmtCore::performSplit()
 
     if ( _statistics )
     {
-        _statistics->setCurrentDecisionLevel( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 
     _constraintForSplitting = NULL;
@@ -190,10 +196,10 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->incNumPops();
+        _statistics->incUnsignedAttribute( Statistics::NUM_POPS );
         // A pop always sends us to a state that we haven't seen before - whether
         // from a sibling split, or from a lower level of the tree.
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Remove any entries that have no alternatives
@@ -269,9 +275,15 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->setCurrentDecisionLevel( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 
     checkSkewFromDebuggingSolution();
@@ -452,8 +464,8 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->incNumSplits();
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Obtain the current state of the engine
@@ -472,9 +484,15 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->setCurrentDecisionLevel( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 }
 
