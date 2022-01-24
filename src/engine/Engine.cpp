@@ -471,7 +471,8 @@ bool Engine::performSimplexStep()
     */
 
     if ( _tableau->isOptimizing() )
-        _costFunctionManager->computeGivenCostFunction( _heuristicCost );
+        _costFunctionManager->computeGivenCostFunction
+            ( _heuristicCost._addends );
     if ( _costFunctionManager->costFunctionInvalid() )
         _costFunctionManager->computeCoreCostFunction();
     else
@@ -2758,8 +2759,7 @@ const Preprocessor *Engine::getPreprocessor()
     return &_preprocessor;
 }
 
-void Engine::minimizeHeuristicCost( const Map<unsigned, double>
-                                    &heuristicCost )
+void Engine::minimizeHeuristicCost( const LinearExpression &heuristicCost )
 {
     _tableau->toggleOptimization( true );
 
@@ -2820,10 +2820,11 @@ void Engine::minimizeHeuristicCost( const Map<unsigned, double>
     ENGINE_LOG( "Optimizing w.r.t. the current heuristic cost - done\n" );
 }
 
-double Engine::computeHeuristicCost( const Map<unsigned, double> &heuristicCost )
+double Engine::computeHeuristicCost( const LinearExpression &heuristicCost )
 {
-    return _costFunctionManager->
-        computeGivenCostFunctionDirectly( heuristicCost );
+    return ( _costFunctionManager->
+             computeGivenCostFunctionDirectly( heuristicCost._addends ) +
+             heuristicCost._constant );
 }
 
 void Engine::updateGroundUpperBound( const unsigned var, const double value, unsigned decisionLevel )
