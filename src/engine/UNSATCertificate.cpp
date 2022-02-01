@@ -218,7 +218,7 @@ bool CertificateNode::certifyContradiction() const
 	if ( computedUpper >= computedLower ) //TODO delete when done
 		printf("(Global) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 
-	return false;
+	return computedUpper < computedLower;
 }
 
 double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vector<double>& expl ) const
