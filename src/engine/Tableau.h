@@ -720,7 +720,6 @@ private:
 
 	/*
      * Explainer of all bounds
-     * TODO consider moving to engine for better design
     */
     BoundsExplainer *_boundsExplainer;
 

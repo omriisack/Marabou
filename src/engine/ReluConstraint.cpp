@@ -27,6 +27,7 @@
 #include "PiecewiseLinearCaseSplit.h"
 #include "Statistics.h"
 #include "TableauRow.h"
+#include "InfeasibleQueryException.h"
 
 #ifdef _WIN32
 #define __attribute__(x)
@@ -154,8 +155,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         {
             // If we're in the active phase, aux should be 0
 			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false,
-																	 getParticipatingVariables(), getType() );
+				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false, getType() );
 			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
 
@@ -168,8 +168,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         else if ( _auxVarInUse && variable == _b && FloatUtils::isZero( bound ) )
         {
 			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false,
-																	 getParticipatingVariables(), getType() );
+				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, true, variable, false, getType() );
 			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
 				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
         }
@@ -179,8 +178,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         else if ( _auxVarInUse && variable == _aux && bound > 0 )
         {
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, false,
-																	 getParticipatingVariables(), getType() );
+				_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, false, getType() );
 			else
 				_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
@@ -195,9 +193,8 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 			{
 				if ( _phaseStatus == RELU_PHASE_INACTIVE )
 					_constraintBoundTightener->registerTighterUpperBound( _aux, -bound, tighteningRow );
-				else
-					_constraintBoundTightener->externalExplanationUpdate( _aux, -bound, true, variable, false,
-																		 getParticipatingVariables(), getType() );
+				else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, lower bound of b is already >= 0
+					_constraintBoundTightener->externalExplanationUpdate( _aux, -bound, true, variable, false, getType() );
 			}
         	else
 				_constraintBoundTightener->registerTighterUpperBound( _aux, -bound );
@@ -208,8 +205,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
         else if ( bound < 0 && variable == _f )
         {
 			if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				_constraintBoundTightener->externalExplanationUpdate( _f, 0, false, variable, false,
-																	 getParticipatingVariables(), getType() );
+				_constraintBoundTightener->externalExplanationUpdate( _f, 0, false, variable, false, getType() );
 			else
             	_constraintBoundTightener->registerTighterLowerBound( _f, 0 );
         }
@@ -241,11 +237,16 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
             // Any bound that we learned of f should be propagated to b
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
-				if ( _phaseStatus == RELU_PHASE_ACTIVE )
+				if ( _phaseStatus != RELU_PHASE_INACTIVE )
 					_constraintBoundTightener->registerTighterUpperBound( _b, bound, tighteningRow );
 				else
-					_constraintBoundTightener->externalExplanationUpdate( _b, bound, true, variable, true,
-																		 getParticipatingVariables(), getType() );
+				{
+					if ( FloatUtils::isZero( bound ) )
+						_constraintBoundTightener->externalExplanationUpdate( _b, 0, true, variable, true, getType() );
+					else if ( FloatUtils::isNegative( bound ) )
+						throw InfeasibleQueryException();
+					// Bound cannot be positive if ReLU is inactive
+				}
 			}
             else
 				_constraintBoundTightener->registerTighterUpperBound( _b, bound );
@@ -257,8 +258,7 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
             {
                 // If b has a non-positive upper bound, f's upper bound is 0
 				if ( GlobalConfiguration::PROOF_CERTIFICATE )
-					_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, true,
-																		 getParticipatingVariables(), getType() );
+					_constraintBoundTightener->externalExplanationUpdate( _f, 0, true, variable, true, getType() );
 				else
 					_constraintBoundTightener->registerTighterUpperBound( _f, 0 );
 
@@ -274,9 +274,8 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 				{
 					if ( _phaseStatus == RELU_PHASE_ACTIVE )
                 		_constraintBoundTightener->registerTighterUpperBound( _f, bound, tighteningRow );
-					else
-						_constraintBoundTightener->externalExplanationUpdate( _f, bound, true, variable, true,
-																		 getParticipatingVariables(), getType() );
+					else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, upper bound of f is already <= 0
+						_constraintBoundTightener->externalExplanationUpdate( _f, bound, true, variable, true, getType() );
 				}
 				else
 					_constraintBoundTightener->registerTighterUpperBound( _f, bound );
@@ -289,8 +288,13 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 				if ( _phaseStatus != RELU_PHASE_ACTIVE )
 					_constraintBoundTightener->registerTighterLowerBound( _b, -bound, tighteningRow );
 				else
-					_constraintBoundTightener->externalExplanationUpdate( _b, -bound, false, variable, true,
-																		 getParticipatingVariables(), getType() );
+				{
+					if ( FloatUtils::isZero( bound ) )
+						_constraintBoundTightener->externalExplanationUpdate( _b, 0, false, variable, true, getType() );
+					else if ( FloatUtils::isNegative( bound ) )
+						throw InfeasibleQueryException();
+					// Bound cannot be positive if ReLU is active
+				}
 			}
 			else
 				_constraintBoundTightener->registerTighterLowerBound( _b, -bound );

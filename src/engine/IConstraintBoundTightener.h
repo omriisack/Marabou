@@ -76,19 +76,17 @@ public:
 
 	virtual void externalExplanationUpdate( unsigned var, double value, bool isAffectedBoundUpper,
 										   unsigned causingVar, bool isCausingBoundUpper,
-										   List<unsigned int> constraintVars,
 										   PiecewiseLinearFunctionType constraintType ) = 0;
-
 
 	/*
 	 * Gets the upper bound stored in the CBT
 	 */
-	virtual double getUpperBound(unsigned  var ) const = 0;
+	virtual double getUpperBound( unsigned  var ) const = 0;
 
 	/*
      * Gets the lower bound stored in the CBT
      */
-	virtual double getLowerBound(unsigned  var ) const = 0;
+	virtual double getLowerBound( unsigned  var ) const = 0;
 };
 
 #endif // __IConstraintBoundTightener_h__

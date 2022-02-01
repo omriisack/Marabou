@@ -186,7 +186,6 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
 void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value,
 														 const bool isAffectedBoundUpper,
 														 const unsigned causingVar, bool isCausingBoundUpper,
-														 const List<unsigned int> constraintVars,
 														 const PiecewiseLinearFunctionType constraintType )
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
@@ -208,7 +207,6 @@ void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, co
 		std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
 	}
 
-	PLCExpl->_constraintVars = constraintVars;
 	PLCExpl->_affectedVar = var;
 	PLCExpl->_bound = value;
 	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;

@@ -183,10 +183,20 @@ public:
     void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel );
 
 	/*
-	 * Return the ground bounds
-	 */
-	double getGroundUpperBound( unsigned var ) const;
-	double getGroundLowerBound( unsigned var ) const;
+ 	* Return all ground bounds as a vector
+ 	*/
+	const std::vector<double>& getGroundBounds( bool isUpper ) const;
+
+	/*
+ 	* Return all decision levels of the ground bounds as a vector
+ 	*/
+	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const;
+
+	/*
+ 	* Sets all decision levels of the ground bounds as a vector
+ 	*/
+	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const;
+
     /*
      * Get the current pointer of the UNSAT certificate
      */
@@ -211,11 +221,6 @@ public:
 	* Returns true iff the value can be the tightest bound of a variable
 	 */
 	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
-
-	/*
-	 * Removes all PLC explanations in current UNSAT certificate node
-	 */
-	void removePLCExplanationsFromCurrentCertificateNode();
 
 	/*
 	* Computes the decision level of an explanations
@@ -658,7 +663,7 @@ private:
 	/*
      Validates that all explanations epsilon close to real bounds
      Separately for tightenings and actual bounds
-     Returns true iff all bounds are epsilon-close to theier explanations
+     Returns true iff all bounds are epsilon-close to their explanations
     */
     bool validateAllBounds( double epsilon, double M ) const;
 
@@ -686,7 +691,6 @@ private:
 	 * Updates an explanation of a bound according to a row, and checks for an explained contradiction.
 	 * If found, return true.
 	 * If not, revert and return false
-	 * TODO check how to create one generalized function
 	 */
 	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
 	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
@@ -711,6 +715,11 @@ private:
 	 * Moves pointer to correct place and sets the relevant contradction
  	*/
 	void performJumpForUNSATCertificate( unsigned jumpSize );
+
+	/*
+	 * Applies all bound tightenings without further notifying
+	 */
+	void naivelyApplyAllTightenings();
 };
 
 #endif // __Engine_h__

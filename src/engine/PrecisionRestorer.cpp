@@ -43,9 +43,26 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     memcpy( upperBounds, tableau.getUpperBounds(), sizeof(double) * targetN );
 
 	BoundsExplainer tableauExplanations = BoundsExplainer( targetN, targetM );
+	std::vector<double> upperGBBackup;
+	std::vector<double> lowerGBBackup;
+
+	std::vector<unsigned> upperDLBackup;
+	std::vector<unsigned> lowerDLBackup;
+
+	unsigned PLCExplListSize = 0;
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+	{
 		tableauExplanations = *tableau.getAllBoundsExplanations();
+
+		upperGBBackup = std::vector<double>( engine.getGroundBounds(true ) );
+		lowerGBBackup = std::vector<double>( engine.getGroundBounds(false ) );
+
+		upperDLBackup = std::vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
+		lowerDLBackup = std::vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
+
+		PLCExplListSize = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations().size();
+	}
 
     try
     {
@@ -114,36 +131,23 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 		if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		{
 			tableau.setAllBoundsExplanations( &tableauExplanations );
-			engine.removePLCExplanationsFromCurrentCertificateNode();
+
+			for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
+			{
+				engine.updateGroundUpperBound( i, upperGBBackup[i], upperDLBackup[i] );
+				engine.updateGroundLowerBound( i, lowerGBBackup[i], lowerDLBackup[i] );
+			}
+
+			engine.setGroundBoundsDecisionLevels( upperDLBackup, true );
+			engine.setGroundBoundsDecisionLevels( lowerDLBackup, false );
+
+			engine.getUNSATCertificateCurrentPointer()->resizePLCExplanationsList( PLCExplListSize );
 		}
 
-        // Tighten bounds to be as explained bounds, in order to avoid inaccuracies
-        // In case that bounds explanations are not tight enough, reset the explanation to use ground bounds
         for ( unsigned i = 0; i < targetN; ++i )
         {
-        	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-			{
-				if ( FloatUtils::gte( engine.getExplainedBound( i, false ), engine.getGroundLowerBound( i ) ) )
-					tableau.tightenLowerBoundNaively( i,  engine.getExplainedBound( i, false ) );
-				else
-				{
-					tableau.resetExplanation( i, false );
-					tableau.tightenLowerBoundNaively( i, engine.getGroundLowerBound( i ) );
-				}
-
-				if ( FloatUtils::lte( engine.getExplainedBound( i, true ), engine.getGroundUpperBound( i ) ) )
-					tableau.tightenUpperBoundNaively( i,engine.getExplainedBound( i, true ) );
-        		else
-				{
-					tableau.resetExplanation( i, true );
-					tableau.tightenUpperBoundNaively( i, engine.getGroundUpperBound( i ) );
-				}
-			}
-			else
-			{
-				tableau.tightenLowerBound( i, lowerBounds[i] );
-				tableau.tightenUpperBound( i, upperBounds[i] );
-			}
+        	tableau.tightenLowerBoundNaively( i, lowerBounds[i] );
+        	tableau.tightenUpperBoundNaively( i, upperBounds[i] );
         }
 
         // Restore constraint status

@@ -131,7 +131,16 @@ void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitCon
 
 		for ( auto &con : _problemConstraints )
 			if ( &con != childrenSplitConstraint )
-				child->addProblemConstraint( con._type, con._constraintVars );
+				child->addProblemConstraint( con._type, con._constraintVars, con._status );
+
+		if ( childrenSplitConstraint && childrenSplitConstraint->_type == PiecewiseLinearFunctionType::RELU ) //Add the constraint corresponding to head split with correct phase
+		{
+			if ( child->_headSplit.getBoundTightenings().front()._type == Tightening::LB || child->_headSplit.getBoundTightenings().back()._type == Tightening::LB  )
+				child->addProblemConstraint( childrenSplitConstraint->_type, childrenSplitConstraint->_constraintVars, PhaseStatus::RELU_PHASE_ACTIVE );
+			else
+				child->addProblemConstraint( childrenSplitConstraint->_type, childrenSplitConstraint->_constraintVars, PhaseStatus::RELU_PHASE_INACTIVE );
+		}
+
 	}
 }
 
@@ -209,7 +218,7 @@ bool CertificateNode::certifyContradiction() const
 	if ( computedUpper >= computedLower ) //TODO delete when done
 		printf("(Global) Certification error for var %d. ub is %.5lf, lb is %.5lf \n", var, computedUpper, computedLower );
 
-	return true; //TODO change when done
+	return false;
 }
 
 double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vector<double>& expl ) const
@@ -246,9 +255,9 @@ void CertificateNode::addPLCExplanation( PLCExplanation* expl )
 	_PLCExplanations.push_back( expl );
 }
 
-void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars )
+void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status )
 {
-	_problemConstraints.append( { type, constraintVars } );
+	_problemConstraints.append( { type, constraintVars, status } );
 }
 
 ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits )
@@ -301,14 +310,20 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
 		// Make sure it is a problem constraint
-		for ( auto& con : _problemConstraints )
+		for ( ProblemConstraint& con : _problemConstraints )
 		{
-			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && expl->_constraintVars == con._constraintVars )
+			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && con._constraintVars.exists( expl->_affectedVar ) && con._constraintVars.exists( expl->_causingVar ) )
 			{   //TODO reconsider design
 				std::vector<unsigned> conVec( con._constraintVars.begin(), con._constraintVars.end() );
 				b = conVec[0], f = conVec[1], aux = conVec[2];
 				conVec.clear();
 				constraintMatched = true;
+
+				// If explanation is phase fixing, mark it
+				if ( ( !expl->_isAffectedBoundUpper && expl->_affectedVar == f && FloatUtils::isPositive( expl->_bound ) ) || ( expl->_isAffectedBoundUpper && expl->_affectedVar == aux && FloatUtils::isZero( expl->_bound ) ) )
+					con._status = PhaseStatus::RELU_PHASE_ACTIVE;
+				else if ( ( !expl->_isAffectedBoundUpper && expl->_affectedVar == aux && FloatUtils::isPositive( expl->_bound ) ) || ( expl->_isAffectedBoundUpper && expl->_affectedVar == f && FloatUtils::isZero( expl->_bound ) ) )
+					con._status = PhaseStatus::RELU_PHASE_INACTIVE;
 			}
 		}
 
@@ -444,13 +459,22 @@ void CertificateNode::deletePLCExplanations()
 	}
 }
 
+/*
+ * Removes all PLC explanations from a certain point
+ * TODO check with valgrind as well
+ */
+void CertificateNode::resizePLCExplanationsList(  unsigned newSize )
+{
+	_PLCExplanations.resize( newSize );
+}
+
 void CertificateNode::writeLeafToFile()
 {
 	ASSERT( _children.empty() && _shouldDelegate );
 	List<String> leafInstance;
 
 	// Write to smtWriter
-	unsigned m = _initialTableau->size(), n = _groundUpperBounds.size() , b, f;
+	unsigned m = _initialTableau->size(), n = _groundUpperBounds.size(), b, f;
 	SmtLibWriter::addHeader( n, leafInstance );
 	SmtLibWriter::addGroundUpperBounds( _groundUpperBounds, leafInstance );
 	SmtLibWriter::addGroundLowerBounds( _groundLowerBounds, leafInstance );
@@ -472,13 +496,12 @@ void CertificateNode::writeLeafToFile()
 			b = vars.front();
 			vars.popBack();
 			f = vars.back();
-			SmtLibWriter::addReLUConstraint( b, f, leafInstance );
+			SmtLibWriter::addReLUConstraint( b, f, constraint._status, leafInstance );
 		}
 
 	SmtLibWriter::addFooter(leafInstance );
 	SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
 }
-
 
 void CertificateNode::removePLCExplanations( unsigned decisionLevel )
 {

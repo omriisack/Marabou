@@ -204,15 +204,22 @@ public:
 	{
 	}
 
-	double getGroundUpperBound( unsigned /* var */ ) const
+	std::vector<double> _mockDoubleVec;
+	std::vector<unsigned> _mockUnsignedVec;
+	const std::vector<double>& getGroundBounds( bool /* isUpper */ ) const
 	{
-    	return 0.0;
+    	return _mockDoubleVec;
 	}
 
-	double getGroundLowerBound( unsigned /* var */ ) const
+	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
 	{
-		return 0.0;
+		return _mockUnsignedVec;
 	}
+
+	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
+	{
+	}
+
 
 	CertificateNode* getUNSATCertificateCurrentPointer() const
 	{
@@ -236,10 +243,6 @@ public:
 	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
 	{
     	return 0;
-	}
-
-	void removePLCExplanationsFromCurrentCertificateNode()
-	{
 	}
 
 	unsigned computeExplanationDecisionLevel( unsigned /* var */, bool /* isUpper */ ) const

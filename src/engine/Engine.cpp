@@ -1198,7 +1198,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 		{
 			_UNSATCertificate = new CertificateNode( &_initialTableau, _groundUpperBounds, _groundLowerBounds );
 			for ( auto& plConstraint : _plConstraints )
-				_UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables() );
+				_UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables(), PhaseStatus::PHASE_NOT_FIXED );
 			_UNSATCertificateCurrentPointer = _UNSATCertificate;
 			_UNSATCertificate->wasVisited();
 		}
@@ -1935,6 +1935,9 @@ void Engine::performPrecisionRestoration( PrecisionRestorer::RestoreBasics resto
         if ( highDegradation() )
             throw MarabouError( MarabouError::RESTORATION_FAILED_TO_RESTORE_PRECISION );
     }
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		checkGroundBounds();
 }
 
 void Engine::storeInitialEngineState()
@@ -2652,14 +2655,24 @@ void Engine::updateGroundLowerBound( const unsigned var, const double value, uns
 	}
 }
 
-double Engine::getGroundUpperBound( unsigned var ) const
+const std::vector<double>& Engine::getGroundBounds( bool isUpper ) const
 {
-	return _groundUpperBounds[var];
+	return isUpper ? _groundUpperBounds : _groundLowerBounds;
 }
 
-double Engine::getGroundLowerBound( unsigned var ) const
+const std::vector<unsigned>& Engine::getGroundBoundsDecisionLevels( bool isUpper ) const
 {
-	return _groundLowerBounds[var];
+	return isUpper ? _upperDecisionLevels : _lowerDecisionLevels;
+}
+
+void Engine::setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const
+{
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+	{
+		auto temp = isUpper ? _upperDecisionLevels : _lowerDecisionLevels;
+		ASSERT( temp.size() == decisionLevels.size() );
+		std::copy( decisionLevels.begin(), decisionLevels.end(), temp.begin() );
+	}
 }
 
 void Engine::explainSimplexFailure()
@@ -2667,7 +2680,7 @@ void Engine::explainSimplexFailure()
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
 		return;
 
-	applyAllBoundTightenings();
+	naivelyApplyAllTightenings();
 
 //	checkGroundBounds();  // TODO keep commented when running on Cluster
 //	validateAllBounds( 0.01, 1000000 );
@@ -2778,7 +2791,6 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, SparseUns
 	return false;
 }
 
-
 CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
 {
 	return _UNSATCertificateCurrentPointer;
@@ -2826,15 +2838,6 @@ bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
 	return FloatUtils::gt( value, realBound );
 }
 
-void Engine::removePLCExplanationsFromCurrentCertificateNode()
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-		return;
-
-	ASSERT( _UNSATCertificateCurrentPointer );
-	_UNSATCertificateCurrentPointer->deletePLCExplanations();
-}
-
 void Engine::markLeafToDelegate()
 {
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
@@ -2843,7 +2846,7 @@ void Engine::markLeafToDelegate()
 	// Mark leaf with toDelegate Flag
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
 	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getNumDelegatedLeaves() );
-	removePLCExplanationsFromCurrentCertificateNode(); // Info is not used in case of delegation
+	_UNSATCertificateCurrentPointer->deletePLCExplanations(); // Info is not used in case of delegation
 	_statistics.incNumDelegatedLeaves();
 }
 
@@ -2867,7 +2870,7 @@ void Engine::writeContradictionToCertificate( unsigned infVar )
 	else
 	{
 		tempCont->_lowerExplanation = new double[lowerExpl.size()];
-		std::copy(lowerExpl.begin(), lowerExpl.end(), tempCont->_lowerExplanation );
+		std::copy( lowerExpl.begin(), lowerExpl.end(), tempCont->_lowerExplanation );
 	}
 
 	_UNSATCertificateCurrentPointer->setContradiction( tempCont );
@@ -2955,4 +2958,25 @@ unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) 
 	expl.clear();
 	explRowsCombination.clear();
 	return contradictionLevel;
+}
+
+void Engine::naivelyApplyAllTightenings()
+{
+	struct timespec start = TimeUtils::sampleMicro();
+
+	List<Tightening> allTightenings;
+	_rowBoundTightener->getRowTightenings( allTightenings );
+	_constraintBoundTightener->getConstraintTightenings( allTightenings );
+	for ( const auto &tightening : allTightenings )
+	{
+		if ( tightening._type == Tightening::LB && FloatUtils::gt( tightening._value, _tableau->getLowerBound( tightening._variable ) ) )
+			_tableau->tightenLowerBoundNaively( tightening._variable, tightening._value );
+		else if ( tightening._type == Tightening::UB && FloatUtils::lt( tightening._value, _tableau->getUpperBound( tightening._variable ) ) )
+			_tableau->tightenUpperBoundNaively( tightening._variable, tightening._value );
+	}
+
+	if ( GlobalConfiguration::PROOF_CERTIFICATE )
+		checkGroundBounds();
+	struct timespec end = TimeUtils::sampleMicro();
+	_statistics.addTimeForApplyingStoredTightenings( TimeUtils::timePassed( start, end ) );
 }

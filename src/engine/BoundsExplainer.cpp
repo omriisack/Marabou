@@ -88,33 +88,7 @@ void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool 
 {
 	if ( !row._size )
 		return;
-	bool tempUpper;
-	unsigned var = row._lhs, tempVar;  // The var to be updated is the lhs of the row
-	double curCoefficient;
-	ASSERT ( var < _varsNum );
-	ASSERT( row._size == _varsNum || row._size == _varsNum - _rowsNum );
-	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
-	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
-	std::vector<double> tempBound;
-
-	for ( unsigned i = 0; i < row._size; ++i )
-	{
-		curCoefficient = row._row[i]._coefficient;
-		if ( FloatUtils::isZero( curCoefficient ) ) // If coefficient is zero then nothing to add to the sum
-			continue;
-
-		tempUpper = curCoefficient < 0 ? !isUpper : isUpper; // If coefficient is negative, then replace kind of bound
-		tempVar = row._row[i]._var;
-		tempBound = tempUpper ? _upperBoundsExplanations[tempVar] : _lowerBoundsExplanations[tempVar];
-		addVecTimesScalar( sum, tempBound, curCoefficient );
-	}
-
-	extractRowCoefficients( row, rowCoefficients ); // Update according to row coefficients
-	addVecTimesScalar( sum, rowCoefficients, 1 );
-	injectExplanation( sum, var, isUpper );
-
-	rowCoefficients.clear();
-	sum.clear();
+	updateBoundExplanation( row, isUpper, row._lhs );
 }
 
 void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var )
@@ -123,41 +97,60 @@ void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool 
 		return;
 
 	ASSERT ( var < _varsNum );
+	double curCoefficient, ci = 0, realCoefficient;
+	bool tempUpper;
+	unsigned curVar;
 	if ( var == row._lhs )
+		ci = -1;
+	else
 	{
-		updateBoundExplanation( row, isUpper );
-		return;
+		for ( unsigned i = 0; i < row._size; ++i )
+			if ( row._row[i]._var == var )
+			{
+				ci = row._row[i]._coefficient;
+				break;
+			}
 	}
 
-	// Find index of variable
-	int varIndex = -1;
+	ASSERT( !FloatUtils::isZero( ci ) );
+	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> tempBound;
+
 	for ( unsigned i = 0; i < row._size; ++i )
-		if ( row._row[i]._var == var )
+	{
+		curVar = row._row[i]._var;
+		curCoefficient = row._row[i]._coefficient;
+		if ( FloatUtils::isZero( curCoefficient ) || curVar == var ) // If coefficient is zero then nothing to add to the sum, also skip var
+			continue;
+
+		realCoefficient = curCoefficient / -ci;
+		if ( FloatUtils::isZero( realCoefficient ) )
+			continue;
+
+		tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
+		tempBound = tempUpper ? _upperBoundsExplanations[curVar] : _lowerBoundsExplanations[curVar];
+		addVecTimesScalar( sum, tempBound, realCoefficient );
+	}
+
+	// Include lhs as well, if needed
+	if ( var != row._lhs )
+	{
+		realCoefficient = 1 / ci;
+		if ( !FloatUtils::isZero( realCoefficient ) )
 		{
-			varIndex = (int) i;
-			break;
+			tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
+			tempBound = tempUpper ? _upperBoundsExplanations[row._lhs] : _lowerBoundsExplanations[row._lhs];
+			addVecTimesScalar( sum, tempBound, realCoefficient );
 		}
-
-	ASSERT ( varIndex >= 0 );
-	double ci = row[varIndex];
-	ASSERT ( ci );  // Coefficient of var cannot be zero.
-	double coeff = - 1 / ci;
-	// Create a new row with var as its lhs
-	TableauRow equiv = TableauRow( row._size );
-	equiv._lhs = var;
-	equiv._scalar = FloatUtils::isZero( row._scalar ) ? 0 :  row._scalar * coeff;
-
-	for ( unsigned i = 0; i < row._size; ++i )
-	{
-		equiv._row[i]._coefficient = FloatUtils::isZero( row[i] ) ? 0 :  row[i] * coeff;
-		equiv._row[i]._var = row._row[i]._var;
 	}
 
-	// Since the original var is the new lhs, the new var should be replaced with original lhs
-	equiv._row[varIndex]._coefficient = -coeff;
-	equiv._row[varIndex]._var = row._lhs;
+	extractRowCoefficients( row, rowCoefficients, ci ); // Update according to row coefficients
+	addVecTimesScalar( sum, rowCoefficients, 1 );
+	injectExplanation( sum, var, isUpper );
 
-	updateBoundExplanation( equiv, isUpper );
+	rowCoefficients.clear();
+	sum.clear();
 }
 
 void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
@@ -184,11 +177,12 @@ void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& ro
 		curCoefficient = entry._value;
 		if ( FloatUtils::isZero( curCoefficient ) || entry._index == var ) // If coefficient is zero then nothing to add to the sum, also skip var
 			continue;
+
 		realCoefficient = curCoefficient / -ci;
 		if ( FloatUtils::isZero( realCoefficient ) )
 			continue;
 
-		tempUpper =  ( isUpper && FloatUtils::isPositive( realCoefficient ) ) ||  ( !isUpper && FloatUtils::isNegative( realCoefficient ) ); // If coefficient of lhs and var are different, use same bound
+		tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
 		tempBound = tempUpper ? _upperBoundsExplanations[entry._index] : _lowerBoundsExplanations[entry._index];
 		addVecTimesScalar( sum, tempBound, realCoefficient );
 	}
@@ -212,16 +206,16 @@ void BoundsExplainer::addVecTimesScalar( std::vector<double>& sum, const std::ve
 		sum[i] += scalar * input[i];
 }
 
-void BoundsExplainer::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients ) const
+void BoundsExplainer::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients, double ci ) const
 {
 	ASSERT( coefficients.size() == _rowsNum && ( row._size == _varsNum  || row._size == _varsNum - _rowsNum ) );
 	//The coefficients of the row m highest-indices vars are the coefficients of slack variables
 	for ( unsigned i = 0; i < row._size; ++i )
 		if ( row._row[i]._var >= _varsNum - _rowsNum && !FloatUtils::isZero( row._row[i]._coefficient ) )
-			coefficients[row._row[i]._var - _varsNum + _rowsNum] = row._row[i]._coefficient;
+			coefficients[row._row[i]._var - _varsNum + _rowsNum] = - row._row[i]._coefficient / ci;
 
-	if ( row._lhs >= _varsNum - _rowsNum ) //If the lhs was part of original basis, its coefficient is -1
-		coefficients[row._lhs - _varsNum + _rowsNum] = -1;
+	if ( row._lhs >= _varsNum - _rowsNum ) //If the lhs was part of original basis, its coefficient is 1 / ci
+		coefficients[row._lhs - _varsNum + _rowsNum] = 1 / ci;
 }
 
 

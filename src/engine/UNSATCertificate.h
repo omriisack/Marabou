@@ -34,7 +34,6 @@ struct PLCExplanation
 	bool _isAffectedBoundUpper;
 	double *_explanation;
 	PiecewiseLinearFunctionType _constraintType;
-	List<unsigned> _constraintVars;
 	unsigned _decisionLevel;
 };
 
@@ -55,6 +54,12 @@ struct ProblemConstraint
 {
 	PiecewiseLinearFunctionType _type;
 	List<unsigned> _constraintVars;
+	PhaseStatus _status;
+
+	bool operator==(const ProblemConstraint other)
+	{
+		return _type == other._type && _constraintVars == other._constraintVars;
+	}
 };
 
 
@@ -127,7 +132,7 @@ public:
 	/*
  	* Adds an a problem constraint to the list
  	*/
-	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars );
+	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status );
 
 	/*
  	* Return a pointer to the problem constraint representing the split
@@ -170,6 +175,11 @@ public:
 	void deletePLCExplanations();
 
 	/*
+ 	* Removes all PLC explanations from a certain point
+ 	*/
+	void resizePLCExplanationsList( unsigned newSize );
+
+	/*
 	 * Deletes all offsprings of the node and makes it a leaf
 	 */
 	void makeLeaf();
@@ -199,7 +209,7 @@ private:
 	/*
 	 * Copies initial tableau and ground bounds
 	 */
-	void copyGB ( std::vector<double> &groundUBs, std::vector<double> &groundLBs );
+	void copyGB( std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
 	 * Inherits the initialTableau and ground bounds from parent, if exists

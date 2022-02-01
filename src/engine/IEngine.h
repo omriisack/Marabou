@@ -110,10 +110,20 @@ public:
 	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
 
 	/*
- 	* Return the ground bounds
+ 	* Return all ground bounds as a vector
  	*/
-	virtual double getGroundUpperBound( unsigned var ) const = 0;
-	virtual double getGroundLowerBound( unsigned var ) const = 0;
+	virtual const std::vector<double>& getGroundBounds( bool isUpper ) const = 0;
+
+	/*
+ 	* Return all decision levels of the ground bounds as a vector
+ 	*/
+	virtual const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
+
+	/*
+ 	* Sets all decision levels of the ground bounds as a vector
+ 	*/
+	virtual void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const = 0;
+
 	/*
 	 * Get the current pointer in the UNSAT certificate
 	 */
@@ -138,11 +148,6 @@ public:
   	 * Returns true iff the value can be the tightest bound of a variable
    	*/
 	virtual bool isBoundTightest( unsigned var, double value, bool isUpper ) const = 0;
-
-	/*
-	 * Removes all PLC explanations in current UNSAT certificate node
-	 */
-	virtual void removePLCExplanationsFromCurrentCertificateNode() = 0;
 
 	/*
 	* Computes the decision level of an explanations

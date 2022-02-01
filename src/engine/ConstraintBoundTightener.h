@@ -75,7 +75,6 @@ public:
 	 */
 	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper,
 								   const unsigned causingVar, bool isCausingBoundUpper,
-								   List<unsigned int> constraintVars,
 								   PiecewiseLinearFunctionType constraintType );
 
 
