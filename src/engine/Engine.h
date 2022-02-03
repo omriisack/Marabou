@@ -40,6 +40,7 @@
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
 #include "UNSATCertificate.h"
+#include "SumOfInfeasibilitiesManager.h"
 #include "SymbolicBoundTighteningType.h"
 #include "SmtLibWriter.h"
 
@@ -183,7 +184,7 @@ public:
     /*
       Pick the piecewise linear constraint for splitting
     */
-    PiecewiseLinearConstraint *pickSplitPLConstraint();
+    PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy strategy );
 
     /*
       Call-back from QueryDividers
@@ -424,11 +425,6 @@ private:
     unsigned long long _lastIterationWithProgress;
 
     /*
-      Strategy used for internal splitting
-    */
-    DivideStrategy _splittingStrategy;
-
-    /*
       Type of symbolic bound tightening
     */
     SymbolicBoundTighteningType _symbolicBoundTighteningType;
@@ -452,6 +448,11 @@ private:
       MILPEncoder
     */
     std::unique_ptr<MILPEncoder> _milpEncoder;
+
+    /*
+      Manager of the SoI cost function.
+    */
+    std::unique_ptr<SumOfInfeasibilitiesManager> _soiManager;
 
     /*
       Stored options
@@ -549,10 +550,40 @@ private:
     void mainLoopStatistics();
 
     /*
+      Perform bound tightening after performing a case split.
+    */
+    void performBoundTighteningAfterCaseSplit();
+
+    /*
+      Called after a satisfying assignment is found for the linear constraints.
+      Now we try to satisfy the piecewise linear constraints with
+      "local" search (either with Reluplex-styled constraint fixing
+      or SoI-based stochastic search).
+
+      The method also has the side effect of making progress towards the
+      branching condition.
+
+      Return true iff a true satisfying assignment is found.
+    */
+    bool adjustAssignmentToSatisfyNonLinearConstraints();
+
+    /*
+      Perform precision restoration if needed. Return true iff precision
+      restoration is performed.
+    */
+    bool performPrecisionRestorationIfNeeded();
+
+    /*
       Check if the current degradation is high
     */
     bool shouldCheckDegradation();
     bool highDegradation();
+
+    /*
+      Handle malformed basis exception. Return false if unable to restore
+      precision.
+    */
+    bool handleMalformedBasisException();
 
     /*
       Perform bound tightening on the constraint matrix A.
@@ -647,6 +678,11 @@ private:
     void updateDirections();
 
     /*
+      Decide which branch heuristics to use.
+    */
+    void decideBranchingHeuristics();
+
+    /*
       Among the earliest K ReLUs, pick the one with Polarity closest to 0.
       K is equal to GlobalConfiguration::POLARITY_CANDIDATES_THRESHOLD
     */
@@ -671,6 +707,23 @@ private:
       Extract the satisfying assignment from the MILP solver
     */
     void extractSolutionFromGurobi( InputQuery &inputQuery );
+
+    /*
+      Perform SoI-based stochastic local search
+    */
+    bool performDeepSoILocalSearch();
+
+    /*
+      Update the pseudo impact of the PLConstraints according to the cost of the
+      phase patterns. For example, if the minimum of the last accepted phase
+      pattern is 0.5, the minimum of the last proposed phase pattern is 0.2.
+      And the two phase patterns differ by the cost term of a PLConstaint f.
+      Then the Pseudo Impact of f is updated by |0.5 - 0.2| using exponential
+      moving average.
+    */
+    void updatePseudoImpactWithSoICosts( double costOfLastAcceptedPhasePattern,
+                                         double costOfProposedPhasePattern );
+
 
     /*
      Prints coefficients of Simplex equations that witness UNSAT

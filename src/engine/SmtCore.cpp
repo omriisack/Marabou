@@ -22,6 +22,7 @@
 #include "MStringf.h"
 #include "MarabouError.h"
 #include "Options.h"
+#include "PseudoImpactTracker.h"
 #include "ReluConstraint.h"
 #include "SmtCore.h"
 #include "UNSATCertificate.h"
@@ -33,6 +34,10 @@ SmtCore::SmtCore( IEngine *engine )
     , _constraintForSplitting( NULL )
     , _stateId( 0 )
     , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
+    , _deepSoIRejectionThreshold( Options::get()->getInt( Options::DEEP_SOI_REJECTION_THRESHOLD ) )
+    , _branchingHeuristic( Options::get()->getDivideStrategy() )
+    , _scoreTracker( nullptr )
+    , _numRejectedPhasePatternProposal( 0 )
 {
 }
 
@@ -60,6 +65,7 @@ void SmtCore::reset()
     _constraintForSplitting = NULL;
     _stateId = 0;
     _constraintToViolationCount.clear();
+    _numRejectedPhasePatternProposal = 0;
 }
 
 void SmtCore::reportViolatedConstraint( PiecewiseLinearConstraint *constraint )
@@ -88,6 +94,35 @@ unsigned SmtCore::getViolationCounts( PiecewiseLinearConstraint *constraint ) co
     return _constraintToViolationCount[constraint];
 }
 
+void SmtCore::initializeScoreTrackerIfNeeded( const
+                                              List<PiecewiseLinearConstraint *>
+                                              &plConstraints )
+{
+    if ( GlobalConfiguration::USE_DEEPSOI_LOCAL_SEARCH )
+    {
+        _scoreTracker = std::unique_ptr<PseudoImpactTracker>
+            ( new PseudoImpactTracker() );
+        _scoreTracker->initialize( plConstraints );
+
+        SMT_LOG( "\tTracking Pseudo Impact..." );
+    }
+}
+
+void SmtCore::reportRejectedPhasePatternProposal()
+{
+    ++_numRejectedPhasePatternProposal;
+
+    if ( _numRejectedPhasePatternProposal >=
+         _deepSoIRejectionThreshold )
+    {
+        _needToSplit = true;
+        if ( !pickSplitPLConstraint() )
+            // If pickSplitConstraint failed to pick one, use the native
+            // relu-violation based splitting heuristic.
+            _constraintForSplitting = _scoreTracker->topUnfixed();
+    }
+}
+
 bool SmtCore::needToSplit() const
 {
     return _needToSplit;
@@ -97,6 +132,7 @@ void SmtCore::performSplit()
 {
     ASSERT( _needToSplit );
 
+    _numRejectedPhasePatternProposal = 0;
     // Maybe the constraint has already become inactive - if so, ignore
     if ( !_constraintForSplitting->isActive() )
     {
@@ -291,9 +327,10 @@ bool SmtCore::popSplit()
     return true;
 }
 
-void SmtCore::resetReportedViolations()
+void SmtCore::resetSplitConditions()
 {
     _constraintToViolationCount.clear();
+    _numRejectedPhasePatternProposal = 0;
     _needToSplit = false;
 }
 
@@ -509,7 +546,10 @@ void SmtCore::storeSmtState( SmtState &smtState )
 bool SmtCore::pickSplitPLConstraint()
 {
     if ( _needToSplit )
-        _constraintForSplitting = _engine->pickSplitPLConstraint();
+    {
+        _constraintForSplitting = _engine->pickSplitPLConstraint
+            ( _branchingHeuristic );
+    }
     return _constraintForSplitting != NULL;
 }
 
