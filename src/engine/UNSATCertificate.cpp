@@ -228,7 +228,6 @@ double CertificateNode::explainBound( unsigned var, bool isUpper, const std::vec
 
 void CertificateNode::copyGB( std::vector<double> &groundUBs, std::vector<double> &groundLBs )
 {
-
 	_groundUpperBounds.clear();
 	_groundLowerBounds.clear();
 
