@@ -67,14 +67,14 @@ public:
 		String assertRowLine = "(assert ( = 0";
 		for ( auto &entry : row )
 		{
-			if (counter != size - 1)
-				assertRowLine += " ( + ( * " + std::to_string( entry._value ) + " x" + std::to_string( entry._index ) + " )";
+			if ( counter != size - 1 )
+				assertRowLine += " ( + ( * " + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
 			else
-				assertRowLine += " ( * " + std::to_string( entry._value ) + " x" + std::to_string( entry._index ) + " )";
+				assertRowLine += " ( * " + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
 			++counter;
 		}
 
-		assertRowLine += std::string( counter + 2, ')' );
+		assertRowLine += std::string( counter + 1, ')' );
 		instance.append( assertRowLine + "\n" );
 	}
 
@@ -85,7 +85,7 @@ public:
 	{
 		unsigned n = bounds.size();
 		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( <= x" + std::to_string( i ) + " " + std::to_string( bounds[i] ) + " ) )\n" );
+			instance.append( " (assert ( <= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
 	}
 
 	/*
@@ -95,7 +95,7 @@ public:
 	{
 		unsigned n = bounds.size();
 		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( >= x" + std::to_string( i ) + " " + std::to_string( bounds[i] ) + " ) )\n" );
+			instance.append( " (assert ( >= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
 	}
 
 	/*
@@ -107,6 +107,11 @@ public:
 		for ( const String &s : instance )
 			file << s;
 		file.close();
+	}
+
+	static std::string signedValue( double val )
+	{
+		return val > 0 ? std::to_string( val ) : "( - " + std::to_string( abs( val ) ) + " )";
 	}
 };
 

@@ -461,11 +461,20 @@ void CertificateNode::deletePLCExplanations()
 
 /*
  * Removes all PLC explanations from a certain point
- * TODO check with valgrind as well
  */
-void CertificateNode::resizePLCExplanationsList(  unsigned newSize )
+void CertificateNode::resizePLCExplanationsList( unsigned newSize )
 {
-	_PLCExplanations.resize( newSize );
+	unsigned originalSize = _PLCExplanations.size();
+	if ( newSize >= originalSize )
+		return;
+
+	for ( unsigned i =0; i < originalSize - newSize; ++i )
+	{
+		delete _PLCExplanations.back();
+		_PLCExplanations.back() = NULL;
+		_PLCExplanations.pop_back();
+	}
+	ASSERT( _PLCExplanations.size() == newSize );
 }
 
 void CertificateNode::writeLeafToFile()
@@ -484,7 +493,10 @@ void CertificateNode::writeLeafToFile()
 		SparseUnsortedList tempRow = SparseUnsortedList();
 		for ( unsigned  j = 0; j < n; ++j ) //TODO consider improving
 			if ( !FloatUtils::isZero( ( *_initialTableau )[i][j]) )
+			{
 				tempRow.append( j, ( *_initialTableau )[i][j] );
+				tempRow.incrementSize();
+			}
 		SmtLibWriter::addTableauRow( tempRow, leafInstance );
 		tempRow.clear();
 	}
