@@ -752,12 +752,6 @@ String AbsoluteValueConstraint::phaseToString( PhaseStatus phase )
         return "UNKNOWN";
     }
 };
-
-void AbsoluteValueConstraint::setPhaseStatus( PhaseStatus phaseStatus )
-{
-    _phaseStatus = phaseStatus;
-}
-
 //
 // Local Variables:
 // compile-command: "make -C ../.. "
