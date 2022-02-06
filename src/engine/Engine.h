@@ -200,30 +200,40 @@ public:
     void resetExitCode();
     void resetBoundTighteners();
 
-    /*
-       Register initial split when in SnC mode
-     */
-    void applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId );
-
-    /*
-	 * Returns the current explanation of a var
-	 */
-	std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const;
+	/*
+		Register initial split when in SnC mode
+	  */
+	void applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId );
 
 	/*
 	 * Update the ground bounds
 	 */
-    void updateGroundUpperBound(unsigned var, double value );
-    void updateGroundLowerBound(unsigned var, double value );
+	void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel );
+	void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel );
 
-    /*
-     * Get the current pointer of the UNSAT certificate
-     */
-    CertificateNode* getUNSATCertificateCurrentPointer() const;
+	/*
+ 	* Return all ground bounds as a vector
+ 	*/
+	const std::vector<double>& getGroundBounds( bool isUpper ) const;
 
-    /*
-  	* Set the current pointer of the UNSAT certificate
-  	*/
+	/*
+ 	* Return all decision levels of the ground bounds as a vector
+ 	*/
+	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const;
+
+	/*
+ 	* Sets all decision levels of the ground bounds as a vector
+ 	*/
+	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const;
+
+	/*
+	 * Get the current pointer of the UNSAT certificate
+	 */
+	CertificateNode* getUNSATCertificateCurrentPointer() const;
+
+	/*
+	  * Set the current pointer of the UNSAT certificate
+	  */
 	void setUNSATCertificateCurrentPointer( CertificateNode* node );
 
 	/*
@@ -234,7 +244,7 @@ public:
 	/*
 	 * Certify the UNSAT certificate
 	 */
-	bool certifyUNSATCertificate() const;
+	bool certifyUNSATCertificate();
 
 	/*
 	* Returns true iff the value can be the tightest bound of a variable
@@ -242,9 +252,9 @@ public:
 	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
 
 	/*
-	 * Removes all PLC explanations in current UNSAT certificate node
-	 */
-	void removePLCExplanationsFromCurrentCertificateNode();
+	* Computes the decision level of an explanations
+	*/
+	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
 
 private:
 
@@ -725,52 +735,48 @@ private:
     */
     int explainFailureWithTableau();
 
-    std::vector<std::vector<double>> _initialTableau;
-    std::vector<double> _groundUpperBounds;
-    std::vector<double> _groundLowerBounds;
-    CertificateNode* _UNSATCertificate;
+	std::vector<std::vector<double>> _initialTableau;
+	std::vector<double> _groundUpperBounds;
+	std::vector<double> _groundLowerBounds;
+	std::vector<unsigned> _upperDecisionLevels;
+	std::vector<unsigned> _lowerDecisionLevels;
+	CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
 	SmtLibWriter _smtWriter;
+	/*
+		Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
+		Asserts the computed bound is epsilon close to the real one.
+	   */
+	bool certifyInfeasibility( const unsigned var ) const;
 
-    /*
-     Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
-     Asserts the computed bound is epsilon close to the real one.
-    */
-	bool certifyInfeasibility( const unsigned var, bool toPrint ) const;
-
-    /*
-     Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
-    */
-    double getExplainedBound( unsigned var,  bool isUpper ) const;
-
-    /*
-     * Returns the coefficient of a var according to its explanation of isUpper bound
-     */
-    double extractVarExplanationCoefficient( unsigned var, bool isUpper ) const;
+	/*
+	 Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+	*/
+	double getExplainedBound( unsigned var,  bool isUpper ) const;
 
 	/*
 	 Validates that explanations epsilon close to real bounds of a given var
 	 Separately for tightenings and actual bounds
 	 Returns true iff both bounds are epsilon close to their explanations
 	*/
-    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
+	bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
 
 	/*
      Validates that all explanations epsilon close to real bounds
      Separately for tightenings and actual bounds
-     Returns true iff all bounds are epsilon-close to theier explanations
+     Returns true iff all bounds are epsilon-close to their explanations
     */
-    bool validateAllBounds( double epsilon, double M ) const;
+	bool validateAllBounds( double epsilon, double M ) const;
 
-    /*
-     * Finds the variable causing failure and updates its bounds explanations
-     */
-    void explainSimplexFailure();
+	/*
+	 * Finds the variable causing failure and updates its bounds explanations
+	 */
+	void explainSimplexFailure();
 
-    /*
-     * Sanity check for ground bounds
-     */
-    void checkGroundBounds() const;
+	/*
+	 * Sanity check for ground bounds
+	 */
+	void checkGroundBounds() const;
 
 	/*
 	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
@@ -783,9 +789,38 @@ private:
 	int updateFirstInfeasibleBasic();
 
 	/*
+	 * Updates an explanation of a bound according to a row, and checks for an explained contradiction.
+	 * If found, return true.
+	 * If not, revert and return false
+	 */
+	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
+	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
+
+	/*
 	 * Delegates leaves with certification error to SMTLIB format
 	 */
-	void delegateProblematicLeaf();
+	void markLeafToDelegate();
+
+	/*
+	 * Writes the details of a contradiction to the UNSAT certificate
+ 	*/
+	void writeContradictionToCertificate( unsigned infVar );
+
+	/*
+ 	* Computes jump level based on decision levels of UNSAT certificate for the leaf
+ 	*/
+	unsigned computeJumpLevel( unsigned infVar );
+
+	/*
+ 	* Earses all UNSAT certificate info between current leaf and jump level.
+	 * Moves pointer to correct place and sets the relevant contradction
+ 	*/
+	void performJumpForUNSATCertificate( unsigned jumpSize );
+
+	/*
+	 * Applies all bound tightenings without further notifying
+	 */
+	void naivelyApplyAllTightenings();
 
 };
 

@@ -1,3 +1,4 @@
+
 /*********************                                                        */
 /*! \file EngineState.h
  ** \verbatim
@@ -10,7 +11,6 @@
  ** directory for licensing information.\endverbatim
  **
  ** [[ Add lengthier description here ]]
-
  **/
 
 #ifndef __EngineState_h__
@@ -24,29 +24,31 @@
 class EngineState
 {
 public:
-    EngineState();
-    ~EngineState();
+	EngineState();
+	~EngineState();
 
-    /*
-      The state of the tableau
-    */
-    bool _tableauStateIsStored;
-    TableauState _tableauState;
+	/*
+	  The state of the tableau
+	*/
+	bool _tableauStateIsStored;
+	TableauState _tableauState;
 
-    /*
-      The state of each of the PL constraints
-    */
-    Map<PiecewiseLinearConstraint *, PiecewiseLinearConstraint *> _plConstraintToState;
-    unsigned _numPlConstraintsDisabledByValidSplits;
+	/*
+	  The state of each of the PL constraints
+	*/
+	Map<PiecewiseLinearConstraint *, PiecewiseLinearConstraint *> _plConstraintToState;
+	unsigned _numPlConstraintsDisabledByValidSplits;
 
-    std::vector<double> _groundUpperBounds;
+	std::vector<double> _groundUpperBounds;
 	std::vector<double> _groundLowerBounds;
 
-    /*
-      A unique ID allocated to every state that is stored, for
-      debugging purposes. These are assigned by the SMT core.
-    */
-    unsigned _stateId;
+	std::vector<unsigned> _upperDecisionLevels;
+	std::vector<unsigned> _lowerDecisionLevels;
+	/*
+	  A unique ID allocated to every state that is stored, for
+	  debugging purposes. These are assigned by the SMT core.
+	*/
+	unsigned _stateId;
 };
 
 #endif // __EngineState_h__

@@ -8,7 +8,6 @@
  ** directory for licensing information.\endverbatim
  **
  ** [[ Add lengthier description here ]]
-
  **/
 
 
@@ -33,42 +32,20 @@ struct PLCExplanation
 	bool _isCausingBoundUpper;
 	bool _isAffectedBoundUpper;
 	double *_explanation;
-	unsigned _length;
 	PiecewiseLinearFunctionType _constraintType;
-	List<unsigned> _constraintVars;
 	unsigned _decisionLevel;
-
-	void copyContent( PLCExplanation *other )
-	{
-		_causingVar = other->_causingVar;
-		_affectedVar = other->_affectedVar;
-		_bound = other->_bound;
-		_isCausingBoundUpper = other->_isCausingBoundUpper;
-		_isAffectedBoundUpper = other->_isAffectedBoundUpper;
-		_constraintType = other->_constraintType;
-		_decisionLevel = other->_decisionLevel;
-		_length = other->_length;
-
-		if ( _explanation )
-			delete [] _explanation;
-		_explanation = new double[_length];
-		std::copy( &other->_explanation[0], &other->_explanation[_length], &_explanation[0] );
-
-		_constraintVars.clear();
-		for( auto var : other->_constraintVars )
-			_constraintVars.append( var );
-	}
 };
 
 struct Contradiction
 {
 	unsigned _var;
-	SingleVarBoundsExplainer* _explanation; //TODO switch to two arrays
+	double *_upperExplanation;
+	double *_lowerExplanation;
 
-	void copyContent( Contradiction* other)
+	~Contradiction()
 	{
-		_var = other->_var;
-		*_explanation = *( other->_explanation );
+		delete [] _upperExplanation;
+		delete [] _lowerExplanation;
 	}
 };
 
@@ -76,6 +53,12 @@ struct ProblemConstraint
 {
 	PiecewiseLinearFunctionType _type;
 	List<unsigned> _constraintVars;
+	PhaseStatus _status;
+
+	bool operator==(const ProblemConstraint other)
+	{
+		return _type == other._type && _constraintVars == other._constraintVars;
+	}
 };
 
 
@@ -86,7 +69,7 @@ public:
 	/*
 	 * Constructor for the root
 	 */
-	CertificateNode( const std::vector<std::vector<double>> &_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
+	CertificateNode( std::vector<std::vector<double>> *_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
 	 * Constructor for a regular node
@@ -148,7 +131,7 @@ public:
 	/*
  	* Adds an a problem constraint to the list
  	*/
-	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars );
+	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status );
 
 	/*
  	* Return a pointer to the problem constraint representing the split
@@ -188,12 +171,23 @@ public:
 	/*
  	* Removes all PLC explanations
  	*/
-	void removePLCExplanations();
+	void deletePLCExplanations();
+
+	/*
+ 	* Removes all PLC explanations from a certain point
+ 	*/
+	void resizePLCExplanationsList( unsigned newSize );
 
 	/*
 	 * Deletes all offsprings of the node and makes it a leaf
 	 */
 	void makeLeaf();
+
+	/*
+ 	* Removes all PLCExplanations above a certain decision level WITHOUT deleting them
+ 	* ASSUMPTION - explanations pointers are kept elsewhere before removal
+ 	*/
+	void removePLCExplanations( unsigned decisionLevel );
 
 private:
 	std::list<CertificateNode*> _children;
@@ -207,19 +201,19 @@ private:
 	bool _shouldDelegate;
 	unsigned _delegationNumber;
 
-	std::vector<std::vector<double>> _initialTableau;
+	std::vector<std::vector<double>>* _initialTableau;
 	std::vector<double> _groundUpperBounds;
 	std::vector<double> _groundLowerBounds;
 
 	/*
 	 * Copies initial tableau and ground bounds
 	 */
-	void copyInitials ( const std::vector<std::vector<double>> &_initialTableau, std::vector<double> &groundUBs, std::vector<double> &groundLBs );
+	void copyGB( std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
 	 * Inherits the initialTableau and ground bounds from parent, if exists
 	 */
-	void passChangesToChildren(ProblemConstraint *childrenSplitConstraint);
+	void passChangesToChildren( ProblemConstraint *childrenSplitConstraint );
 
 	/*
 	 * Checks if the node is a valid leaf
@@ -232,10 +226,6 @@ private:
 	bool isValidNoneLeaf() const;
 
 	/*
-	 * Clear initial tableau and ground bounds
-	 */
-	void clearInitials();
-	/*
 	* Write a leaf marked to delegate to a smtlib file format
 	*/
 	void writeLeafToFile();
@@ -245,7 +235,7 @@ class UNSATCertificateUtils
 {
 public:
 	static double computeBound( unsigned var, bool isUpper, const std::vector<double> &expl,
-							   const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
+								const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
 		ASSERT( groundLBs.size() == groundUBs.size() );
 		ASSERT( initialTableau.size() == expl.size() || expl.empty() );
@@ -259,7 +249,6 @@ public:
 		if ( expl.empty() )
 			return isUpper ? groundUBs[var] : groundLBs[var];
 
-		std::vector<double> explCopy ( expl );
 		// Create linear combination of original rows implied from explanation
 		std::vector<double> explRowsCombination;
 		UNSATCertificateUtils::getExplanationRowCombination( var, explRowsCombination, expl, initialTableau );
@@ -281,13 +270,12 @@ public:
 		}
 
 		explRowsCombination.clear();
-		explCopy.clear();
 		return derived_bound;
 	}
 
 
 	static void getExplanationRowCombination( unsigned var, std::vector<double> &explRowsCombination, const std::vector<double> &expl,
-											   const std::vector<std::vector<double>> &initialTableau )
+											  const std::vector<std::vector<double>> &initialTableau )
 	{
 		explRowsCombination = std::vector<double>(initialTableau[0].size(), 0 );
 		unsigned n = initialTableau[0].size(), m = expl.size();

@@ -8,93 +8,30 @@
  ** directory for licensing information.\endverbatim
  **
  ** [[ Add lengthier description here ]]
-
  **/
 
 #include "BoundsExplainer.h"
 
-/* Functions of SingleVarBoundsExplainer */
-SingleVarBoundsExplainer::SingleVarBoundsExplainer( const unsigned length )
-	:_length( length )
-	,_upper( 0 )
-	,_lower( 0 )
-{
-	_lower.shrink_to_fit();
-	_upper.shrink_to_fit();
-}
-
-SingleVarBoundsExplainer& SingleVarBoundsExplainer::operator=( const SingleVarBoundsExplainer& other )
-{
-	if ( this == &other )
-		return *this;
-
-	if ( _upper.size() != other._upper.size() )
-	{
-		_upper.clear();
-		_upper.resize( other._upper.size() );
-		_upper.shrink_to_fit();
-	}
-
-	if ( _lower.size() != other._lower.size() )
-	{
-		_lower.clear();
-		_lower.resize( other._lower.size() );
-		_lower.shrink_to_fit();
-	}
-
-	_length = other._length;
-
-	std::copy( other._lower.begin(), other._lower.end(), _lower.begin() );
-	std::copy( other._upper.begin(), other._upper.end(), _upper.begin() );
-
-	ASSERT( _upper.size() == _length || _upper.empty() );
-	ASSERT( _lower.size() == _length || _lower.empty() );
-
-	return *this;
-}
-
-void SingleVarBoundsExplainer::getVarBoundExplanation( std::vector<double>& bound, const bool isUpper ) const
-{
-	ASSERT( bound.size() == _length || bound.empty() );
-	const std::vector<double>& temp = isUpper? _upper : _lower;
-	if ( temp.size() != bound.size() )
-		bound.resize( temp.size() );
-	std::copy( temp.begin(), temp.end(), bound.begin() );
-}
-
-unsigned SingleVarBoundsExplainer::getLength() const
-{
-	return _length;
-}
-
-void SingleVarBoundsExplainer::updateVarBoundExplanation( const std::vector<double>& newBound, const bool isUpper )
-{
-	ASSERT( newBound.size() == _length || newBound.empty() );
-	std::vector<double>& temp = isUpper ? _upper : _lower;
-
-	if ( temp.size() != newBound.size() )
-	{
-		temp.resize( newBound.size() );
-		temp.shrink_to_fit();
-	}
-
-	std::copy( newBound.begin(), newBound.end(), temp.begin() );
-}
-
-void SingleVarBoundsExplainer::addEntry( const double coefficient )
-{
-	_length += 1;
-	_upper.push_back( coefficient );
-	_lower.push_back( coefficient );
-}
-
 /* Functions of BoundsExplainer */
 BoundsExplainer::BoundsExplainer( const unsigned varsNum, const unsigned rowsNum )
-	:_varsNum( varsNum )
-	,_rowsNum( rowsNum )
-	,_bounds( varsNum, SingleVarBoundsExplainer( rowsNum ) )
-{
+		:_varsNum( varsNum )
+		,_rowsNum( rowsNum )
+		,_upperBoundsExplanations( _varsNum, std::vector<double>( 0 ) )
+		,_lowerBoundsExplanations( _varsNum,  std::vector<double>( 0 ) )
 
+{
+}
+
+BoundsExplainer::~BoundsExplainer()
+{
+	for ( unsigned i = 0; i < _varsNum; ++i )
+	{
+		_upperBoundsExplanations[i].clear();
+		_lowerBoundsExplanations[i].clear();
+	}
+
+	_upperBoundsExplanations.clear();
+	_lowerBoundsExplanations.clear();
 }
 
 unsigned BoundsExplainer::getRowsNum() const
@@ -112,53 +49,45 @@ BoundsExplainer& BoundsExplainer::operator=( const BoundsExplainer& other )
 	if ( this == &other )
 		return *this;
 
+	ASSERT( _rowsNum == other._rowsNum );
+	ASSERT( _varsNum == other._varsNum );
 	_rowsNum = other._rowsNum;
 	_varsNum = other._varsNum;
 
 	for ( unsigned i = 0; i < _varsNum; ++i )
-		_bounds[i] = other._bounds[i];
+	{
+		if ( _upperBoundsExplanations[i].size() != other._upperBoundsExplanations[i].size() )
+		{
+			_upperBoundsExplanations[i].clear();
+			_upperBoundsExplanations[i].resize( other._upperBoundsExplanations[i].size() );
+			_upperBoundsExplanations[i].shrink_to_fit();
+		}
+
+		if ( _lowerBoundsExplanations[i].size() != other._lowerBoundsExplanations[i].size() )
+		{
+			_lowerBoundsExplanations[i].clear();
+			_lowerBoundsExplanations[i].resize( other._lowerBoundsExplanations[i].size() );
+			_lowerBoundsExplanations[i].shrink_to_fit();
+		}
+
+		std::copy( other._upperBoundsExplanations[i].begin(), other._upperBoundsExplanations[i].end(), _upperBoundsExplanations[i].begin() );
+		std::copy( other._lowerBoundsExplanations[i].begin(), other._lowerBoundsExplanations[i].end(), _lowerBoundsExplanations[i].begin() );
+	}
 
 	return *this;
 }
 
-SingleVarBoundsExplainer& BoundsExplainer::returnWholeVarExplanation( const unsigned var )
+const std::vector<double>& BoundsExplainer::getExplanation( const unsigned var, const bool isUpper )
 {
 	ASSERT ( var < _varsNum );
-	return _bounds[var];
+	return isUpper ? _upperBoundsExplanations[var] : _lowerBoundsExplanations[var];
 }
 
 void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool isUpper )
 {
 	if ( !row._size )
 		return;
-	bool tempUpper;
-	unsigned var = row._lhs,  tempVar;  // The var to be updated is the lhs of the row
-	double curCoefficient;
-	ASSERT ( var < _varsNum );
-	ASSERT( row._size == _varsNum || row._size == _varsNum - _rowsNum );
-	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
-	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
-	std::vector<double> tempBound;
-
-	for ( unsigned i = 0; i < row._size; ++i )
-	{
-		curCoefficient = row._row[i]._coefficient;
-		if ( FloatUtils::isZero( curCoefficient ) ) // If coefficient is zero then nothing to add to the sum
-			continue;
-
-		tempUpper = curCoefficient < 0 ? !isUpper : isUpper; // If coefficient is negative, then replace kind of bound
-		tempVar = row._row[i]._var;
-		tempBound = tempUpper ? _bounds[tempVar]._upper : _bounds[tempVar]._lower;
-		addVecTimesScalar( sum, tempBound, curCoefficient );
-	}
-
-	extractRowCoefficients( row, rowCoefficients ); // Update according to row coefficients
-	addVecTimesScalar( sum, rowCoefficients, 1 );
-	_bounds[var].updateVarBoundExplanation( sum, isUpper );
-
-	tempBound.clear();
-	rowCoefficients.clear();
-	sum.clear();
+	updateBoundExplanation( row, isUpper, row._lhs );
 }
 
 void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool isUpper, const unsigned var )
@@ -167,41 +96,60 @@ void BoundsExplainer::updateBoundExplanation( const TableauRow& row, const bool 
 		return;
 
 	ASSERT ( var < _varsNum );
+	double curCoefficient, ci = 0, realCoefficient;
+	bool tempUpper;
+	unsigned curVar;
 	if ( var == row._lhs )
+		ci = -1;
+	else
 	{
-		updateBoundExplanation( row, isUpper );
-		return;
+		for ( unsigned i = 0; i < row._size; ++i )
+			if ( row._row[i]._var == var )
+			{
+				ci = row._row[i]._coefficient;
+				break;
+			}
 	}
 
-	// Find index of variable
-	int varIndex = -1;
+	ASSERT( !FloatUtils::isZero( ci ) );
+	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );
+	std::vector<double> tempBound;
+
 	for ( unsigned i = 0; i < row._size; ++i )
-		if ( row._row[i]._var == var )
+	{
+		curVar = row._row[i]._var;
+		curCoefficient = row._row[i]._coefficient;
+		if ( FloatUtils::isZero( curCoefficient ) || curVar == var ) // If coefficient is zero then nothing to add to the sum, also skip var
+			continue;
+
+		realCoefficient = curCoefficient / -ci;
+		if ( FloatUtils::isZero( realCoefficient ) )
+			continue;
+
+		tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
+		tempBound = tempUpper ? _upperBoundsExplanations[curVar] : _lowerBoundsExplanations[curVar];
+		addVecTimesScalar( sum, tempBound, realCoefficient );
+	}
+
+	// Include lhs as well, if needed
+	if ( var != row._lhs )
+	{
+		realCoefficient = 1 / ci;
+		if ( !FloatUtils::isZero( realCoefficient ) )
 		{
-			varIndex = (int) i;
-			break;
+			tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
+			tempBound = tempUpper ? _upperBoundsExplanations[row._lhs] : _lowerBoundsExplanations[row._lhs];
+			addVecTimesScalar( sum, tempBound, realCoefficient );
 		}
-
-	ASSERT ( varIndex >= 0 );
-	double ci = row[varIndex];
-	ASSERT ( ci );  // Coefficient of var cannot be zero.
-	double coeff = - 1 / ci;
-	// Create a new row with var as its lhs
-	TableauRow equiv = TableauRow( row._size );
-	equiv._lhs = var;
-	equiv._scalar = FloatUtils::isZero( row._scalar ) ? 0 :  row._scalar * coeff;
-
-	for ( unsigned i = 0; i < row._size; ++i )
-	{
-		equiv._row[i]._coefficient = FloatUtils::isZero( row[i] ) ? 0 :  row[i] * coeff;
-		equiv._row[i]._var = row._row[i]._var;
 	}
 
-	// Since the original var is the new lhs, the new var should be replaced with original lhs
-	equiv._row[varIndex]._coefficient = -coeff;
-	equiv._row[varIndex]._var = row._lhs;
+	extractRowCoefficients( row, rowCoefficients, ci ); // Update according to row coefficients
+	addVecTimesScalar( sum, rowCoefficients, 1 );
+	injectExplanation( sum, var, isUpper );
 
-	updateBoundExplanation( equiv, isUpper );
+	rowCoefficients.clear();
+	sum.clear();
 }
 
 void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& row, const bool isUpper, const unsigned var )
@@ -228,21 +176,20 @@ void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& ro
 		curCoefficient = entry._value;
 		if ( FloatUtils::isZero( curCoefficient ) || entry._index == var ) // If coefficient is zero then nothing to add to the sum, also skip var
 			continue;
+
 		realCoefficient = curCoefficient / -ci;
 		if ( FloatUtils::isZero( realCoefficient ) )
 			continue;
 
-		tempUpper =  ( isUpper && FloatUtils::isPositive( realCoefficient ) ) ||  ( !isUpper && FloatUtils::isNegative( realCoefficient ) ); // If coefficient of lhs and var are different, use same bound
-		tempBound = tempUpper ? _bounds[entry._index]._upper : _bounds[entry._index]._lower;
-		addVecTimesScalar( sum, tempBound, realCoefficient);
+		tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 ); // If coefficient of lhs and var are different, use same bound
+		tempBound = tempUpper ? _upperBoundsExplanations[entry._index] : _lowerBoundsExplanations[entry._index];
+		addVecTimesScalar( sum, tempBound, realCoefficient );
 	}
 
 	extractSparseRowCoefficients( row, rowCoefficients, ci ); // Update according to row coefficients
 	addVecTimesScalar( sum, rowCoefficients, 1 );
-	_bounds[var].updateVarBoundExplanation( sum, isUpper );
+	injectExplanation( sum, var, isUpper );
 
-
-	tempBound.clear();
 	rowCoefficients.clear();
 	sum.clear();
 }
@@ -258,16 +205,16 @@ void BoundsExplainer::addVecTimesScalar( std::vector<double>& sum, const std::ve
 		sum[i] += scalar * input[i];
 }
 
-void BoundsExplainer::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients ) const
+void BoundsExplainer::extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients, double ci ) const
 {
 	ASSERT( coefficients.size() == _rowsNum && ( row._size == _varsNum  || row._size == _varsNum - _rowsNum ) );
 	//The coefficients of the row m highest-indices vars are the coefficients of slack variables
 	for ( unsigned i = 0; i < row._size; ++i )
 		if ( row._row[i]._var >= _varsNum - _rowsNum && !FloatUtils::isZero( row._row[i]._coefficient ) )
-			coefficients[row._row[i]._var - _varsNum + _rowsNum] = row._row[i]._coefficient;
+			coefficients[row._row[i]._var - _varsNum + _rowsNum] = - row._row[i]._coefficient / ci;
 
-	if ( row._lhs >= _varsNum - _rowsNum ) //If the lhs was part of original basis, its coefficient is -1
-		coefficients[row._lhs - _varsNum + _rowsNum] = -1;
+	if ( row._lhs >= _varsNum - _rowsNum ) //If the lhs was part of original basis, its coefficient is 1 / ci
+		coefficients[row._lhs - _varsNum + _rowsNum] = 1 / ci;
 }
 
 
@@ -281,25 +228,30 @@ void BoundsExplainer::extractSparseRowCoefficients( const SparseUnsortedList& ro
 			coefficients[entry._index - _varsNum + _rowsNum] = - entry._value / ci;
 }
 
-std::vector<SingleVarBoundsExplainer>& BoundsExplainer::getExplanations()
-{
-	return _bounds;
-}
-
-void BoundsExplainer::addZeroExplanation()
+void BoundsExplainer::addVariable()
 {
 	_rowsNum += 1;
 	_varsNum += 1;
-	_bounds.emplace_back( _rowsNum );
+	_upperBoundsExplanations.emplace_back( std::vector<double>( 0 ) );
+	_lowerBoundsExplanations.emplace_back( std::vector<double>( 0 ) );
+
+	for ( unsigned i = 0; i < _varsNum; ++i)
+	{
+		_upperBoundsExplanations[i].push_back( 0 );
+		_lowerBoundsExplanations[i].push_back( 0 );
+	}
 }
 
 void BoundsExplainer::resetExplanation( const unsigned var, const bool isUpper )
 {
-	_bounds[var].updateVarBoundExplanation( std::vector<double>( 0 ), isUpper);
+	isUpper ? _upperBoundsExplanations[var].clear() : _lowerBoundsExplanations[var].clear();
 }
 
-void BoundsExplainer::injectExplanation( const unsigned var, const std::vector<double>& expl, const bool isUpper )
+void BoundsExplainer::injectExplanation( const std::vector<double>& expl, unsigned var, bool isUpper )
 {
-	ASSERT( expl.size() == _bounds[var].getLength() || expl.empty() );
-	_bounds[var].updateVarBoundExplanation( expl, isUpper );
+	std::vector<double> *temp = isUpper ? &_upperBoundsExplanations[var] : &_lowerBoundsExplanations[var];
+	if ( temp->size() != expl.size() )
+		temp->resize( expl.size() );
+
+	std::copy( expl.begin(), expl.end(), temp->begin() );
 }

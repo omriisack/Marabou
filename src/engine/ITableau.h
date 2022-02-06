@@ -209,19 +209,6 @@ public:
 
 protected:
     bool _optimizing = false;
-    virtual void postContextPopHook() = 0;
-
-    bool isOptimizing() const
-    {
-        return _optimizing;
-    }
-
-    void toggleOptimization( bool optimizing )
-    {
-        _optimizing = optimizing;
-    }
-
-
 };
 
 #endif // __ITableau_h__

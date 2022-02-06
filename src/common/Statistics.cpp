@@ -37,6 +37,9 @@ Statistics::Statistics()
     _unsignedAttributes[PP_NUM_CONSTRAINTS_REMOVED] = 0;
     _unsignedAttributes[PP_NUM_EQUATIONS_REMOVED] = 0;
     _unsignedAttributes[TOTAL_NUMBER_OF_VALID_CASE_SPLITS] = 0;
+    _unsignedAttributes[NUM_CERTIFIED_LEAVES] = 0;
+    _unsignedAttributes[NUM_DELEGATED_LEAVES] = 0;
+    _unsignedAttributes[TOTAL_JUMP_LEVEL] = 0;
 
     _longAttributes[NUM_MAIN_LOOP_ITERATIONS] = 0;
     _longAttributes[NUM_SIMPLEX_STEPS] = 0;
@@ -82,6 +85,7 @@ Statistics::Statistics()
     _longAttributes[TOTAL_TIME_OBTAIN_CURRENT_ASSIGNMENT_MICRO] = 0;
     _longAttributes[TOTAL_TIME_LOCAL_SEARCH_MICRO] = 0;
     _longAttributes[TOTAL_TIME_GETTING_SOI_PHASE_PATTERN_MICRO] = 0;
+    _longAttributes[TOTAL_CERTIFICATION_TIME] = 0;
 
     _doubleAttributes[CURRENT_DEGRADATION] = 0.0;
     _doubleAttributes[MAX_DEGRADATION] = 0.0;
@@ -110,8 +114,7 @@ void Statistics::print()
     printf( "\tTotal time elapsed: %llu milli (%02u:%02u:%02u)\n",
             totalElapsed / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
 
-    unsigned long long timeMainLoopMicro = getLongAttribute
-        ( Statistics::TIME_MAIN_LOOP_MICRO );
+    unsigned long long timeMainLoopMicro = getLongAttribute( Statistics::TIME_MAIN_LOOP_MICRO );
     seconds = timeMainLoopMicro / 1000000;
     minutes = seconds / 60;
     hours = minutes / 60;

@@ -120,13 +120,12 @@ void Engine::adjustWorkMemorySize()
         throw MarabouError( MarabouError::ALLOCATION_FAILED, "Engine::work" );
 }
 
-
 void Engine::applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId )
 {
-  _sncMode = true;
-  _sncSplit = sncSplit;
-  _queryId = queryId;
-  applySplit( sncSplit );
+	_sncMode = true;
+	_sncSplit = sncSplit;
+	_queryId = queryId;
+	applySplit( sncSplit );
 }
 
 InputQuery Engine::prepareSnCInputQuery()
@@ -318,7 +317,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
 			explainSimplexFailure();
             if ( !_smtCore.popSplit() )
             {
-                struct timespec mainLoopEnd = TimeUtils::sampleMicro();
+                mainLoopEnd = TimeUtils::sampleMicro();
                 _statistics.incLongAttribute
                     ( Statistics::TIME_MAIN_LOOP_MICRO,
                       TimeUtils::timePassed( mainLoopStart,
@@ -470,7 +469,6 @@ bool Engine::performPrecisionRestorationIfNeeded()
         performPrecisionRestoration( PrecisionRestorer::RESTORE_BASICS );
         return true;
     }
-
     return false;
 }
 
@@ -2222,7 +2220,7 @@ List<unsigned> Engine::getInputVariables() const
 
 void Engine::performSimulation()
 {
-    if ( _simulationSize == 0 || !_networkLevelReasoner )
+    if ( _simulationSize == 0 || !_networkLevelReasoner || GlobalConfiguration::PROOF_CERTIFICATE )
     {
         ENGINE_LOG( Stringf( "Skip simulation...").ascii() );
         return;
@@ -2250,7 +2248,7 @@ void Engine::performSimulation()
 void Engine::performSymbolicBoundTightening()
 {
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
-         ( !_networkLevelReasoner ) )
+         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE )
         return;
 
     struct timespec start = TimeUtils::sampleMicro();
@@ -3301,7 +3299,6 @@ unsigned Engine::computeJumpLevel( unsigned infVar )
 	unsigned contradictionLevel = std::max( computeExplanationDecisionLevel( infVar, true ), computeExplanationDecisionLevel( infVar, false ) );
 	ASSERT( _smtCore.getStackDepth() >= contradictionLevel );
 	unsigned jumpSize = _smtCore.getStackDepth() - contradictionLevel;
-
 
 	_statistics.incUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL, jumpSize );
 

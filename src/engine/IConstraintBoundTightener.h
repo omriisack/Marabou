@@ -76,7 +76,6 @@ public:
 
 	virtual void externalExplanationUpdate( unsigned var, double value, bool isAffectedBoundUpper,
 										   unsigned causingVar, bool isCausingBoundUpper,
-										   List<unsigned int> constraintVars,
 										   PiecewiseLinearFunctionType constraintType ) = 0;
 
 

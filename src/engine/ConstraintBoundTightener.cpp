@@ -184,35 +184,42 @@ void ConstraintBoundTightener::ConstraintBoundTightener::getConstraintTightening
 }
 
 void ConstraintBoundTightener::externalExplanationUpdate( const unsigned var, const double value,
-														 const bool isAffectedBoundUpper,
-														 const unsigned causingVar, bool isCausingBoundUpper,
-														 const List<unsigned int> constraintVars,
-														 const PiecewiseLinearFunctionType constraintType )
+														  const bool isAffectedBoundUpper,
+														  const unsigned causingVar, bool isCausingBoundUpper,
+														  const PiecewiseLinearFunctionType constraintType )
 {
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-		return;
-	// TODO consider design of function
-	//Make sure the bound is the tightest learned
-	if ( !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, isAffectedBoundUpper ) )
 		return;
 
+	// TODO re-consider design
 	// Register new ground bound, update certificate, and reset explanation
+	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, isCausingBoundUpper );
 	auto* PLCExpl = new PLCExplanation();
+	auto explVec = _tableau.explainBound( causingVar, isCausingBoundUpper );
 
 	PLCExpl->_causingVar = causingVar;
-	PLCExpl->_explanation = _engine.getVarCurrentBoundExplanation( causingVar, isCausingBoundUpper );
-	PLCExpl->_constraintVars = constraintVars;
+
+	if ( explVec.empty() )
+		PLCExpl->_explanation = NULL;
+	else
+	{
+		PLCExpl->_explanation = new double[ explVec.size() ];
+		std::copy( explVec.begin(), explVec.end(), PLCExpl->_explanation );
+	}
+
 	PLCExpl->_affectedVar = var;
 	PLCExpl->_bound = value;
 	PLCExpl->_isAffectedBoundUpper = isAffectedBoundUpper;
 	PLCExpl->_isCausingBoundUpper = isCausingBoundUpper;
 	PLCExpl->_constraintType = constraintType;
-
+	PLCExpl->_decisionLevel = decisionLevel;
 	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
 
-	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value ) : _engine.updateGroundLowerBound( var, value ); // Function resets explanation as well
+	isAffectedBoundUpper ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel ); // Function resets explanation as well
+	_tableau.resetExplanation( var, isAffectedBoundUpper );
 	isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
 }
+
 
 double ConstraintBoundTightener::getUpperBound( unsigned var ) const
 {

@@ -26,7 +26,6 @@
 #include "SparseMatrix.h"
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
-#include "BoundsExplanator.h"
 
 #define TABLEAU_LOG( x, ... ) LOG( GlobalConfiguration::TABLEAU_LOGGING, "Tableau: %s\n", x )
 
@@ -462,6 +461,23 @@ public:
      */
     void postContextPopHook() { computeBasicStatus(); };
 
+	/*
+	 * Returns the content of the object containing all explanations for variable bounds in the tableau.
+	 */
+	BoundsExplainer* getAllBoundsExplanations() const;
+
+	void setAllBoundsExplanations( BoundsExplainer* boundsExplanations );
+
+	/*
+	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
+	 */
+	void tightenUpperBoundNaively( unsigned variable, double value );
+
+	/*
+	 * Tighten a lower bound without checking it is indeed tightening, and without notifying watchers
+	 */
+	void tightenLowerBoundNaively( unsigned variable, double value );
+
 private:
     /*
       Variable watchers
@@ -657,79 +673,69 @@ private:
 
     static String basicStatusToString( unsigned status );
 
-    /*
-      Finds a row with its basic variable either too high or too low,
-      puts it in  the input parameter, and returns the index of the row
-      If none found return -1
-    */
-    int getInfeasibleRow( TableauRow& row );
+	/*
+	  Finds a row with its basic variable either too high or too low,
+	  puts it in  the input parameter, and returns the corresponding basic status
+	  If none found return TABLEAU::BETWEEN
+	*/
+	BasicStatus getInfeasibleRow( TableauRow& row );
 
-    /*
-     Returns a variable with infeasible bounds, if exists
-     Otherwise returns -1
+	/*
+	 Returns a variable with infeasible bounds, if exists
+	 Otherwise returns -1
    */
-    int getInfeasibleVar() const;
-
-    /*
-     * Checks that the slack of a given row lhs is empty
-     */
-	bool checkSlack( unsigned rowIndex );
+	int getInfeasibleVar() const;
 
 	/*
  	* Checks that the slack of a given row lhs is empty
+	* TODO delete function when completing
  	*/
 	bool checkCostFunctionSlack();
 
-    /*
-    * Computes the bound imposed by row rhs
-    */
-    double computeRowBound(const TableauRow& row, bool isUpper ) const;
+	/*
+	* Computes the bound imposed by row rhs
+	*/
+	double computeRowBound(const TableauRow& row, bool isUpper ) const;
 
 	/*
 	* Computes the bound imposed by row on a variable
 	*/
 	double computeSparseRowBound( const SparseUnsortedList& row, bool isUpper, unsigned var) const;
 
-    /*
-      Returns the bounds explanation of a variable in the tableau
-    */
-    SingleVarBoundsExplanator* explainBound( unsigned variable ) const;
+	/*
+	  Returns the bounds explanation of a variable in the tableau
+	*/
+	const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const;
 
-    /*
-     Update a bound explanation according to a row in the Tableau
-    */
-    void updateExplanation( const TableauRow& row, bool isUpper ) const;
+	/*
+	 Update a bound explanation according to a row in the Tableau
+	*/
+	void updateExplanation( const TableauRow& row, bool isUpper ) const;
 
-    /*
-    Update a bound explanation of a specific var in a row 
+	/*
+	Update a bound explanation of a specific var in a row
    */
-    void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const;
+	void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const;
 
-    /*
-     Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
-    */
-    void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const;
+	/*
+	 Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
+	*/
+	void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const;
 
-    /*
-     * Resets a bound explanation
-     */
-	void resetExplanation ( unsigned var, bool isUpper );
-
-    /*
-     * Multiplies the explanation vector of a var by scalar alpha
-     */
-	void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper );
+	/*
+	 * Resets a bound explanation
+	 */
+	void resetExplanation ( unsigned var, bool isUpper ) const;
 
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/
-	void injectExplanation( unsigned var, SingleVarBoundsExplanator& expl );
+	void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const;
 
 	/*
-      Explanator of all bounds 
+     * Explainer of all bounds
     */
-    BoundsExplanator *_boundsExplanator;
-
+	BoundsExplainer *_boundsExplainer;
 };
 
 #endif // __Tableau_h__

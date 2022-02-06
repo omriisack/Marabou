@@ -111,15 +111,30 @@ public:
     virtual PiecewiseLinearConstraint *pickSplitPLConstraintSnC( SnCDivideStrategy
                                                                  strategy ) = 0;
 	/*
-	 * Returns the current explanation of a var
-	 */
-    virtual std::vector<double> getVarCurrentBoundExplanation (unsigned var, bool isUpper ) const = 0;
+ Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+*/
+	virtual double getExplainedBound( unsigned var,  bool isUpper ) const = 0;
 
 	/*
-	 * Updates the ground bounds
+	 * Update the ground bounds
 	 */
-	virtual void updateGroundUpperBound(unsigned var, double value ) = 0;
-	virtual void updateGroundLowerBound(unsigned var, double value ) = 0;
+	virtual void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel ) = 0;
+	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
+
+	/*
+ 	* Return all ground bounds as a vector
+ 	*/
+	virtual const std::vector<double>& getGroundBounds( bool isUpper ) const = 0;
+
+	/*
+ 	* Return all decision levels of the ground bounds as a vector
+ 	*/
+	virtual const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
+
+	/*
+ 	* Sets all decision levels of the ground bounds as a vector
+ 	*/
+	virtual void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const = 0;
 
 	/*
 	 * Get the current pointer in the UNSAT certificate
@@ -139,12 +154,17 @@ public:
 	/*
 	 * Certify the UNSAT certificate
 	 */
-	virtual bool certifyUNSATCertificate() const = 0;
+	virtual bool certifyUNSATCertificate() = 0;
 
 	/*
   	 * Returns true iff the value can be the tightest bound of a variable
    	*/
 	virtual bool isBoundTightest( unsigned var, double value, bool isUpper ) const = 0;
+
+	/*
+	* Computes the decision level of an explanations
+	*/
+	virtual unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const = 0;
 };
 
 #endif // __IEngine_h__

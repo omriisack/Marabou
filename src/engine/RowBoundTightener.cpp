@@ -555,8 +555,8 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
         ci = entry._value;
 
         _ciSign[index] = FloatUtils::isPositive( ci ) ? POSITIVE : NEGATIVE;
-        _ciTimesLb[index] = ci * _lowerBounds[index];
-        _ciTimesUb[index] = ci * _upperBounds[index];
+        _ciTimesLb[index] = ci * getLowerBound( index );
+        _ciTimesUb[index] = ci * getUpperBound( index );
     }
 
     /*
@@ -633,25 +633,25 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
         }
 
 		// If a tighter bound is found, store it
-        if ( FloatUtils::lt( _lowerBounds[index], lowerBound )  )
+        if ( FloatUtils::lt( getLowerBound( index ), lowerBound )  )
         {
             if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( index, lowerBound, false ) )
                 _tableau.updateExplanation( *sparseRow, false, index );
-            _lowerBounds[index] = lowerBound;
+            setLowerBound( index, lowerBound );
             _tightenedLower[index] = true;
             ++result;
         }
 
-        if ( FloatUtils::gt( _upperBounds[index], upperBound ) )
+        if ( FloatUtils::gt( getUpperBound( index ), upperBound ) )
         {
             if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( index, upperBound, true ) )
                 _tableau.updateExplanation( *sparseRow, true, index );
-            _upperBounds[index] = upperBound;
+            setUpperBound( index, upperBound );
             _tightenedUpper[index] = true;
             ++result;
         }
 
-        if ( FloatUtils::gt( _lowerBounds[index], _upperBounds[index] ) )
+        if ( FloatUtils::gt( getLowerBound( index ), getUpperBound( index ) ) )
             throw InfeasibleQueryException();
     }
 

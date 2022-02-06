@@ -227,13 +227,10 @@ public:
     */
     static const unsigned DNC_DEPTH_THRESHOLD;
 
-    /*Toggle bound tightening on or off
-    */
-    static const bool GlobalConfiguration::BOUND_TIGHTENING;
 
     /*Provide proof certificate
     */
-    static const bool GlobalConfiguration::PROOF_CERTIFICATE;
+    static const bool PROOF_CERTIFICATE;
 
 #ifdef ENABLE_GUROBI
     /*
