@@ -440,3 +440,11 @@ double Statistics::printAverage( unsigned long long part, unsigned long long tot
 
     return (double)part / total;
 }
+void Statistics::printLongAttributeAsTime( StatisticsLongAttribute attr )
+{
+	unsigned int seconds = _longAttributes[attr] / 1000000;
+	unsigned int minutes = seconds / 60;
+	unsigned int hours = minutes / 60;
+	printf( "\tCertification Total Time: %llu milli (%02u:%02u:%02u)\n",
+			_longAttributes[attr] / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
+}

@@ -70,7 +70,6 @@ Engine::Engine()
     , _lowerDecisionLevels {}
     , _UNSATCertificate( NULL )
     , _UNSATCertificateCurrentPointer( NULL )
-    , _smtWriter()
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -3295,14 +3294,10 @@ bool Engine::certifyUNSATCertificate()
 	struct timespec certificationEnd = TimeUtils::sampleMicro();
 
 	unsigned long long totalTime =  TimeUtils::timePassed( certificationStart, certificationEnd );
-	//TODO integrate into statistics
-	_statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, totalTime );
 
-	unsigned int seconds = totalTime / 1000000;
-	unsigned int minutes = seconds / 60;
-	unsigned int hours = minutes / 60;
-	printf( "\tCertification Total Time: %llu milli (%02u:%02u:%02u)\n",
-			totalTime / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
+	_statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, totalTime );
+	_statistics.printLongAttributeAsTime( Statistics::TOTAL_CERTIFICATION_TIME );
+
 	return certificationSucceeded;
 }
 

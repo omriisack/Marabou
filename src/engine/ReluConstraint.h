@@ -249,8 +249,6 @@ private:
     */
     bool haveOutOfBoundVariables() const;
 
-    void registerExternalExplanationUpdate( unsigned var, double value, bool isUpper );
-
     SparseUnsortedList createTighteningRow() const;
 };
 
