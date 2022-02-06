@@ -18,7 +18,7 @@
 
 #include "List.h"
 #include "Set.h"
-#include "BoundsExplanator.h"
+#include "BoundsExplainer.h"
 
 class EntrySelectionStrategy;
 class Equation;
@@ -100,7 +100,7 @@ public:
     virtual void setRightHandSide( unsigned index, double value ) = 0;
     virtual void markAsBasic( unsigned variable ) = 0;
     virtual void initializeTableau( const List<unsigned> &initialBasicVariables ) = 0;
-    virtual double getValue( unsigned variable ) = 0;
+    virtual double getValue( unsigned variable ) const = 0;
     virtual bool allBoundsValid() const = 0;
     virtual double getLowerBound( unsigned variable ) const = 0;
     virtual double getUpperBound( unsigned variable ) const = 0;
@@ -180,20 +180,36 @@ public:
     virtual void mergeColumns( unsigned x1, unsigned x2 ) = 0;
     virtual bool areLinearlyDependent( unsigned x1, unsigned x2, double &coefficient, double &inverseCoefficient ) = 0;
     virtual unsigned getVariableAfterMerging( unsigned variable ) const = 0;
-    
-    
-    virtual int getInfeasibleRow( TableauRow& row ) = 0;
-    virtual int getInfeasibleVar() const = 0;
-    virtual double computeRowBound( const TableauRow& row, bool isUpper ) const = 0;
-    virtual double computeSparseRowBound( const SparseUnsortedList& row,  bool isUpper,  unsigned var) const = 0;
-    virtual SingleVarBoundsExplanator* explainBound( unsigned variable ) const = 0;
-    virtual void updateExplanation( const TableauRow& row, bool isUpper ) const = 0;
-    virtual void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const = 0;
-    virtual void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const = 0;
-	virtual void resetExplanation ( unsigned var, bool isUpper ) = 0;
-    virtual void multiplyExplanationCoefficients ( unsigned var, double alpha, bool isUpper ) = 0;
-    virtual void injectExplanation(unsigned var, SingleVarBoundsExplanator& expl) = 0;
+    virtual void postContextPopHook() = 0;
+
+    bool isOptimizing() const
+    {
+        return _optimizing;
+    }
+
+    void toggleOptimization( bool optimizing )
+    {
+        _optimizing = optimizing;
+    }
+	virtual BasicStatus getInfeasibleRow( TableauRow& row ) = 0;
+	virtual int getInfeasibleVar() const = 0;
+	virtual double computeRowBound( const TableauRow& row, bool isUpper ) const = 0;
+	virtual double computeSparseRowBound( const SparseUnsortedList& row,  bool isUpper,  unsigned var) const = 0;
+	virtual const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const = 0;
+	virtual void updateExplanation( const TableauRow& row, bool isUpper ) const = 0;
+	virtual void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const = 0;
+	virtual void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const = 0;
+	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
+	virtual void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
+	virtual BoundsExplainer* getAllBoundsExplanations() const = 0;
+	virtual void setAllBoundsExplanations( BoundsExplainer* boundsExplanations ) = 0;
+	virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
+	virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
+protected:
+    bool _optimizing = false;
+
+
 
 };
 

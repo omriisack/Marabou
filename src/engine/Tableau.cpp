@@ -2807,7 +2807,7 @@ void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
 	ASSERT( variable < _n );
 
 	if ( _statistics )
-		_statistics->incNumTightenedBounds();
+		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
 
 	_upperBounds[variable] = value;
 	checkBoundsValid( variable );
@@ -2820,7 +2820,7 @@ void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
 	ASSERT( variable < _n );
 
 	if ( _statistics )
-		_statistics->incNumTightenedBounds();
+		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
 
 	_lowerBounds[variable] = value;
 	checkBoundsValid( variable );

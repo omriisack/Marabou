@@ -148,16 +148,6 @@ public:
      */
     void setStatistics( Statistics *statistics );
 
-	/*
- 	* Gets the upper bound stored in the RBT
- 	*/
-	double getUpperBound(unsigned var ) const;
-
-	/*
-     * Gets the lower bound stored in the RBT
-     */
-	double getLowerBound(unsigned var ) const;
-
 private:
     ITableau &_tableau;
     unsigned _n;
