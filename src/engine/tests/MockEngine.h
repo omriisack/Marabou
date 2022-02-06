@@ -21,6 +21,8 @@
 #include "PiecewiseLinearCaseSplit.h"
 #include "PiecewiseLinearConstraint.h"
 
+class String;
+
 class MockEngine : public IEngine
 {
 public:
@@ -31,7 +33,7 @@ public:
 
         lastStoredState = NULL;
     }
-    
+
     ~MockEngine()
     {
     }
@@ -88,6 +90,8 @@ public:
             }
         }
     }
+
+    void postContextPopHook() {};
 
     mutable EngineState *lastStoredState;
     void storeState( EngineState &state, bool /* storeAlsoTableauState */ ) const
@@ -167,7 +171,7 @@ public:
         _constraintsToSplit.append( constraint );
     }
 
-    PiecewiseLinearConstraint *pickSplitPLConstraint()
+    PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy /**/ )
     {
         if ( !_constraintsToSplit.empty() )
         {
@@ -189,6 +193,10 @@ public:
             }
         else
             return NULL;
+    }
+
+    void applySnCSplit( PiecewiseLinearCaseSplit /*split*/, String /*queryId*/)
+    {
     }
 
 

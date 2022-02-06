@@ -17,7 +17,7 @@
  ** RELU_PHASE_ACTIVE   : b > 0 and f > 0
  ** RELU_PHASE_INACTIVE : b <=0 and f = 0
  **
- ** The constraint is implemented as ContextDependentPiecewiseLinearConstraint
+ ** The constraint is implemented as PiecewiseLinearConstraint
  ** and operates in two modes:
  **   * pre-processing mode, which stores bounds locally, and
  **   * context dependent mode, used during the search.
@@ -30,14 +30,14 @@
 #ifndef __ReluConstraint_h__
 #define __ReluConstraint_h__
 
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "LinearExpression.h"
 #include "List.h"
 #include "Map.h"
 #include "PiecewiseLinearConstraint.h"
 
 #include <cmath>
 
-class ReluConstraint : public ContextDependentPiecewiseLinearConstraint
+class ReluConstraint : public PiecewiseLinearConstraint
 {
 public:
     /*
@@ -55,7 +55,7 @@ public:
     /*
       Return a clone of the constraint.
     */
-    ContextDependentPiecewiseLinearConstraint *duplicateConstraint() const override;
+    PiecewiseLinearConstraint *duplicateConstraint() const override;
 
     /*
       Restore the state of this constraint from the given one.
@@ -167,12 +167,20 @@ public:
     void addAuxiliaryEquations( InputQuery &inputQuery ) override;
 
     /*
-      Ask the piecewise linear constraint to contribute a component to the cost
-      function. If implemented, this component should be empty when the constraint is
-      satisfied or inactive, and should be non-empty otherwise. Minimizing the returned
-      equation should then lead to the constraint being "closer to satisfied".
+      Ask the piecewise linear constraint to add its cost term corresponding to
+      the given phase to the cost function. The cost term for ReLU is:
+        _f - _b for the active phase
+        _f      for the inactive phase
     */
-    virtual void getCostFunctionComponent( Map<unsigned, double> &cost ) const override;
+    virtual void getCostFunctionComponent( LinearExpression &cost,
+                                           PhaseStatus phase ) const override;
+
+    /*
+      Return the phase status corresponding to the values of the *input*
+      variables in the given assignment.
+    */
+    virtual PhaseStatus getPhaseStatusInAssignment( const Map<unsigned, double>
+                                                    &assignment ) const override;
 
     /*
       Returns string with shape: relu, _f, _b

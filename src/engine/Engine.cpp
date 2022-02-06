@@ -318,7 +318,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
 			explainSimplexFailure();
             if ( !_smtCore.popSplit() )
             {
-                mainLoopEnd = TimeUtils::sampleMicro();
+                struct timespec mainLoopEnd = TimeUtils::sampleMicro();
                 _statistics.incLongAttribute
                     ( Statistics::TIME_MAIN_LOOP_MICRO,
                       TimeUtils::timePassed( mainLoopStart,
@@ -1205,6 +1205,7 @@ void Engine::addAuxiliaryVariables()
         _preprocessedQuery.setLowerBound( auxVar, eq._scalar );
         _preprocessedQuery.setUpperBound( auxVar, eq._scalar );
         eq.setScalar( 0 );
+
         ++count;
     }
 }
@@ -2249,7 +2250,7 @@ void Engine::performSimulation()
 void Engine::performSymbolicBoundTightening()
 {
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
-         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE )
+         ( !_networkLevelReasoner ) )
         return;
 
     struct timespec start = TimeUtils::sampleMicro();

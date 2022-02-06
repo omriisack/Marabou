@@ -421,7 +421,6 @@ public:
     {
         return _cdInfeasibleCases;
     }
-
 	void setTableauAuxVar( const unsigned counterpart )
 	{
     	_tableauAuxVar = counterpart;

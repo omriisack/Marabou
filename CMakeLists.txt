@@ -78,28 +78,28 @@ set(INPUT_PARSERS_DIR input_parsers)
 include(ProcessorCount)
 ProcessorCount(CTEST_NTHREADS)
 if(CTEST_NTHREADS EQUAL 0)
-    set(CTEST_NTHREADS 1)
+  set(CTEST_NTHREADS 1)
 endif()
-
+ 
 # --------------- set build type ----------------------------
 set(BUILD_TYPES Release Debug MinSizeRel RelWithDebInfo)
 
 # Set the default build type to Production
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE
-            Release CACHE STRING "Options are: Release Debug MinSizeRel RelWithDebInfo" FORCE)
-    # Provide drop down menu options in cmake-gui
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${BUILD_TYPES})
+  set(CMAKE_BUILD_TYPE
+      Release CACHE STRING "Options are: Release Debug MinSizeRel RelWithDebInfo" FORCE)
+  # Provide drop down menu options in cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${BUILD_TYPES})
 endif()
 message(STATUS "Building ${CMAKE_BUILD_TYPE} build")
 
 #-------------------------set code coverage----------------------------------#
 # Allow coverage only in debug mode only in gcc
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_BUILD_TYPE MATCHES Debug)
-    message(STATUS "Building with code coverage")
-    set(COVERAGE_COMPILER_FLAGS "-g -O0 --coverage" CACHE INTERNAL "")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+  message(STATUS "Building with code coverage")
+  set(COVERAGE_COMPILER_FLAGS "-g -O0 --coverage" CACHE INTERNAL "")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 endif()
 
 # We build a static library that is the core of the project, the link it to the
@@ -110,7 +110,7 @@ target_include_directories(${MARABOU_LIB} PRIVATE SYSTEM)
 add_executable(${MARABOU_EXE} "${ENGINE_DIR}/main.cpp")
 set(MARABOU_EXE_PATH "${BIN_DIR}/${MARABOU_EXE}")
 add_custom_command(TARGET ${MARABOU_EXE} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${MARABOU_EXE}> ${MARABOU_EXE_PATH} )
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${MARABOU_EXE}> ${MARABOU_EXE_PATH} )
 
 set(MPS_PARSER_PATH "${BIN_DIR}/${MPS_PARSER}")
 
@@ -118,10 +118,10 @@ set(MPS_PARSER_PATH "${BIN_DIR}/${MPS_PARSER}")
 set(PYTHON32 FALSE)
 if(${BUILD_PYTHON})
     execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
-            "import struct; print(struct.calcsize('@P'));"
-            RESULT_VARIABLE _PYTHON_SUCCESS
-            OUTPUT_VARIABLE PYTHON_SIZEOF_VOID_P
-            ERROR_VARIABLE _PYTHON_ERROR_VALUE)
+        "import struct; print(struct.calcsize('@P'));"
+    RESULT_VARIABLE _PYTHON_SUCCESS
+    OUTPUT_VARIABLE PYTHON_SIZEOF_VOID_P
+    ERROR_VARIABLE _PYTHON_ERROR_VALUE)
     # message("PYTHON SIZEOF VOID p ${PYTHON_SIZEOF_VOID_P}")
     if (PYTHON_SIZEOF_VOID_P EQUAL 4 AND NOT ${FORCE_PYTHON_BUILD})
         set(PYTHON32 TRUE)
@@ -132,9 +132,9 @@ endif()
 
 if (NOT MSVC)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        set(COMPILE_FLAGS  -Wall -Wextra  -Werror -MMD -Qunused-arguments ) #-Wno-deprecated
-    else()
-        set(COMPILE_FLAGS  -Wall -Wextra  -Werror -MMD ) #-Wno-deprecated
+       set(COMPILE_FLAGS  -Wall -Wextra  -Werror -MMD -Qunused-arguments ) #-Wno-deprecated 
+     else()
+       set(COMPILE_FLAGS  -Wall -Wextra  -Werror -MMD ) #-Wno-deprecated 
     endif()
     set(RELEASE_FLAGS ${COMPILE_FLAGS} -O3) #-Wno-deprecated
 endif()
@@ -193,53 +193,53 @@ set(LIBS_INCLUDES ${Boost_INCLUDE_DIRS})
 set(LIBS ${Boost_LIBRARIES})
 
 if (${ENABLE_GUROBI})
-    message(STATUS "Using Gurobi for LP relaxation for bound tightening")
-    if (NOT DEFINED GUROBI_DIR)
-        set(GUROBI_DIR $ENV{GUROBI_HOME})
-    endif()
-    add_compile_definitions(ENABLE_GUROBI)
+  message(STATUS "Using Gurobi for LP relaxation for bound tightening")
+  if (NOT DEFINED GUROBI_DIR)
+    set(GUROBI_DIR $ENV{GUROBI_HOME})
+  endif()
+  add_compile_definitions(ENABLE_GUROBI)
 
-    set(GUROBI_LIB1 "gurobi_c++")
-    set(GUROBI_LIB2 "gurobi90")
+  set(GUROBI_LIB1 "gurobi_c++")
+  set(GUROBI_LIB2 "gurobi90")
 
-    add_library(${GUROBI_LIB1} SHARED IMPORTED)
-    set_target_properties(${GUROBI_LIB1} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi_c++.a)
-    list(APPEND LIBS ${GUROBI_LIB1})
-    target_include_directories(${GUROBI_LIB1} INTERFACE ${GUROBI_DIR}/include/)
+  add_library(${GUROBI_LIB1} SHARED IMPORTED)
+  set_target_properties(${GUROBI_LIB1} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi_c++.a)
+  list(APPEND LIBS ${GUROBI_LIB1})
+  target_include_directories(${GUROBI_LIB1} INTERFACE ${GUROBI_DIR}/include/)
 
-    add_library(${GUROBI_LIB2} SHARED IMPORTED)
+  add_library(${GUROBI_LIB2} SHARED IMPORTED)
 
-    # MACOSx uses .dylib instead of .so for its Gurobi downloads.
-    if (APPLE)
-        set_target_properties(${GUROBI_LIB2} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi91.dylib)
-    else()
-        set_target_properties(${GUROBI_LIB2} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi91.so)
-    endif ()
+  # MACOSx uses .dylib instead of .so for its Gurobi downloads.
+  if (APPLE)
+    set_target_properties(${GUROBI_LIB2} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi91.dylib)
+  else()
+    set_target_properties(${GUROBI_LIB2} PROPERTIES IMPORTED_LOCATION ${GUROBI_DIR}/lib/libgurobi91.so)
+  endif ()
 
-    list(APPEND LIBS ${GUROBI_LIB2})
-    target_include_directories(${GUROBI_LIB2} INTERFACE ${GUROBI_DIR}/include/)
+  list(APPEND LIBS ${GUROBI_LIB2})
+  target_include_directories(${GUROBI_LIB2} INTERFACE ${GUROBI_DIR}/include/)
 endif()
 
 if (NOT MSVC)
-    if (${ENABLE_OPENBLAS})
-        message(STATUS "using openblas for matrix multiplication")
-        add_compile_definitions(ENABLE_OPENBLAS)
-        #OpenBLAS
-        if(NOT EXISTS "${OPENBLAS_DIR}/installed/lib/libopenblas.a")
-            message("Can't find open blas, installing. If open blas is isntalled please use the OPENBLAS_DIR parameter to pass the path")
-            if (${OPENBLAS_DIR} STREQUAL ${OPENBLAS_DEFAULT_DIR})
-                message("installing openblas")
-                execute_process(COMMAND ${TOOLS_DIR}/download_openBLAS.sh)
-            else()
-                message(FATAL_ERROR "Can't find openblas in the supplied directory")
-            endif()
+if (${ENABLE_OPENBLAS})
+    message(STATUS "using openblas for matrix multiplication")
+    add_compile_definitions(ENABLE_OPENBLAS)
+    #OpenBLAS
+    if(NOT EXISTS "${OPENBLAS_DIR}/installed/lib/libopenblas.a")
+        message("Can't find open blas, installing. If open blas is isntalled please use the OPENBLAS_DIR parameter to pass the path")
+        if (${OPENBLAS_DIR} STREQUAL ${OPENBLAS_DEFAULT_DIR})
+            message("installing openblas")
+            execute_process(COMMAND ${TOOLS_DIR}/download_openBLAS.sh)
+        else()
+            message(FATAL_ERROR "Can't find openblas in the supplied directory")
         endif()
-
-        add_library(${OPENBLAS_LIB} SHARED IMPORTED)
-        set_target_properties(${OPENBLAS_LIB} PROPERTIES IMPORTED_LOCATION ${OPENBLAS_DIR}/installed/lib/libopenblas.a)
-        list(APPEND LIBS ${OPENBLAS_LIB})
-        target_include_directories(${OPENBLAS_LIB} INTERFACE ${OPENBLAS_DIR}/installed/include)
     endif()
+
+    add_library(${OPENBLAS_LIB} SHARED IMPORTED)
+    set_target_properties(${OPENBLAS_LIB} PROPERTIES IMPORTED_LOCATION ${OPENBLAS_DIR}/installed/lib/libopenblas.a)
+    list(APPEND LIBS ${OPENBLAS_LIB})
+    target_include_directories(${OPENBLAS_LIB} INTERFACE ${OPENBLAS_DIR}/installed/include)
+endif()
 endif()
 
 # pthread
@@ -248,10 +248,10 @@ find_package(Threads REQUIRED)
 list(APPEND LIBS Threads::Threads)
 
 if (BUILD_STATIC_MARABOU)
-    # build a static library
-    target_link_libraries(${MARABOU_LIB} ${LIBS} -static)
+  # build a static library
+  target_link_libraries(${MARABOU_LIB} ${LIBS} -static)
 else()
-    target_link_libraries(${MARABOU_LIB} ${LIBS})
+  target_link_libraries(${MARABOU_LIB} ${LIBS})
 endif()
 
 target_include_directories(${MARABOU_LIB} PRIVATE ${LIBS_INCLUDES})
@@ -284,7 +284,7 @@ if (${BUILD_PYTHON})
 
     if (NOT EXISTS ${PYBIND11_DIR})
         message("didnt find pybind, getting it")
-        execute_process(COMMAND ${TOOLS_DIR}/download_pybind11.${SCRIPT_EXTENSION})
+	execute_process(COMMAND ${TOOLS_DIR}/download_pybind11.${SCRIPT_EXTENSION})
     endif()
     add_subdirectory(${PYBIND11_DIR})
     pybind11_add_module(${MARABOU_PY} ${PYTHON_API_DIR}/MarabouCore.cpp)
@@ -293,7 +293,7 @@ if (${BUILD_PYTHON})
     target_include_directories(${MARABOU_PY} PRIVATE ${LIBS_INCLUDES})
 
     set_target_properties(${MARABOU_PY} PROPERTIES
-            LIBRARY_OUTPUT_DIRECTORY ${PYTHON_API_DIR})
+        LIBRARY_OUTPUT_DIRECTORY ${PYTHON_API_DIR})
     if(NOT MSVC)
         target_compile_options(${MARABOU_LIB} PRIVATE -fPIC ${RELEASE_FLAGS})
     endif()
@@ -318,8 +318,8 @@ target_compile_options(${MARABOU_TEST_LIB} PRIVATE ${CXXTEST_FLAGS})
 add_custom_target(build-tests ALL)
 
 add_custom_target(check
-        COMMAND ctest --output-on-failure -j${CTEST_NTHREADS} $$ARGS
-        DEPENDS build-tests build_input_parsers ${MARABOU_EXE})
+      COMMAND ctest --output-on-failure -j${CTEST_NTHREADS} $$ARGS
+      DEPENDS build-tests build_input_parsers ${MARABOU_EXE})
 
 # Decide which tests to run and execute
 set(TESTS_TO_RUN "")
@@ -345,32 +345,32 @@ if (NOT ${TESTS_TO_RUN} STREQUAL "")
     # make ctest verbose
     set(CTEST_OUTPUT_ON_FAILURE 1)
     add_custom_command(
-            TARGET build-tests
-            POST_BUILD
-            COMMAND ctest --output-on-failure  -L "\"(${TESTS_TO_RUN})\"" -j${CTEST_NTHREADS} $$ARGS
+        TARGET build-tests
+        POST_BUILD
+        COMMAND ctest --output-on-failure  -L "\"(${TESTS_TO_RUN})\"" -j${CTEST_NTHREADS} $$ARGS
     )
 endif()
 
 if (${BUILD_PYTHON} AND ${RUN_PYTHON_TEST})
     if (MSVC)
         add_custom_command(
-                TARGET build-tests
-                POST_BUILD
-                COMMAND cp ${PYTHON_API_DIR}/Release/* ${PYTHON_API_DIR}
+            TARGET build-tests
+            POST_BUILD
+            COMMAND cp ${PYTHON_API_DIR}/Release/* ${PYTHON_API_DIR}
         )
     endif()
 
     add_custom_command(
-            TARGET build-tests
-            POST_BUILD
-            COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PYTHON_API_DIR}/test
+        TARGET build-tests
+        POST_BUILD
+        COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PYTHON_API_DIR}/test
     )
 endif()
 
 # Add the input parsers
 add_custom_target(build_input_parsers)
 add_dependencies(build_input_parsers ${MPS_PARSER} ${ACAS_PARSER}
-        ${BERKELEY_PARSER})
+    ${BERKELEY_PARSER})
 
 add_subdirectory(${SRC_DIR})
 add_subdirectory(${TOOLS_DIR})
@@ -378,17 +378,17 @@ add_subdirectory(${REGRESS_DIR})
 
 
 execute_process(
-        COMMAND git rev-parse --abbrev-ref HEAD
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_BRANCH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND git rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 # Get the latest abbreviated commit hash of the working branch
 execute_process(
-        COMMAND git log -1 --format=%h
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_COMMIT_HASH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND git log -1 --format=%h
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
 # Marabou Version

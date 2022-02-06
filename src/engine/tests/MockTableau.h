@@ -168,7 +168,7 @@ public:
     }
 
     Map<unsigned, double> nextValues;
-    double getValue( unsigned variable )
+    double getValue( unsigned variable ) const
     {
         TS_ASSERT( nextValues.exists( variable ) );
         return nextValues[variable];
@@ -582,6 +582,7 @@ public:
                                double &coefficient,
                                double &inverseCoefficient )
     {
+
         lastLinearlyDependentX1 = x1;
         lastLinearlyDependentX2 = x2;
 
@@ -595,6 +596,8 @@ public:
     {
         return 0;
     }
+
+    void postContextPopHook() {}
 
     int getInfeasibleRow( TableauRow& /* row */ )
     {

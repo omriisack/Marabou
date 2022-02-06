@@ -15,7 +15,7 @@
 #include "ReluConstraint.h"
 
 #include "ConstraintBoundTightener.h"
-#include "ContextDependentPiecewiseLinearConstraint.h"
+#include "PiecewiseLinearConstraint.h"
 #include "Debug.h"
 #include "DivideStrategy.h"
 #include "FloatUtils.h"
@@ -33,7 +33,7 @@
 #endif
 
 ReluConstraint::ReluConstraint( unsigned b, unsigned f )
-    : ContextDependentPiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
+    : PiecewiseLinearConstraint( TWO_PHASE_PIECEWISE_LINEAR_CONSTRAINT )
     , _b( b )
     , _f( f )
     , _auxVarInUse( false )
@@ -81,7 +81,7 @@ PiecewiseLinearFunctionType ReluConstraint::getType() const
     return PiecewiseLinearFunctionType::RELU;
 }
 
-ContextDependentPiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
+PiecewiseLinearConstraint *ReluConstraint::duplicateConstraint() const
 {
     ReluConstraint *clone = new ReluConstraint( _b, _f );
     *clone = *this;
@@ -131,7 +131,7 @@ void ReluConstraint::notifyVariableValue( unsigned variable, double value )
 void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 {
     if ( _statistics )
-        _statistics->incNumBoundNotificationsPlConstraints();
+        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
 
     if ( existsLowerBound( variable ) && !FloatUtils::gt( bound, getLowerBound( variable ) ) )
         return;
@@ -218,7 +218,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double bound )
 void ReluConstraint::notifyUpperBound( unsigned variable, double bound )
 {
     if ( _statistics )
-        _statistics->incNumBoundNotificationsPlConstraints();
+        _statistics->incLongAttribute( Statistics::NUM_BOUND_NOTIFICATIONS_TO_PL_CONSTRAINTS );
 
     if ( existsUpperBound( variable ) && !FloatUtils::lt( bound, getUpperBound( variable ) ) )
         return;
@@ -896,50 +896,53 @@ void ReluConstraint::addAuxiliaryEquations( InputQuery &inputQuery )
     _auxVarInUse = true;
 }
 
-void ReluConstraint::getCostFunctionComponent( Map<unsigned, double> &cost ) const
+void ReluConstraint::getCostFunctionComponent( LinearExpression &cost,
+                                               PhaseStatus phase ) const
 {
-    // This should not be called for inactive constraints
-    ASSERT( isActive() );
-
-    // If the constraint is satisfied, fixed or has OOB components,
-    // it contributes nothing
-    if ( satisfied() || phaseFixed() || haveOutOfBoundVariables() )
+    // If the constraint is not active or is fixed, it contributes nothing
+    if( !isActive() || phaseFixed() )
         return;
 
-    // Both variables are within bounds and the constraint is not
-    // satisfied or fixed.
-    double bValue = _assignment.get( _b );
-    double fValue = _assignment.get( _f );
+    // This should not be called when the linear constraints have
+    // not been satisfied
+    ASSERT( !haveOutOfBoundVariables() );
 
-    if ( !cost.exists( _f ) )
-        cost[_f] = 0;
+    ASSERT( phase == RELU_PHASE_ACTIVE || phase == RELU_PHASE_INACTIVE );
 
-    // Case 1: b is non-positive, f is not zero. Cost: f
-    if ( !FloatUtils::isPositive( bValue ) )
+    // The soundness of the SoI component assumes that the constraints f >= b and
+    // f >= 0 is added.
+    ASSERT( FloatUtils::gte( _assignment.get( _f ), _assignment.get( _b ),
+                             GlobalConfiguration::RELU_CONSTRAINT_COMPARISON_TOLERANCE )
+            && FloatUtils::gte( getLowerBound( _f ), 0 ) );
+
+    if ( phase == RELU_PHASE_INACTIVE )
     {
-        ASSERT( !FloatUtils::isZero( fValue ) );
-        cost[_f] = cost[_f] + 1;
-        return;
+        // The cost term corresponding to the inactive phase is just f,
+        // since the ReLU is inactive and satisfied iff f is 0 and minimal.
+        if ( !cost._addends.exists( _f ) )
+            cost._addends[_f] = 0;
+        cost._addends[_f] = cost._addends[_f] + 1;
     }
-
-    ASSERT( !FloatUtils::isNegative( bValue ) );
-    ASSERT( !FloatUtils::isNegative( fValue ) );
-
-    if ( !cost.exists( _b ) )
-        cost[_b] = 0;
-
-    // Case 2: both non-negative, not equal, b > f. Cost: b - f
-    if ( FloatUtils::gt( bValue, fValue ) )
+    else
     {
-        cost[_b] = cost[_b] + 1;
-        cost[_f] = cost[_f] - 1;
-        return;
+        // The cost term corresponding to the inactive phase is f - b,
+        // since the ReLU is active and satisfied iff f - b is 0 and minimal.
+        // Note that this is true only when we added the constraint that f >= b.
+        if ( !cost._addends.exists( _f ) )
+            cost._addends[_f] = 0;
+        if ( !cost._addends.exists( _b ) )
+            cost._addends[_b] = 0;
+        cost._addends[_f] = cost._addends[_f] + 1;
+        cost._addends[_b] = cost._addends[_b] - 1;
     }
+}
 
-    // Case 3: both non-negative, not equal, f > b. Cost: f - b
-    cost[_b] = cost[_b] - 1;
-    cost[_f] = cost[_f] + 1;
-    return;
+PhaseStatus ReluConstraint::getPhaseStatusInAssignment( const Map<unsigned, double>
+                                                        &assignment ) const
+{
+    ASSERT( assignment.exists( _b ) );
+    return FloatUtils::isNegative( assignment[_b] ) ?
+        RELU_PHASE_INACTIVE : RELU_PHASE_ACTIVE;
 }
 
 bool ReluConstraint::haveOutOfBoundVariables() const

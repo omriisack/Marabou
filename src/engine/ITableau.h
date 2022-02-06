@@ -206,9 +206,20 @@ public:
 	virtual void setAllBoundsExplanations( BoundsExplainer* boundsExplanations ) = 0;
 	virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
 	virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
+
 protected:
     bool _optimizing = false;
+    virtual void postContextPopHook() = 0;
 
+    bool isOptimizing() const
+    {
+        return _optimizing;
+    }
+
+    void toggleOptimization( bool optimizing )
+    {
+        _optimizing = optimizing;
+    }
 
 
 };

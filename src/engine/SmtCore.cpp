@@ -22,6 +22,7 @@
 #include "MStringf.h"
 #include "MarabouError.h"
 #include "Options.h"
+#include "PseudoImpactTracker.h"
 #include "ReluConstraint.h"
 #include "SmtCore.h"
 #include "UNSATCertificate.h"
@@ -33,6 +34,10 @@ SmtCore::SmtCore( IEngine *engine )
     , _constraintForSplitting( NULL )
     , _stateId( 0 )
     , _constraintViolationThreshold( Options::get()->getInt( Options::CONSTRAINT_VIOLATION_THRESHOLD ) )
+    , _deepSoIRejectionThreshold( Options::get()->getInt( Options::DEEP_SOI_REJECTION_THRESHOLD ) )
+    , _branchingHeuristic( Options::get()->getDivideStrategy() )
+    , _scoreTracker( nullptr )
+    , _numRejectedPhasePatternProposal( 0 )
 {
 }
 
@@ -60,6 +65,7 @@ void SmtCore::reset()
     _constraintForSplitting = NULL;
     _stateId = 0;
     _constraintToViolationCount.clear();
+    _numRejectedPhasePatternProposal = 0;
 }
 
 void SmtCore::reportViolatedConstraint( PiecewiseLinearConstraint *constraint )
@@ -88,6 +94,35 @@ unsigned SmtCore::getViolationCounts( PiecewiseLinearConstraint *constraint ) co
     return _constraintToViolationCount[constraint];
 }
 
+void SmtCore::initializeScoreTrackerIfNeeded( const
+                                              List<PiecewiseLinearConstraint *>
+                                              &plConstraints )
+{
+    if ( GlobalConfiguration::USE_DEEPSOI_LOCAL_SEARCH )
+    {
+        _scoreTracker = std::unique_ptr<PseudoImpactTracker>
+            ( new PseudoImpactTracker() );
+        _scoreTracker->initialize( plConstraints );
+
+        SMT_LOG( "\tTracking Pseudo Impact..." );
+    }
+}
+
+void SmtCore::reportRejectedPhasePatternProposal()
+{
+    ++_numRejectedPhasePatternProposal;
+
+    if ( _numRejectedPhasePatternProposal >=
+         _deepSoIRejectionThreshold )
+    {
+        _needToSplit = true;
+        if ( !pickSplitPLConstraint() )
+            // If pickSplitConstraint failed to pick one, use the native
+            // relu-violation based splitting heuristic.
+            _constraintForSplitting = _scoreTracker->topUnfixed();
+    }
+}
+
 bool SmtCore::needToSplit() const
 {
     return _needToSplit;
@@ -97,6 +132,7 @@ void SmtCore::performSplit()
 {
     ASSERT( _needToSplit );
 
+    _numRejectedPhasePatternProposal = 0;
     // Maybe the constraint has already become inactive - if so, ignore
     if ( !_constraintForSplitting->isActive() )
     {
@@ -113,8 +149,8 @@ void SmtCore::performSplit()
 
     if ( _statistics )
     {
-        _statistics->incNumSplits();
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Before storing the state of the engine, we:
@@ -166,9 +202,15 @@ void SmtCore::performSplit()
     _stack.append( stackEntry );
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 
     _constraintForSplitting = NULL;
@@ -190,10 +232,10 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->incNumPops();
+        _statistics->incUnsignedAttribute( Statistics::NUM_POPS );
         // A pop always sends us to a state that we haven't seen before - whether
         // from a sibling split, or from a lower level of the tree.
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Remove any entries that have no alternatives
@@ -268,9 +310,15 @@ bool SmtCore::popSplit()
 
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 
     checkSkewFromDebuggingSolution();
@@ -278,9 +326,10 @@ bool SmtCore::popSplit()
     return true;
 }
 
-void SmtCore::resetReportedViolations()
+void SmtCore::resetSplitConditions()
 {
     _constraintToViolationCount.clear();
+    _numRejectedPhasePatternProposal = 0;
     _needToSplit = false;
 }
 
@@ -451,8 +500,8 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->incNumSplits();
-        _statistics->incNumVisitedTreeStates();
+        _statistics->incUnsignedAttribute( Statistics::NUM_SPLITS );
+        _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
     // Obtain the current state of the engine
@@ -471,9 +520,15 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
 
     if ( _statistics )
     {
-        _statistics->setCurrentStackDepth( getStackDepth() );
+        unsigned level = getStackDepth();
+        _statistics->setUnsignedAttribute( Statistics::CURRENT_DECISION_LEVEL,
+                                           level );
+        if ( level > _statistics->getUnsignedAttribute
+             ( Statistics::MAX_DECISION_LEVEL ) )
+            _statistics->setUnsignedAttribute( Statistics::MAX_DECISION_LEVEL,
+                                               level );
         struct timespec end = TimeUtils::sampleMicro();
-        _statistics->addTimeSmtCore( TimeUtils::timePassed( start, end ) );
+        _statistics->incLongAttribute( Statistics::TOTAL_TIME_SMT_CORE_MICRO, TimeUtils::timePassed( start, end ) );
     }
 }
 
@@ -490,6 +545,9 @@ void SmtCore::storeSmtState( SmtState &smtState )
 bool SmtCore::pickSplitPLConstraint()
 {
     if ( _needToSplit )
-        _constraintForSplitting = _engine->pickSplitPLConstraint();
+    {
+        _constraintForSplitting = _engine->pickSplitPLConstraint
+            ( _branchingHeuristic );
+    }
     return _constraintForSplitting != NULL;
 }

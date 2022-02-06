@@ -29,6 +29,7 @@
 #include "GurobiWrapper.h"
 #include "IEngine.h"
 #include "InputQuery.h"
+#include "LinearExpression.h"
 #include "Map.h"
 #include "MILPEncoder.h"
 #include "Options.h"
@@ -38,6 +39,7 @@
 #include "SmtCore.h"
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
+#include "SumOfInfeasibilitiesManager.h"
 #include "UNSATCertificate.h"
 #include "SymbolicBoundTighteningType.h"
 #include "SmtLibWriter.h"
@@ -58,6 +60,10 @@ class String;
 
 class Engine : public IEngine, public SignalHandler::Signalable {
 public:
+    enum {
+          MICROSECONDS_TO_SECONDS = 1000000,
+    };
+
     Engine();
     ~Engine();
 
@@ -68,12 +74,25 @@ public:
     bool solve( unsigned timeoutInSeconds = 0 );
 
     /*
+      Minimize the cost function with respect to the current set of linear constraints.
+    */
+    void minimizeHeuristicCost( const LinearExpression &heuristicCost );
+
+    /*
+      Compute the cost function with the current assignment.
+    */
+    double computeHeuristicCost( const LinearExpression &heuristicCost );
+
+    /*
       Process the input query and pass the needed information to the
       underlying tableau. Return false if query is found to be infeasible,
       true otherwise.
      */
     bool processInputQuery( InputQuery &inputQuery );
     bool processInputQuery( InputQuery &inputQuery, bool preprocess );
+
+    InputQuery prepareSnCInputQuery( );
+    void exportInputQueryWithError( String errorMessage );
 
     /*
       If the query is feasiable and has been successfully solved, this
@@ -126,6 +145,11 @@ public:
     void applySplit( const PiecewiseLinearCaseSplit &split );
 
     /*
+      Hook invoked after context pop to update context independent data.
+    */
+    void postContextPopHook() { _tableau->postContextPopHook(); };
+
+    /*
       Reset the state of the engine, before solving a new query
       (as part of DnC mode).
     */
@@ -160,7 +184,7 @@ public:
     /*
       Pick the piecewise linear constraint for splitting
     */
-    PiecewiseLinearConstraint *pickSplitPLConstraint();
+    PiecewiseLinearConstraint *pickSplitPLConstraint( DivideStrategy strategy );
 
     /*
       Call-back from QueryDividers
@@ -175,6 +199,11 @@ public:
     void resetSmtCore();
     void resetExitCode();
     void resetBoundTighteners();
+
+    /*
+       Register initial split when in SnC mode
+     */
+    void applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId );
 
     /*
 	 * Returns the current explanation of a var
@@ -218,6 +247,7 @@ public:
 	void removePLCExplanationsFromCurrentCertificateNode();
 
 private:
+
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
         STRONG_RESTORATION_NEEDED = 1,
@@ -251,6 +281,11 @@ private:
       The existing piecewise-linear constraints.
     */
     List<PiecewiseLinearConstraint *> _plConstraints;
+
+    /*
+      The existing transcendental constraints.
+    */
+    List<TranscendentalConstraint *> _tsConstraints;
 
     /*
       Piecewise linear constraints that are currently violated.
@@ -380,11 +415,6 @@ private:
     unsigned long long _lastIterationWithProgress;
 
     /*
-      Strategy used for internal splitting
-    */
-    DivideStrategy _splittingStrategy;
-
-    /*
       Type of symbolic bound tightening
     */
     SymbolicBoundTighteningType _symbolicBoundTighteningType;
@@ -410,6 +440,11 @@ private:
     std::unique_ptr<MILPEncoder> _milpEncoder;
 
     /*
+      Manager of the SoI cost function.
+    */
+    std::unique_ptr<SumOfInfeasibilitiesManager> _soiManager;
+
+    /*
       Stored options
       Do this since Options object is not thread safe and
       there is a chance that multiple Engine object be accessing the Options object.
@@ -420,10 +455,25 @@ private:
     MILPSolverBoundTighteningType _milpSolverBoundTighteningType;
 
     /*
+      SnC Split
+     */
+    bool _sncMode;
+    PiecewiseLinearCaseSplit _sncSplit;
+
+    /*
+      Query Identifier
+     */
+    String _queryId;
+
+    LinearExpression _heuristicCost;
+
+    /*
       Perform a simplex step: compute the cost function, pick the
       entering and leaving variables and perform a pivot.
+      Return true only if the current assignment is optimal
+      with respect to _heuristicCost.
     */
-    void performSimplexStep();
+    bool performSimplexStep();
 
     /*
       Perform a constraint-fixing step: select a violated piece-wise
@@ -490,10 +540,40 @@ private:
     void mainLoopStatistics();
 
     /*
+      Perform bound tightening after performing a case split.
+    */
+    void performBoundTighteningAfterCaseSplit();
+
+    /*
+      Called after a satisfying assignment is found for the linear constraints.
+      Now we try to satisfy the piecewise linear constraints with
+      "local" search (either with Reluplex-styled constraint fixing
+      or SoI-based stochastic search).
+
+      The method also has the side effect of making progress towards the
+      branching condition.
+
+      Return true iff a true satisfying assignment is found.
+    */
+    bool adjustAssignmentToSatisfyNonLinearConstraints();
+
+    /*
+      Perform precision restoration if needed. Return true iff precision
+      restoration is performed.
+    */
+    bool performPrecisionRestorationIfNeeded();
+
+    /*
       Check if the current degradation is high
     */
     bool shouldCheckDegradation();
     bool highDegradation();
+
+    /*
+      Handle malformed basis exception. Return false if unable to restore
+      precision.
+    */
+    bool handleMalformedBasisException();
 
     /*
       Perform bound tightening on the constraint matrix A.
@@ -588,6 +668,11 @@ private:
     void updateDirections();
 
     /*
+      Decide which branch heuristics to use.
+    */
+    void decideBranchingHeuristics();
+
+    /*
       Among the earliest K ReLUs, pick the one with Polarity closest to 0.
       K is equal to GlobalConfiguration::POLARITY_CANDIDATES_THRESHOLD
     */
@@ -612,6 +697,23 @@ private:
       Extract the satisfying assignment from the MILP solver
     */
     void extractSolutionFromGurobi( InputQuery &inputQuery );
+
+    /*
+      Perform SoI-based stochastic local search
+    */
+    bool performDeepSoILocalSearch();
+
+    /*
+      Update the pseudo impact of the PLConstraints according to the cost of the
+      phase patterns. For example, if the minimum of the last accepted phase
+      pattern is 0.5, the minimum of the last proposed phase pattern is 0.2.
+      And the two phase patterns differ by the cost term of a PLConstaint f.
+      Then the Pseudo Impact of f is updated by |0.5 - 0.2| using exponential
+      moving average.
+    */
+    void updatePseudoImpactWithSoICosts( double costOfLastAcceptedPhasePattern,
+                                         double costOfProposedPhasePattern );
+
 
     /*
      Prints coefficients of Simplex equations that witness UNSAT
