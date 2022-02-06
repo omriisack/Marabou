@@ -70,12 +70,6 @@ public:
     */
     void getConstraintTightenings( List<Tightening> &tightenings ) const;
 
-
-	std::map<unsigned , double> getUGBUpdates() const;
-	std::map<unsigned, double> getLGBUpdates() const;
-	std::list<std::vector<double>> getTableauUpdates() const;
-	void clearEngineUpdates();
-
 	/*
 	 * Replaces the indicating row by equation which is added to the Tableau
 	 */
