@@ -377,7 +377,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 		if ( !tighteningMatched )
 		{
 			printf( "bound %.5lf. explained bound is %.5lf\n", expl->_bound, explainedBound ); //TODO delete when completing
-			//return false; //TODO change when done
+			return false;
 		}
 
 		// If so, update the ground bounds and continue
