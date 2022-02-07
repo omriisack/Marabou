@@ -303,6 +303,12 @@ public:
     */
     void printStartingIteration( unsigned long long iteration, String message );
 
+    /*
+      Print a long attribute in time format
+     */
+    void printLongAttributeAsTime( StatisticsLongAttribute attr );
+
+
 private:
     // Initial timestamp
     struct timespec _startTime;

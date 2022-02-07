@@ -742,7 +742,7 @@ private:
 	std::vector<unsigned> _lowerDecisionLevels;
 	CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
-	SmtLibWriter _smtWriter;
+
 	/*
 		Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
 		Asserts the computed bound is epsilon close to the real one.
