@@ -199,19 +199,35 @@ public:
     {
     }
 
-
-	std::vector<double> getVarCurrentBoundExplanation(unsigned /* var */, bool /* isUpper */ ) const
+	double getExplainedBound( unsigned /* var */,  bool /* isUpper */ ) const
 	{
-    	return std::vector<double> ( 0,0 );
+		return 0.0;
 	}
 
-	void updateGroundUpperBound(unsigned /* var */, double /* value */ )
+	void updateGroundUpperBound(unsigned /* var */, double /* value */, unsigned /*decision level*/ )
 	{
 	}
 
-	void updateGroundLowerBound(unsigned /*var*/, double /*value*/ )
+	void updateGroundLowerBound(unsigned /*var*/, double /*value*/, unsigned /*decision level*/ )
 	{
 	}
+
+	std::vector<double> _mockDoubleVec;
+	std::vector<unsigned> _mockUnsignedVec;
+	const std::vector<double>& getGroundBounds( bool /* isUpper */ ) const
+	{
+		return _mockDoubleVec;
+	}
+
+	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
+	{
+		return _mockUnsignedVec;
+	}
+
+	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
+	{
+	}
+
 
 	CertificateNode* getUNSATCertificateCurrentPointer() const
 	{
@@ -222,19 +238,24 @@ public:
 	{
 	}
 
-	CertificateNode*  getUNSATCertificateRoot() const
+	CertificateNode* getUNSATCertificateRoot() const
 	{
 		return NULL;
 	}
 
-	bool certifyUNSATCertificate() const
+	bool certifyUNSATCertificate()
 	{
-    	return true;
+		return true;
 	}
 
 	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
 	{
-    	return 0;
+		return 0;
+	}
+
+	unsigned computeExplanationDecisionLevel( unsigned /* var */, bool /* isUpper */ ) const
+	{
+		return 0;
 	}
 };
 

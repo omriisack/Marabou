@@ -599,9 +599,9 @@ public:
 
     void postContextPopHook() {}
 
-    int getInfeasibleRow( TableauRow& /* row */ )
+	BasicStatus getInfeasibleRow( TableauRow& /* row */ )
     {
-    	return 0;
+    	return BasicStatus::BETWEEN;
     }
 
     int getInfeasibleVar() const
@@ -612,6 +612,11 @@ public:
     {
     	return 0;
     }
+
+	double computeSparseRowBound( const SparseUnsortedList& /* row */,  bool /* isUpper */,  unsigned /* var */ ) const
+	{
+    	return 0;
+	}
 
     void updateExplanation( const TableauRow& /* row */, const bool /* isUpper */ ) const
     {
@@ -625,20 +630,40 @@ public:
     {
     }
 
-    SingleVarBoundsExplanator* explainBound( const unsigned /* variable */ ) const
-    {
-    	return NULL;
-    }
-
-	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ )
+	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ ) const
 	{
 	}
 
-	void multiplyExplanationCoefficients ( const unsigned /* var */, const double /* alpha */, const bool /* isUpper */ )
+
+	void injectExplanation( const std::vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
 	{
 	}
 
-	void injectExplanation( unsigned /* var */, SingleVarBoundsExplanator& /* expl */)
+	std::vector<double> _mockExpl = std::vector<double>( 0 );
+	const std::vector<double>& explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
+	{
+		return _mockExpl;
+	}
+
+	bool checkCostFunctionSlack()
+	{
+		return true;
+	}
+
+	BoundsExplainer* getAllBoundsExplanations() const
+	{
+		return NULL;
+	}
+
+	void setAllBoundsExplanations(BoundsExplainer* /* boundsExplanations */ )
+	{
+	}
+
+	void tightenUpperBoundNaively( unsigned /* variable */, double /* value */ )
+	{
+	}
+
+	void tightenLowerBoundNaively( unsigned /* variable */, double /* value */ )
 	{
 	}
 };

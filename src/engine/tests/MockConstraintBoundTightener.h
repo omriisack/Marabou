@@ -111,10 +111,9 @@ public:
 
 	void clearEngineUpdates(){}
 	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper, const unsigned,
-							  bool,
-							  List<unsigned int>, PiecewiseLinearFunctionType /* constraintType */ )
+							  bool, PiecewiseLinearFunctionType /* constraintType */ )
 	{
-		isAffectedBoundUpper ? registerTighterUpperBound(var, value ) : registerTighterLowerBound(var, value );
+		isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
     }
 
 	double getUpperBound( unsigned /* var */ ) const
