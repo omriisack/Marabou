@@ -1978,7 +1978,6 @@ void Engine::applyAllConstraintTightenings()
 			_tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
 
-    // All updates to IT and GB registered by the CBT need to be updated
 //    if ( GlobalConfiguration::PROOF_CERTIFICATE )
 //		for ( const auto &tightening : entailedTightenings )
 //			validateBounds( tightening._variable, 0.01, 1000000, tightening._type == Tightening::UB );
@@ -3325,7 +3324,7 @@ void Engine::markLeafToDelegate()
 
 	// Mark leaf with toDelegate Flag
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
+	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ), DelegationStatus::DELEGATE_SAVE );
 	_UNSATCertificateCurrentPointer->deletePLCExplanations(); // Info is not used in case of delegation
 	_statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }
@@ -3389,7 +3388,7 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 			if ( expl->_decisionLevel <= _smtCore.getStackDepth() - jumpSize )
 				curExplList.push_back( expl );
 
-		curCertificatePointer->removePLCExplanations( _smtCore.getStackDepth() - jumpSize );
+		curCertificatePointer->removePLCExplanationsBelowDecisionLevel(_smtCore.getStackDepth() - jumpSize);
 		explOnPath.insert( explOnPath.cbegin(), curExplList.cbegin(), curExplList.cend() );
 		curExplList.clear();
 		curCertificatePointer = curCertificatePointer->getParent();

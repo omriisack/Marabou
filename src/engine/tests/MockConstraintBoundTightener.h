@@ -94,21 +94,6 @@ public:
         _tightenings.clear();
     }
 
-	std::map<unsigned, double> getUGBUpdates() const
-	{
-    	return std::map<unsigned, double>();
-	}
-
-	std::map<unsigned, double> getLGBUpdates() const
-	{
-		return std::map<unsigned, double>();
-	}
-
-	std::list<std::vector<double>> getTableauUpdates() const
-	{
-		return std::list<std::vector<double>>();
-	}
-
 	void clearEngineUpdates(){}
 	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper, const unsigned,
 							  bool, PiecewiseLinearFunctionType /* constraintType */ )

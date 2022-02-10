@@ -23,7 +23,7 @@ CertificateNode::CertificateNode(  std::vector<std::vector<double>> *initialTabl
 		, _headSplit( )
 		, _hasSATSolution( false )
 		, _wasVisited( false )
-		, _shouldDelegate( false )
+		, _delegationStatus( DelegationStatus::DONT_DELEGATE )
 		, _delegationNumber( 0 )
 		, _initialTableau( initialTableau )
 		, _groundUpperBounds( groundUBs )
@@ -40,12 +40,13 @@ CertificateNode::CertificateNode( CertificateNode* parent, PiecewiseLinearCaseSp
 		, _headSplit( std::move( split ) )
 		, _hasSATSolution( false )
 		, _wasVisited ( false )
-		, _shouldDelegate( false )
+		, _delegationStatus( DelegationStatus::DONT_DELEGATE )
 		, _delegationNumber( 0 )
 		, _initialTableau( NULL )
 		, _groundUpperBounds( 0 )
 		, _groundLowerBounds( 0 )
 {
+	parent->_children.push_back(  this );
 }
 
 CertificateNode::~CertificateNode()
@@ -66,6 +67,7 @@ CertificateNode::~CertificateNode()
 			delete child;
 			child = NULL;
 		}
+
 	_children.clear();
 	deletePLCExplanations();
 
@@ -74,17 +76,13 @@ CertificateNode::~CertificateNode()
 		delete _contradiction;
 		_contradiction = NULL;
 	}
+
+	_parent = NULL;
 }
 
 void CertificateNode::setContradiction( Contradiction* contradiction )
 {
 	_contradiction = contradiction;
-}
-
-
-void CertificateNode::addChild( CertificateNode* child )
-{
-	_children.push_back( child );
 }
 
 Contradiction* CertificateNode::getContradiction() const
@@ -109,7 +107,7 @@ const std::list<PLCExplanation*>& CertificateNode::getPLCExplanations() const
 
 void CertificateNode::makeLeaf()
 {
-	for ( auto child : _children )
+	for ( CertificateNode *child : _children )
 		if ( child )
 		{
 			child->_initialTableau = NULL; //Clear reference to root tableau so it will not be deleted
@@ -157,10 +155,10 @@ bool CertificateNode::certify()
 
 	// Check if it is a leaf, and if so use contradiction to certify
 	// return true iff it is certified
-	if ( _shouldDelegate )
+	if ( _delegationStatus == DelegationStatus::DELEGATE_SAVE )
 		writeLeafToFile();
 
-	if ( _hasSATSolution || _shouldDelegate )
+	if ( _hasSATSolution || _delegationStatus != DelegationStatus::DONT_DELEGATE )
 		return true;
 
 	if ( isValidLeaf() )
@@ -169,7 +167,9 @@ bool CertificateNode::certify()
 	if ( !_wasVisited && !_contradiction && _children.empty() )
 		return true;
 
-	ASSERT( isValidNoneLeaf() );
+	if ( !isValidNoneLeaf() )
+		return false;
+
 	// Otherwise, assert there is a constraint and children
 	// validate the constraint is ok
 	// Certify all children
@@ -264,8 +264,6 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
 		return NULL;
 
 	auto firstSplitTightenings = splits.front().getBoundTightenings(), secondSplitTightenings = splits.back().getBoundTightenings();
-	if ( firstSplitTightenings.size() != 2 || secondSplitTightenings.size() != 2 )
-		return NULL;
 
 	// find the LB, it is b
 	auto &activeSplit = firstSplitTightenings.front()._type == Tightening::LB ? firstSplitTightenings : secondSplitTightenings;
@@ -275,15 +273,17 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
 	unsigned aux = activeSplit.back()._variable;
 	unsigned f = inactiveSplit.back()._variable;
 
-	if ( inactiveSplit.front()._variable != b || inactiveSplit.back()._type == Tightening::LB || activeSplit.back()._type == Tightening::LB )
+	//Aux var may be or may not be used
+	if ( ( activeSplit.size() != 2 && activeSplit.size() != 1 ) || inactiveSplit.size() != 2 )
 		return NULL;
+
 	if ( FloatUtils::areDisequal( inactiveSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( inactiveSplit.front()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.front()._value, 0.0 ) )
 		return NULL;
 
 	// Certify that f = relu(b) + aux is in problem constraints
 	ProblemConstraint *correspondingConstraint = NULL;
 	for ( ProblemConstraint& con : _problemConstraints )
-		if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && con._constraintVars.back() == aux )
+		if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && ( activeSplit.size() == 1 || con._constraintVars.back() == aux ) )
 			correspondingConstraint = &con;
 
 	return correspondingConstraint;
@@ -411,9 +411,10 @@ void CertificateNode::wasVisited()
 	_wasVisited = true;
 }
 
-void CertificateNode::shouldDelegate( unsigned delegationNumber )
+void CertificateNode::shouldDelegate( unsigned delegationNumber, DelegationStatus delegationStatus )
 {
-	_shouldDelegate = true;
+	ASSERT( delegationStatus != DelegationStatus::DONT_DELEGATE );
+	_delegationStatus = delegationStatus;
 	_delegationNumber = delegationNumber;
 }
 
@@ -477,7 +478,7 @@ void CertificateNode::resizePLCExplanationsList( unsigned newSize )
 
 void CertificateNode::writeLeafToFile()
 {
-	ASSERT( _children.empty() && _shouldDelegate );
+	ASSERT( _children.empty() && _delegationStatus == DelegationStatus::DELEGATE_SAVE );
 	List<String> leafInstance;
 
 	// Write to smtWriter
@@ -513,7 +514,7 @@ void CertificateNode::writeLeafToFile()
 	SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
 }
 
-void CertificateNode::removePLCExplanations( unsigned decisionLevel )
+void CertificateNode::removePLCExplanationsBelowDecisionLevel(unsigned decisionLevel )
 {
 	_PLCExplanations.remove_if( [decisionLevel] ( PLCExplanation* expl ){ return expl->_decisionLevel <= decisionLevel; } );
 }

@@ -49,8 +49,15 @@ BoundsExplainer& BoundsExplainer::operator=( const BoundsExplainer& other )
 	if ( this == &other )
 		return *this;
 
-	ASSERT( _rowsNum == other._rowsNum );
-	ASSERT( _varsNum == other._varsNum );
+	if ( _varsNum != other._varsNum )
+	{
+		_upperBoundsExplanations.resize( other._varsNum );
+		_upperBoundsExplanations.shrink_to_fit();
+
+		_lowerBoundsExplanations.resize( other._varsNum );
+		_lowerBoundsExplanations.shrink_to_fit();
+	}
+
 	_rowsNum = other._rowsNum;
 	_varsNum = other._varsNum;
 
@@ -235,20 +242,25 @@ void BoundsExplainer::addVariable()
 	_upperBoundsExplanations.emplace_back( std::vector<double>( 0 ) );
 	_lowerBoundsExplanations.emplace_back( std::vector<double>( 0 ) );
 
-	for ( unsigned i = 0; i < _varsNum; ++i)
+	for ( unsigned i = 0; i < _varsNum; ++i )
 	{
-		_upperBoundsExplanations[i].push_back( 0 );
-		_lowerBoundsExplanations[i].push_back( 0 );
+		if ( !_upperBoundsExplanations[i].empty() )
+			_upperBoundsExplanations[i].push_back( 0 );
+
+		if ( !_lowerBoundsExplanations[i].empty() )
+			_lowerBoundsExplanations[i].push_back( 0 );
 	}
 }
 
 void BoundsExplainer::resetExplanation( const unsigned var, const bool isUpper )
 {
+	ASSERT( var < _varsNum );
 	isUpper ? _upperBoundsExplanations[var].clear() : _lowerBoundsExplanations[var].clear();
 }
 
 void BoundsExplainer::injectExplanation( const std::vector<double>& expl, unsigned var, bool isUpper )
 {
+	ASSERT( var < _varsNum && ( expl.empty() || expl.size() == _rowsNum ) );
 	std::vector<double> *temp = isUpper ? &_upperBoundsExplanations[var] : &_lowerBoundsExplanations[var];
 	if ( temp->size() != expl.size() )
 		temp->resize( expl.size() );

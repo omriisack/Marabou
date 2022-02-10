@@ -44,8 +44,17 @@ struct Contradiction
 
 	~Contradiction()
 	{
-		delete [] _upperExplanation;
-		delete [] _lowerExplanation;
+		if ( _upperExplanation )
+		{
+			delete [] _upperExplanation;
+			_upperExplanation = NULL;
+		}
+
+		if ( _lowerExplanation )
+		{
+			delete [] _lowerExplanation;
+			_lowerExplanation = NULL;
+		}
 	}
 };
 
@@ -61,6 +70,12 @@ struct ProblemConstraint
 	}
 };
 
+enum DelegationStatus : unsigned
+{
+	DONT_DELEGATE = 0,
+	DELEGATE_DONT_SAVE =1,
+	DELEGATE_SAVE = 2
+};
 
 class CertificateNode
 {
@@ -82,11 +97,6 @@ public:
  	* Certifies the tree is indeed a proof of unsatisfiability;
  	*/
 	bool certify();
-
-	/*
- 	* Adds a child to the tree
- 	*/
-	void addChild( CertificateNode* child );
 
 	/*
 	 * Sets the leaf certificate as input
@@ -114,16 +124,6 @@ public:
 	const std::list<PLCExplanation*>& getPLCExplanations() const;
 
 	/*
-	 * Certifies a contradiction
-	 */
-	bool certifyContradiction() const;
-
-	/*
-	 * Computes a bound according to an explanation
-	 */
-	double explainBound( unsigned var, bool isUpper, const std::vector<double> &expl ) const;
-
-	/*
 	 * Adds an PLC explanation to the list
 	 */
 	void addPLCExplanation( PLCExplanation *expl );
@@ -132,21 +132,6 @@ public:
  	* Adds an a problem constraint to the list
  	*/
 	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status );
-
-	/*
- 	* Return a pointer to the problem constraint representing the split
- 	*/
-	ProblemConstraint *getCorrespondingReLUConstraint(const List<PiecewiseLinearCaseSplit> &splits );
-
-	/*
-	 * Return true iff a list of splits represents a splits over a single variable
-	 */
-	bool certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
-
-	/*
-	 * Return true iff the changes in the ground bounds are certified, with tolerance to errors with epsilon size at most
- 	*/
-	bool certifyAllPLCExplanations( double epsilon );
 
 	/*
 	 * get a pointer to a child by a head split, or NULL if not found
@@ -165,8 +150,9 @@ public:
 
 	/*
 	 * Sets value of _shouldDelegate to be true
+	 * Saves delegation to file iff saveToFile is true
 	 */
-	void shouldDelegate( unsigned delegationNumber );
+	void shouldDelegate( unsigned delegationNumber, DelegationStatus saveToFile );
 
 	/*
  	* Removes all PLC explanations
@@ -187,7 +173,7 @@ public:
  	* Removes all PLCExplanations above a certain decision level WITHOUT deleting them
  	* ASSUMPTION - explanations pointers are kept elsewhere before removal
  	*/
-	void removePLCExplanations( unsigned decisionLevel );
+	void removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel );
 
 private:
 	std::list<CertificateNode*> _children;
@@ -198,7 +184,7 @@ private:
 	PiecewiseLinearCaseSplit _headSplit;
 	bool _hasSATSolution; // Enables certifying correctness of UNSAT certificates built before concluding SAT.
 	bool _wasVisited; // Same TODO consider deleting when done
-	bool _shouldDelegate;
+	DelegationStatus _delegationStatus;
 	unsigned _delegationNumber;
 
 	std::vector<std::vector<double>>* _initialTableau;
@@ -229,6 +215,31 @@ private:
 	* Write a leaf marked to delegate to a smtlib file format
 	*/
 	void writeLeafToFile();
+
+	/*
+ 	* Return true iff a list of splits represents a splits over a single variable
+ 	*/
+	bool certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const;
+
+	/*
+	 * Return true iff the changes in the ground bounds are certified, with tolerance to errors with epsilon size at most
+ 	*/
+	bool certifyAllPLCExplanations( double epsilon );
+
+	/*
+ 	* Return a pointer to the problem constraint representing the split
+ 	*/
+	ProblemConstraint *getCorrespondingReLUConstraint(const List<PiecewiseLinearCaseSplit> &splits );
+
+	/*
+ 	* Certifies a contradiction
+ 	*/
+	bool certifyContradiction() const;
+
+	/*
+	 * Computes a bound according to an explanation
+	 */
+	double explainBound( unsigned var, bool isUpper, const std::vector<double> &expl ) const;
 };
 
 class UNSATCertificateUtils

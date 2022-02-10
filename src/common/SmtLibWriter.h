@@ -31,9 +31,9 @@ public:
  	*/
 	static void addHeader( unsigned n, List<String> &instance )
 	{
-		instance.append( "(set-logic QF_LRA)\n" );
+		instance.append( "( set-logic QF_LRA )\n" );
 		for ( unsigned i = 0; i < n; ++i )
-			instance.append( "(declare-fun x" + std::to_string( i ) + " () Real)\n" );
+			instance.append( "( declare-fun x" + std::to_string( i ) + " () Real )\n" );
 	}
 
 	/*
@@ -41,8 +41,8 @@ public:
  	*/
 	static void addFooter( List<String> &instance )
 	{
-		instance.append(  "(check-sat)\n" );
-		instance.append(  "(exit)\n" );
+		instance.append(  "( check-sat )\n" );
+		instance.append(  "( exit )\n" );
 	}
 
 	/*
@@ -51,11 +51,11 @@ public:
 	static void addReLUConstraint( unsigned b, unsigned f, PhaseStatus status, List<String> &instance )
 	{
 		if ( status == PHASE_NOT_FIXED )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " (ite (>= x" + std::to_string( b ) + " 0) x" + std::to_string( b )+ " 0 ) ) )\n" );
+			instance.append(  "( assert ( = x" + std::to_string( f ) + " ( ite ( >= x" + std::to_string( b ) + " 0) x" + std::to_string( b )+ " 0 ) ) )\n" );
 		else if ( status == RELU_PHASE_ACTIVE )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " x" + std::to_string( b ) + " ) )\n" );
+			instance.append(  "( assert ( = x" + std::to_string( f ) + " x" + std::to_string( b ) + " ) )\n" );
 		else if ( status == RELU_PHASE_INACTIVE )
-			instance.append(  "(assert (= x" + std::to_string( f ) + " 0 ) )\n" );
+			instance.append(  "( assert ( = x" + std::to_string( f ) + " 0 ) )\n" );
 	}
 
 	/*
@@ -64,7 +64,7 @@ public:
 	static void addTableauRow( const SparseUnsortedList &row, List<String> &instance )
 	{
 		unsigned size = row.getSize(), counter = 0;
-		String assertRowLine = "(assert ( = 0";
+		String assertRowLine = "( assert ( = 0";
 		for ( auto &entry : row )
 		{
 			if ( counter != size - 1 )
@@ -85,7 +85,7 @@ public:
 	{
 		unsigned n = bounds.size();
 		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( <= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
+			instance.append( " ( assert ( <= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
 	}
 
 	/*
@@ -95,7 +95,7 @@ public:
 	{
 		unsigned n = bounds.size();
 		for ( unsigned i = 0; i < n; ++i)
-			instance.append( " (assert ( >= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
+			instance.append( " ( assert ( >= x" + std::to_string( i ) + " " + signedValue( bounds[i] ) + " ) )\n" );
 	}
 
 	/*
