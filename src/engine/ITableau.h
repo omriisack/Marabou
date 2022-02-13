@@ -16,6 +16,8 @@
 #ifndef __ITableau_h__
 #define __ITableau_h__
 
+
+#include "BoundManager.h"
 #include "List.h"
 #include "Set.h"
 #include "BoundsExplainer.h"
@@ -181,6 +183,7 @@ public:
     virtual bool areLinearlyDependent( unsigned x1, unsigned x2, double &coefficient, double &inverseCoefficient ) = 0;
     virtual unsigned getVariableAfterMerging( unsigned variable ) const = 0;
     virtual void postContextPopHook() = 0;
+    virtual BoundManager &getBoundManager() const = 0;
 
     bool isOptimizing() const
     {

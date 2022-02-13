@@ -62,6 +62,7 @@ void Options::initializeDefaultValues()
     _intOptions[DEEP_SOI_REJECTION_THRESHOLD] = 4;
     _intOptions[NUMBER_OF_SIMULATIONS] = 100;
     _intOptions[SEED] = 217;
+    _intOptions[NUM_BLAS_THREADS] = 1;
 
     /*
       Float options
@@ -225,6 +226,8 @@ SoIInitializationStrategy Options::getSoIInitializationStrategy() const
                                     ( Options::SOI_INITIALIZATION_STRATEGY ) );
     if ( strategyString == "input-assignment" )
         return SoIInitializationStrategy::INPUT_ASSIGNMENT;
+    if ( strategyString == "current-assignment" )
+        return SoIInitializationStrategy::CURRENT_ASSIGNMENT;
     else
         return SoIInitializationStrategy::INPUT_ASSIGNMENT;
 }

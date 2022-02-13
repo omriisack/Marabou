@@ -71,10 +71,13 @@ void OptionParser::initialize()
           "Strategy for stochastically minimizing the soi: mcmc/walksat. default: mcmc" )
         ( "soi-init-strategy",
           boost::program_options::value<std::string>( &((*_stringOptions)[Options::SOI_INITIALIZATION_STRATEGY]) ),
-          "Strategy for initialize the soi function: input-assignment/random. default: input-assignment" )
+          "Strategy for initialize the soi function: input-assignment/current-assignment. default: input-assignment" )
         ( "num-workers",
           boost::program_options::value<int>( &((*_intOptions)[Options::NUM_WORKERS]) ),
           "(SnC) Number of workers" )
+        ( "blas-threads",
+          boost::program_options::value<int>( &((*_intOptions)[Options::NUM_BLAS_THREADS]) ),
+          "Number of threads to use for matrix multiplication with OpenBLAS" )
         ( "split-strategy",
           boost::program_options::value<std::string>( &((*_stringOptions)[Options::SNC_SPLITTING_STRATEGY]) ),
           "(SnC) The splitting strategy" )

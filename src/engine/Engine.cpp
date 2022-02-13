@@ -35,6 +35,9 @@
 #include <random>
 
 Engine::Engine()
+    : _context()
+    , _boundManager( _context )
+    , _tableau( _boundManager )
     : _rowBoundTightener( *_tableau, *this )
     , _smtCore( this )
     , _numPlConstraintsDisabledByValidSplits( 0 )
@@ -2961,7 +2964,18 @@ bool Engine::performDeepSoILocalSearch()
     // All the linear constraints have been satisfied at this point.
     // Update the cost function
     _soiManager->initializePhasePattern();
-    minimizeHeuristicCost( _soiManager->getCurrentSoIPhasePattern() );
+
+    LinearExpression initialPhasePattern =
+        _soiManager->getCurrentSoIPhasePattern();
+
+    if ( initialPhasePattern.isZero() )
+    {
+        while ( !_smtCore.needToSplit() )
+            _smtCore.reportRejectedPhasePatternProposal();
+        return false;
+    }
+
+    minimizeHeuristicCost( initialPhasePattern );
     ASSERT( allVarsWithinBounds() );
     _soiManager->updateCurrentPhasePatternForSatisfiedPLConstraints();
     // Always accept the first phase pattern.
@@ -3012,7 +3026,17 @@ bool Engine::performDeepSoILocalSearch()
                     return true;
                 }
             }
-            ASSERT( !FloatUtils::isZero( costOfLastAcceptedPhasePattern ) );
+            else if ( FloatUtils::isZero( costOfLastAcceptedPhasePattern ) )
+            {
+                // Corner case: the SoI is minimal but there are still some PL
+                // constraints (those not in the SoI) unsatisfied.
+                // In this case, we bump up the score of PLConstraints not in
+                // the SoI with the hope to branch on them early.
+                bumpUpPseudoImpactOfPLConstraintsNotInSoI();
+                while ( !_smtCore.needToSplit() )
+                    _smtCore.reportRejectedPhasePatternProposal();
+                return false;
+            }
         }
 
         // No satisfying assignment found for the last accepted phase pattern,
@@ -3110,6 +3134,18 @@ void Engine::updatePseudoImpactWithSoICosts( double costOfLastAcceptedPhasePatte
     // Update the Pseudo-Impact estimation.
     for ( const auto &constraint : constraintsUpdated )
         _smtCore.updatePLConstraintScore( constraint, score );
+}
+
+void Engine::bumpUpPseudoImpactOfPLConstraintsNotInSoI()
+{
+    ASSERT( _soiManager );
+    for ( const auto &plConstraint : _plConstraints )
+    {
+        if ( plConstraint->isActive() && !plConstraint->supportSoI() &&
+             !plConstraint->phaseFixed() && !plConstraint->satisfied() )
+            _smtCore.updatePLConstraintScore
+                ( plConstraint, GlobalConfiguration::SCORE_BUMP_FOR_PL_CONSTRAINTS_NOT_IN_SOI );
+    }
 }
 
 void Engine::updateGroundUpperBound( const unsigned var, const double value, unsigned decisionLevel )

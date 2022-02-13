@@ -22,6 +22,7 @@
 #include "AutoRowBoundTightener.h"
 #include "AutoTableau.h"
 #include "BlandsRule.h"
+#include "BoundManager.h"
 #include "DantzigsRule.h"
 #include "DegradationChecker.h"
 #include "DivideStrategy.h"
@@ -44,6 +45,7 @@
 #include "SymbolicBoundTighteningType.h"
 #include "SmtLibWriter.h"
 
+#include <context/context.h>
 #include <atomic>
 #include <assert.h>
 
@@ -58,7 +60,11 @@ class InputQuery;
 class PiecewiseLinearConstraint;
 class String;
 
-class Engine : public IEngine, public SignalHandler::Signalable {
+
+using CVC4::context::Context;
+
+class Engine : public IEngine, public SignalHandler::Signalable
+{
 public:
     enum {
           MICROSECONDS_TO_SECONDS = 1000000,
@@ -276,6 +282,19 @@ private:
       access to the explicit basis matrix.
     */
     void explicitBasisBoundTightening();
+
+    /*
+       Context is the central object that manages memory and back-tracking
+       across context-dependent components - SMTCore,
+       PiecewiseLinearConstraints, BoundManager, etc.
+     */
+    Context _context;
+
+    /*
+       BoundManager is the centralized context-dependent object that stores
+       derived bounds.
+     */
+    BoundManager _boundManager;
 
     /*
       Collect and print various statistics.
@@ -724,6 +743,13 @@ private:
     void updatePseudoImpactWithSoICosts( double costOfLastAcceptedPhasePattern,
                                          double costOfProposedPhasePattern );
 
+    /*
+      This is called when handling the case when the SoI is already 0 but
+      the PLConstraints not participating in the SoI are not satisfied.
+      In that case, we bump up the score of those non-participating
+      PLConstraints to promote them in the branching order.
+    */
+    void bumpUpPseudoImpactOfPLConstraintsNotInSoI();
 
     /*
      Prints coefficients of Simplex equations that witness UNSAT
@@ -825,11 +851,3 @@ private:
 };
 
 #endif // __Engine_h__
-
-//
-// Local Variables:
-// compile-command: "make -C ../.. "
-// tags-file-name: "../../TAGS"
-// c-basic-offset: 4
-// End:
-//
