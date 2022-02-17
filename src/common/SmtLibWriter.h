@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file SmtLibWriter.h
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -25,9 +27,9 @@
 class SmtLibWriter
 {
 public:
+
 	/*
- 	* Adds a SMTLIB header to the SMTLIB instance
-	* n is used to declare all variables
+ 	* Adds a SMTLIB header to the SMTLIB instance with n variables
  	*/
 	static void addHeader( unsigned n, List<String> &instance )
 	{

@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file BoundsExplainer.cpp
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -118,7 +120,6 @@ void CertificateNode::makeLeaf()
 	_children.clear();
 }
 
-
 void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitConstraint )
 {
 	for ( auto* child : _children )
@@ -130,14 +131,14 @@ void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitCon
 			if ( &con != childrenSplitConstraint )
 				child->addProblemConstraint( con._type, con._constraintVars, con._status );
 
-		if ( childrenSplitConstraint && childrenSplitConstraint->_type == PiecewiseLinearFunctionType::RELU ) //Add the constraint corresponding to head split with correct phase
+		//Add the constraint corresponding to head split with correct phase
+		if ( childrenSplitConstraint && childrenSplitConstraint->_type == PiecewiseLinearFunctionType::RELU )
 		{
 			if ( child->_headSplit.getBoundTightenings().front()._type == Tightening::LB || child->_headSplit.getBoundTightenings().back()._type == Tightening::LB  )
 				child->addProblemConstraint( childrenSplitConstraint->_type, childrenSplitConstraint->_constraintVars, PhaseStatus::RELU_PHASE_ACTIVE );
 			else
 				child->addProblemConstraint( childrenSplitConstraint->_type, childrenSplitConstraint->_constraintVars, PhaseStatus::RELU_PHASE_INACTIVE );
 		}
-
 	}
 }
 
@@ -150,30 +151,34 @@ bool CertificateNode::certify()
 		temp[tightening._variable] = tightening._value;
 	}
 
-	if ( !certifyAllPLCExplanations( 0.01 ) )
+	// Certify all PLC bound propagations
+	if ( !certifyAllPLCExplanations( 0.0025 ) )
 		return false;
 
-	// Check if it is a leaf, and if so use contradiction to certify
-	// return true iff it is certified
+	// Save to file if marked
 	if ( _delegationStatus == DelegationStatus::DELEGATE_SAVE )
 		writeLeafToFile();
 
+	// Skip if laf has the SAT solution, or if was marked to delegate
 	if ( _hasSATSolution || _delegationStatus != DelegationStatus::DONT_DELEGATE )
 		return true;
 
+	// Check if it is a leaf, and if so use contradiction to certify
+	// return true iff it is certified
 	if ( isValidLeaf() )
 		return certifyContradiction();
 
+	// If not a valid leaf, skip only if it is leaf that was not visited
 	if ( !_wasVisited && !_contradiction && _children.empty() )
 		return true;
 
+	// Otherwise, should be a valid non-leaf node
 	if ( !isValidNoneLeaf() )
 		return false;
 
-	// Otherwise, assert there is a constraint and children
-	// validate the constraint is ok
-	// Certify all children
-	// return true iff all children are certified
+
+	// If so, certify all children and return true iff all children are certified
+	// Also make sure that they are split correctly (i.e by ReLU constraint or by a single var)
 	bool answer = true;
 	List<PiecewiseLinearCaseSplit> childrenSplits;
 	for ( auto& child : _children )
@@ -265,7 +270,7 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
 
 	auto firstSplitTightenings = splits.front().getBoundTightenings(), secondSplitTightenings = splits.back().getBoundTightenings();
 
-	// find the LB, it is b
+	// find the LB tightening, its var is b
 	auto &activeSplit = firstSplitTightenings.front()._type == Tightening::LB ? firstSplitTightenings : secondSplitTightenings;
 	auto &inactiveSplit = firstSplitTightenings.front()._type == Tightening::LB ? secondSplitTightenings : firstSplitTightenings;
 
@@ -273,19 +278,20 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
 	unsigned aux = activeSplit.back()._variable;
 	unsigned f = inactiveSplit.back()._variable;
 
-	//Aux var may be or may not be used
+	// Aux var may or may not be used
 	if ( ( activeSplit.size() != 2 && activeSplit.size() != 1 ) || inactiveSplit.size() != 2 )
 		return NULL;
 
 	if ( FloatUtils::areDisequal( inactiveSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( inactiveSplit.front()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( activeSplit.front()._value, 0.0 ) )
 		return NULL;
 
-	// Certify that f = relu(b) + aux is in problem constraints
+	// Certify that f = b + aux corresponds to a problem constraints
 	ProblemConstraint *correspondingConstraint = NULL;
 	for ( ProblemConstraint& con : _problemConstraints )
 		if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && ( activeSplit.size() == 1 || con._constraintVars.back() == aux ) )
 			correspondingConstraint = &con;
 
+	// Return the constraint for which f=relu(b)
 	return correspondingConstraint;
 }
 
@@ -293,6 +299,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 {
 	// Create copies of the gb, check for their validity, and pass these changes to all the children
 	// Assuming the splits of the children are ok.
+	// NOTE, this will change as PLCExplanation will
 	for ( auto* expl : _PLCExplanations )
 	{
 		bool constraintMatched = false, tighteningMatched = false;
@@ -307,7 +314,7 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 
 		double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explVec, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 		unsigned b = 0, f = 0, aux = 0;
-		// Make sure it is a problem constraint
+		// Make sure propagation was by a problem constraint
 		for ( ProblemConstraint& con : _problemConstraints )
 		{
 			if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && con._constraintVars.exists( expl->_affectedVar ) && con._constraintVars.exists( expl->_causingVar ) )
@@ -332,45 +339,45 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 			return false;
 
 		// Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each rule in ReluConstraint.cpp
-		// Cases allow explained bound to be tighter than the ones recorded (since an explanation can explain looser bounds), and an epsilon sized error is tolerated.
+		// We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
 
 		// If lb of b is non negative, then ub of aux is 0
 		if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
 			tighteningMatched = true;
 
-			// If lb of f is positive, then ub if aux is 0
+		// If lb of f is positive, then ub if aux is 0
 		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
 			tighteningMatched = true;
 
-			// If lb of b is positive x, then lb of aux is -x
+		// If lb of b is positive x, then lb of aux is -x
 		else if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::gte( explainedBound, - expl->_bound - epsilon ) && expl->_bound > 0 )
 			tighteningMatched = true;
 
-			// If lb of aux is positive, then ub of f is 0
+		// If lb of aux is positive, then ub of f is 0
 		else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
 			tighteningMatched = true;
 
-			// If lb of f is negative, then it is 0
+		// If lb of f is negative, then it is 0
 		else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == f && !expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isNegative( explainedBound - epsilon ) )
 			tighteningMatched = true;
 
-			// Propagate ub from f to b
+		// Propagate ub from f to b
 		else if ( expl->_causingVar == f && expl->_isCausingBoundUpper && expl->_affectedVar == b && expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
 			tighteningMatched = true;
 
-			// If ub of b is non positive, then ub of f is 0
+		// If ub of b is non positive, then ub of f is 0
 		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound - epsilon ) )
 			tighteningMatched = true;
 
-			// If ub of b is non positive x, then lb of aux is -x
+		// If ub of b is non positive x, then lb of aux is -x
 		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == aux && !expl->_isAffectedBoundUpper && expl->_bound > 0 && !FloatUtils::isPositive( explainedBound - epsilon ) && FloatUtils::lte( explainedBound, -expl->_bound + epsilon) )
 			tighteningMatched = true;
 
-			// If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
+		// If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
 		else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isPositive( expl->_bound )  && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
 			tighteningMatched = true;
 
-			// If ub of aux is x, then lb of b is -x
+		// If ub of aux is x, then lb of b is -x
 		else if ( expl->_causingVar == aux && expl->_isCausingBoundUpper && expl->_affectedVar == b && !expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, -expl->_bound + epsilon ) )
 			tighteningMatched = true;
 
@@ -423,15 +430,18 @@ bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSpli
 	if ( splits.size() != 2 )
 		return false;
 
+	// These are singletons to tightenings
 	auto &frontSplitTightenings = splits.front().getBoundTightenings();
 	auto &backSplitTightenings = splits.back().getBoundTightenings();
 
 	if ( frontSplitTightenings.size() != 1 || backSplitTightenings.size() != 1 )
 		return false;
 
+	// These are the elements in the singletons
 	auto &frontSplitOnlyTightening = frontSplitTightenings.front();
 	auto &backSplitOnlyTightening = backSplitTightenings.front();
 
+	// Check that cases are of the same var and bound, where the for one the bound is UB, and for the other is LB
 	if ( frontSplitOnlyTightening._variable != backSplitOnlyTightening._variable )
 		return false;
 
@@ -449,10 +459,7 @@ void CertificateNode::deletePLCExplanations()
 	if ( !_PLCExplanations.empty() )
 	{
 		for ( auto expl : _PLCExplanations )
-		{
-			delete[] expl->_explanation;
 			delete expl;
-		}
 
 		_PLCExplanations.clear();
 	}
@@ -514,7 +521,7 @@ void CertificateNode::writeLeafToFile()
 	SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
 }
 
-void CertificateNode::removePLCExplanationsBelowDecisionLevel(unsigned decisionLevel )
+void CertificateNode::removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel )
 {
 	_PLCExplanations.remove_if( [decisionLevel] ( PLCExplanation* expl ){ return expl->_decisionLevel <= decisionLevel; } );
 }

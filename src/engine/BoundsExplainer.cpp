@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file BoundsExplainer.cpp
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -12,13 +14,11 @@
 
 #include "BoundsExplainer.h"
 
-/* Functions of BoundsExplainer */
 BoundsExplainer::BoundsExplainer( const unsigned varsNum, const unsigned rowsNum )
-		:_varsNum( varsNum )
-		,_rowsNum( rowsNum )
-		,_upperBoundsExplanations( _varsNum, std::vector<double>( 0 ) )
-		,_lowerBoundsExplanations( _varsNum,  std::vector<double>( 0 ) )
-
+	:_varsNum( varsNum )
+	,_rowsNum( rowsNum )
+	,_upperBoundsExplanations( _varsNum, std::vector<double>( 0 ) )
+	,_lowerBoundsExplanations( _varsNum,  std::vector<double>( 0 ) )
 {
 }
 
@@ -173,6 +173,7 @@ void BoundsExplainer::updateBoundExplanationSparse( const SparseUnsortedList& ro
 			ci = entry._value;
 			break;
 		}
+
 	ASSERT( !FloatUtils::isZero( ci ) );
 	std::vector<double> rowCoefficients = std::vector<double>( _rowsNum, 0 );
 	std::vector<double> sum = std::vector<double>( _rowsNum, 0 );

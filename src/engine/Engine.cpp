@@ -38,7 +38,7 @@ Engine::Engine()
     : _context()
     , _boundManager( _context )
     , _tableau( _boundManager )
-    : _rowBoundTightener( *_tableau, *this )
+    , _rowBoundTightener( *_tableau, *this )
     , _smtCore( this )
     , _numPlConstraintsDisabledByValidSplits( 0 )
     , _preprocessingEnabled( false )
@@ -3196,7 +3196,7 @@ void Engine::explainSimplexFailure()
 	naivelyApplyAllTightenings();
 
 //	checkGroundBounds();  // TODO keep commented when running on Cluster
-//	validateAllBounds( 0.01, 1000000 );
+//	validateAllBounds( 0.0025, 1000000000 );
 
 	int infVar = _tableau->getInfeasibleVar();
 
@@ -3360,7 +3360,7 @@ void Engine::markLeafToDelegate()
 
 	// Mark leaf with toDelegate Flag
 	ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ), DelegationStatus::DELEGATE_SAVE );
+	_UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ), DelegationStatus::DELEGATE_DONT_SAVE );
 	_UNSATCertificateCurrentPointer->deletePLCExplanations(); // Info is not used in case of delegation
 	_statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }

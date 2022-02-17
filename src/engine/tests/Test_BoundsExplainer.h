@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file BoundsExplainer.h
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -53,17 +55,18 @@ public:
 	void testExplanationInjection()
 	{
 		unsigned varsNum = 2, rowsNum = 2;
+		double value = -2.55;
 		BoundsExplainer be( varsNum, rowsNum );
 
-		TS_ASSERT_THROWS_NOTHING( be.injectExplanation( std::vector<double>( varsNum, 5 ), 0, true ) );
+		TS_ASSERT_THROWS_NOTHING( be.injectExplanation( std::vector<double>( varsNum, value ), 0, true ) );
 		auto expl = be.getExplanation( 0, true );
 
 		for ( auto num : expl )
-			TS_ASSERT_EQUALS( num, 5 );
+			TS_ASSERT_EQUALS( num, value );
 	}
 
 	/*
-	 * Test addition of a explanation of the new variable, and correct updates of all previous explanations
+	 * Test addition of an explanation of the new variable, and correct updates of all previous explanations
 	 */
 	void testVariableAddition()
 	{
@@ -76,14 +79,11 @@ public:
 		TS_ASSERT_EQUALS(be.getRowsNum(), rowsNum + 1 );
 		TS_ASSERT_EQUALS(be.getVarsNum(), varsNum + 1 );
 
-		TS_ASSERT(be.getExplanation( 0, true ).empty() );
-		TS_ASSERT(be.getExplanation( 0, false ).empty() );
-
-		TS_ASSERT_EQUALS(be.getExplanation( varsNum - 1, true ).size(), varsNum + 1 );
-		TS_ASSERT_EQUALS(be.getExplanation( varsNum - 1, false ).size(), varsNum + 1 );
-
-		TS_ASSERT_EQUALS(be.getExplanation( varsNum - 1, true ).back(), 0 );
-		TS_ASSERT_EQUALS(be.getExplanation( varsNum - 1, false ).back(), 0 );
+		for ( unsigned i = 0; i < varsNum; ++ i)
+		{
+			TS_ASSERT(be.getExplanation( i, true ).empty() || ( be.getExplanation( i, true ).back() == 0 && be.getExplanation( i, true ).size() == varsNum + 1) );
+			TS_ASSERT(be.getExplanation( i, false ).empty() || ( be.getExplanation( i, false ).back() == 0 && be.getExplanation( i, false ).size() == varsNum + 1) );
+		}
 
 		TS_ASSERT(be.getExplanation( varsNum, true ).empty() );
 		TS_ASSERT(be.getExplanation( varsNum, false ).empty() ) ;
@@ -104,6 +104,9 @@ public:
 		TS_ASSERT( be.getExplanation( 0 , true ).empty() );
 	}
 
+	/*
+	 * Test main functionality of BoundsExplainer i.e. updating explanations according to tableau rows
+	 */
 	void testExplanationUpdates()
 	{
 		unsigned varsNum = 6, rowsNum = 3;
@@ -186,6 +189,7 @@ public:
 		}
 	}
 };
+
 //
 // Local Variables:
 // compile-command: "make -C ../../.. "

@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file BoundsExplainer.h
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -17,7 +19,7 @@
 #include "SparseUnsortedList.h"
 
 /*
-  A class which encapsulates the bounds explanations of all variables of a tableau
+  A class which encapsulates bounds explanations of all variables of a tableau
 */
 class BoundsExplainer {
 public:
@@ -36,42 +38,42 @@ public:
 	unsigned getVarsNum() const;
 
 	/*
-	  Puts the values of a bound explanation in the array bound.
+	 * Returns a bound explanation
 	*/
 	const std::vector<double>& getExplanation( unsigned var, bool isUpper );
 
 	/*
-	  Given a row, updates the values of the bound explanations of its lhs according to the row
+	 * Given a row, updates the values of the bound explanations of its lhs according to the row
 	*/
 	void updateBoundExplanation( const TableauRow& row, bool isUpper );
 
 	/*
-	  Given a row, updates the values of the bound explanations of a var according to the row
+	 * Given a row, updates the values of the bound explanations of a var according to the row
 	*/
 	void updateBoundExplanation( const TableauRow& row, bool isUpper, unsigned varIndex );
 
 	/*
-	Given a row as SparseUnsortedList, updates the values of the bound explanations of a var according to the row
+	 * Given a row as SparseUnsortedList, updates the values of the bound explanations of a var according to the row
 	*/
 	void updateBoundExplanationSparse( const SparseUnsortedList& row, bool isUpper, unsigned var );
 
 	/*
-	 * Copies all elements of other BoundsExplainer
+	 * Deep copies of other BoundsExplainer
 	 */
 	BoundsExplainer& operator=( const BoundsExplainer& other );
 
 	/*
-	 * Adds a zero explanation at the end
+	 * Adds a zero explanation at the end, and a zero entry to all explanations
 	 */
 	void addVariable();
 
 	/*
-	 * Resets an explanation
+	 * Resets an explanation (to be a zero vec, represented by an empty vec)
 	 */
 	void resetExplanation( unsigned var, bool isUpper );
 
 	/*
-	 * Artificially updates an explanation, without using the recursive rule
+	 * Updates an explanation, without necessarily using the recursive rule
 	 */
 	void injectExplanation( const std::vector<double>& expl, unsigned var, bool isUpper );
 
@@ -82,23 +84,23 @@ private:
 	std::vector<std::vector<double>> _lowerBoundsExplanations;
 
 	/*
-	  A helper function which adds a multiplication of an array by scalar to another array
+	  Adds a multiplication of an array by scalar to another array
 	*/
 	void addVecTimesScalar( std::vector<double>& sum, const std::vector<double>& input, double scalar ) const;
 
 	/*
-	  Upon receiving a row, extract coefficients of the original tableau's equations that creates the row
-	  It is merely the coefficients of the slack variables.
+	  Upon receiving a row, extract coefficients of the original tableau's equations that create the row
+	  Equivalently, extract the coefficients of the slack variables.
 	  Assumption - the slack variables indices are always the last m.
-	All coefficients are divided by -ci, the coefficient of the explained var, for normalization.
+	  All coefficients are divided by -ci, the coefficient of the explained var, for normalization.
 	*/
 	void extractRowCoefficients( const TableauRow& row, std::vector<double>& coefficients, double ci ) const;
 
 	/*
-	Upon receiving a row given as a SparseUnsortedList, extract coefficients of the original tableau's equations that creates the row
-	It is merely the coefficients of the slack variables.
-	Assumption - the slack variables indices are always the last m.
-	All coefficients are divided by -ci, the coefficient of the explained var, for normalization.
+	  Upon receiving a row given as a SparseUnsortedList, extract coefficients of the original tableau's equations that create the row
+	  Equivalently, extract the coefficients of the slack variables.
+	  Assumption - the slack variables indices are always the last m.
+	  All coefficients are divided by -ci, the coefficient of the explained var, for normalization.
 	*/
 	void extractSparseRowCoefficients( const SparseUnsortedList& row, std::vector<double>& coefficients, double ci ) const;
 

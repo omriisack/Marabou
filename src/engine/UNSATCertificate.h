@@ -1,8 +1,10 @@
 /*********************                                                        */
 /*! \file BoundsExplainer.cpp
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -22,8 +24,9 @@
 #include "SmtLibWriter.h"
 #include "Options.h"
 
-// Contains an explanation for a ground bound update during a run (i.e from ReLU phase-fixing)
-// For now only relevant to ReLU constraints
+/*
+ * Contains all necessary info of a ground bound update during a run (i.e from ReLU phase-fixing)
+ */
 struct PLCExplanation
 {
 	unsigned _causingVar;
@@ -34,8 +37,20 @@ struct PLCExplanation
 	double *_explanation;
 	PiecewiseLinearFunctionType _constraintType;
 	unsigned _decisionLevel;
+
+	~PLCExplanation()
+	{
+		if ( _explanation )
+		{
+			delete [] _explanation;
+			_explanation = NULL;
+		}
+	}
 };
 
+/*
+ * Contains all ino relevant for a simple Marabou contradiction - i.e. explanations of contradicting bounds for a variable
+ */
 struct Contradiction
 {
 	unsigned _var;
@@ -58,6 +73,9 @@ struct Contradiction
 	}
 };
 
+/*
+ * A smaller representation of a problem constraint
+ */
 struct ProblemConstraint
 {
 	PiecewiseLinearFunctionType _type;
@@ -77,6 +95,9 @@ enum DelegationStatus : unsigned
 	DELEGATE_SAVE = 2
 };
 
+/*
+ * A certificate node in the tree representing the UNSAT certificate
+ */
 class CertificateNode
 {
 public:
@@ -99,12 +120,12 @@ public:
 	bool certify();
 
 	/*
-	 * Sets the leaf certificate as input
+	 * Sets the leaf contradiction certificate as input
 	 */
 	void setContradiction( Contradiction *certificate );
 
 	/*
-	 * Gets the leaf certificate of the node
+	 * Returns the leaf contradiction certificate of the node
 	 */
 	Contradiction* getContradiction() const;
 
@@ -119,7 +140,7 @@ public:
 	const PiecewiseLinearCaseSplit& getSplit() const;
 
 	/*
-	 * Gets the PLC explanations of the node
+	 * Returns the list of PLC explanations of the node
 	 */
 	const std::list<PLCExplanation*>& getPLCExplanations() const;
 
@@ -134,7 +155,7 @@ public:
 	void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status );
 
 	/*
-	 * get a pointer to a child by a head split, or NULL if not found
+	 * Returns a pointer to a child by a head split, or NULL if not found
 	 */
 	CertificateNode* getChildBySplit( const PiecewiseLinearCaseSplit &split ) const;
 
@@ -197,7 +218,8 @@ private:
 	void copyGB( std::vector<double> &groundUBs, std::vector<double> &groundLBs );
 
 	/*
-	 * Inherits the initialTableau and ground bounds from parent, if exists
+	 * Inherits the initialTableau pointer, the ground bounds and the problem constraint from parent, if exists.
+	 * Fixes the phase of the constraint that corresponds to the head split
 	 */
 	void passChangesToChildren( ProblemConstraint *childrenSplitConstraint );
 
@@ -245,6 +267,10 @@ private:
 class UNSATCertificateUtils
 {
 public:
+	/*
+	 * Use explanation to compute a bound (aka explained bound)
+	 * Given a variable, an explanation, initial tableau and ground bounds.
+	 */
 	static double computeBound( unsigned var, bool isUpper, const std::vector<double> &expl,
 								const std::vector<std::vector<double>> &initialTableau, const std::vector<double> &groundUBs, const std::vector<double> &groundLBs )
 	{
@@ -284,7 +310,9 @@ public:
 		return derived_bound;
 	}
 
-
+	/*
+	 * Given a var, a tableau and a column vector, create a linear combination used to explain a bound
+	 */
 	static void getExplanationRowCombination( unsigned var, std::vector<double> &explRowsCombination, const std::vector<double> &expl,
 											  const std::vector<std::vector<double>> &initialTableau )
 	{
