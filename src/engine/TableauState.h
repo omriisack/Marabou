@@ -123,7 +123,7 @@ public:
     /*
      * Explainer for all bounds
      */
-    BoundsExplainer *_boundsExplainer;
+    BoundExplainer *_boundsExplainer;
 };
 
 #endif // __TableauState_h__

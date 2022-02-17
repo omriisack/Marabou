@@ -62,8 +62,8 @@ public:
 	/*
  	As previous methods, but with additional Tableau row for explaining the bound tightening.
 	*/
-	void registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row );
-	void registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row );
+	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row );
+	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row );
 
     /*
       Get the tightenings previously registered by the constraints

@@ -471,9 +471,9 @@ public:
 	/*
 	 * Returns the content of the object containing all explanations for variable bounds in the tableau.
 	 */
-	BoundsExplainer* getAllBoundsExplanations() const;
+	BoundExplainer *getAllBoundsExplanations() const;
 
-	void setAllBoundsExplanations( BoundsExplainer* boundsExplanations );
+	void setAllBoundsExplanations( BoundExplainer *boundsExplanations );
 
 	/*
 	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
@@ -691,7 +691,7 @@ private:
 	  puts it in  the input parameter, and returns the corresponding basic status
 	  If none found return TABLEAU::BETWEEN
 	*/
-	BasicStatus getInfeasibleRow( TableauRow& row );
+	BasicStatus getInfeasibleRow( TableauRow &row );
 
 	/*
 	 Returns a variable with infeasible bounds, if exists
@@ -708,32 +708,32 @@ private:
 	/*
 	* Computes the bound imposed by row rhs
 	*/
-	double computeRowBound(const TableauRow& row, bool isUpper ) const;
+	double computeRowBound( const TableauRow &row, bool isUpper ) const;
 
 	/*
 	* Computes the bound imposed by row on a variable
 	*/
-	double computeSparseRowBound( const SparseUnsortedList& row, bool isUpper, unsigned var) const;
+	double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
 	/*
 	  Returns the bounds explanation of a variable in the tableau
 	*/
-	const std::vector<double>& explainBound( unsigned variable, bool isUpper ) const;
+	const Vector<double> &explainBound( unsigned variable, bool isUpper ) const;
 
 	/*
 	 Update a bound explanation according to a row in the Tableau
 	*/
-	void updateExplanation( const TableauRow& row, bool isUpper ) const;
+	void updateExplanation( const TableauRow &row, bool isUpper ) const;
 
 	/*
 	Update a bound explanation of a specific var in a row
    */
-	void updateExplanation( const TableauRow& row, bool isUpper, unsigned var ) const;
+	void updateExplanation( const TableauRow &row, bool isUpper, unsigned var ) const;
 
 	/*
 	 Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
 	*/
-	void updateExplanation( const SparseUnsortedList& row, bool isUpper, unsigned var ) const;
+	void updateExplanation( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
 	/*
 	 * Resets a bound explanation
@@ -743,12 +743,12 @@ private:
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/
-	void injectExplanation( const std::vector<double>& expl, unsigned var,  bool isUpper ) const;
+	void injectExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
 
 	/*
      * Explainer of all bounds
     */
-	BoundsExplainer *_boundsExplainer;
+	BoundExplainer *_boundsExplainer;
 };
 
 #endif // __Tableau_h__

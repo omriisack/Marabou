@@ -176,6 +176,12 @@ public:
         _container.pop_back();
     }
 
+	template <class Predicate>
+    void removeIf( Predicate p )
+	{
+    	_container.remove_if( p );
+	}
+
     bool operator==( const List<T> &other ) const
     {
         return _container == other._container;

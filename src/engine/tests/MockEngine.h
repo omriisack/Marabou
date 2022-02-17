@@ -212,19 +212,19 @@ public:
 	{
 	}
 
-	std::vector<double> _mockDoubleVec;
-	std::vector<unsigned> _mockUnsignedVec;
-	const std::vector<double>& getGroundBounds( bool /* isUpper */ ) const
+	Vector<double> _mockDoubleVec;
+	Vector<unsigned> _mockUnsignedVec;
+	const Vector<double> &getGroundBounds( bool /* isUpper */ ) const
 	{
 		return _mockDoubleVec;
 	}
 
-	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
+	const Vector<unsigned> &getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
 	{
 		return _mockUnsignedVec;
 	}
 
-	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
+	void setGroundBoundsDecisionLevels( const Vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
 	{
 	}
 

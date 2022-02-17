@@ -241,6 +241,10 @@ public:
     */
     static const bool PROOF_CERTIFICATE;
 
+    /* Perform CDCL
+     */
+    static const bool CDCL;
+
 #ifdef ENABLE_GUROBI
     /*
       The number of threads Gurobi spawns

@@ -39,11 +39,12 @@ public:
 	Map<PiecewiseLinearConstraint *, PiecewiseLinearConstraint *> _plConstraintToState;
 	unsigned _numPlConstraintsDisabledByValidSplits;
 
-	std::vector<double> _groundUpperBounds;
-	std::vector<double> _groundLowerBounds;
+	Vector<double> _groundUpperBounds;
+	Vector<double> _groundLowerBounds;
 
-	std::vector<unsigned> _upperDecisionLevels;
-	std::vector<unsigned> _lowerDecisionLevels;
+	Vector<unsigned> _upperDecisionLevels;
+	Vector<unsigned> _lowerDecisionLevels;
+
 	/*
 	  A unique ID allocated to every state that is stored, for
 	  debugging purposes. These are assigned by the SMT core.
