@@ -220,17 +220,17 @@ public:
 	/*
  	* Return all ground bounds as a vector
  	*/
-	const std::vector<double>& getGroundBounds( bool isUpper ) const;
+	const Vector<double> &getGroundBounds( bool isUpper ) const;
 
 	/*
  	* Return all decision levels of the ground bounds as a vector
  	*/
-	const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const;
+	const Vector<unsigned> &getGroundBoundsDecisionLevels( bool isUpper ) const;
 
 	/*
  	* Sets all decision levels of the ground bounds as a vector
  	*/
-	void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const;
+	void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper ) const;
 
 	/*
 	 * Get the current pointer of the UNSAT certificate
@@ -751,32 +751,32 @@ private:
     */
     void bumpUpPseudoImpactOfPLConstraintsNotInSoI();
 
-    /*
-     Prints coefficients of Simplex equations that witness UNSAT
-    */
-    void printBoundsExplanation( unsigned var );
-
-    /*
-     Updates bounds after deducing Simplex infeasibility
-    */
-    int explainFailureWithTableau();
-
-	std::vector<std::vector<double>> _initialTableau;
-	std::vector<double> _groundUpperBounds;
-	std::vector<double> _groundLowerBounds;
-	std::vector<unsigned> _upperDecisionLevels;
-	std::vector<unsigned> _lowerDecisionLevels;
+	Vector<Vector<double>> _initialTableau;
+	Vector<double> _groundUpperBounds;
+	Vector<double> _groundLowerBounds;
+	Vector<unsigned> _upperDecisionLevels;
+	Vector<unsigned> _lowerDecisionLevels;
 	CertificateNode* _UNSATCertificate;
 	CertificateNode* _UNSATCertificateCurrentPointer;
 
 	/*
-		Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
-		Asserts the computed bound is epsilon close to the real one.
-	   */
+	  Prints coefficients of Simplex equations that witness UNSAT
+    */
+	void printBoundExplanation( unsigned var ) const;
+
+	/*
+	  Updates bounds after deducing Simplex infeasibility
+	*/
+	int explainFailureWithTableau();
+
+	/*
+	  Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
+	  Asserts the computed bound is epsilon close to the real one.
+	*/
 	bool certifyInfeasibility( const unsigned var ) const;
 
 	/*
-	 Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+	  Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
 	*/
 	double getExplainedBound( unsigned var,  bool isUpper ) const;
 
@@ -795,59 +795,58 @@ private:
 	bool validateAllBounds( double epsilon, double M ) const;
 
 	/*
-	 * Finds the variable causing failure and updates its bounds explanations
-	 */
+	  Finds the variable causing failure and updates its bounds explanations
+	*/
 	void explainSimplexFailure();
 
 	/*
-	 * Sanity check for ground bounds
-	 */
+	  Sanity check for ground bounds
+	*/
 	void checkGroundBounds() const;
 
 	/*
-	 * Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
-	 */
+	  Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
+	*/
 	int explainFailureWithCostFunction();
 
 	/*
- 	* Updates explanations of the first infeasible basic var by cost function;
+ 	  Updates explanations of the first infeasible basic var by cost function;
  	*/
 	int updateFirstInfeasibleBasic();
 
 	/*
-	 * Updates an explanation of a bound according to a row, and checks for an explained contradiction.
-	 * If found, return true.
-	 * If not, revert and return false
-	 */
+	  Updates an explanation of a bound according to a row, and checks for an explained contradiction.
+	  If found, return true.
+	  If not, revert and return false
+	*/
 	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
 	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
 
 	/*
-	 * Delegates leaves with certification error to SMTLIB format
-	 */
+	  Delegates leaves with certification error to SMTLIB format
+	*/
 	void markLeafToDelegate();
 
 	/*
-	 * Writes the details of a contradiction to the UNSAT certificate
+	  Writes the details of a contradiction to the UNSAT certificate
  	*/
-	void writeContradictionToCertificate( unsigned infVar );
+	void writeContradictionToCertificate( unsigned infeasibleVar );
 
 	/*
- 	* Computes jump level based on decision levels of UNSAT certificate for the leaf
+ 	  Computes jump level based on decision levels of UNSAT certificate for the leaf
  	*/
-	unsigned computeJumpLevel( unsigned infVar );
+	unsigned computeJumpLevel( unsigned infeasibleVar );
 
 	/*
- 	* Earses all UNSAT certificate info between current leaf and jump level.
-	 * Moves pointer to correct place and sets the relevant contradction
+ 	  Erases all UNSAT certificate info between current leaf and jump level.
+	  Moves pointer to correct place and sets the relevant contradiction
  	*/
 	void performJumpForUNSATCertificate( unsigned jumpSize );
 
 	/*
-	 * Applies all bound tightenings without further notifying
-	 */
+	  Applies all bound tightenings without further notifying
+	*/
 	void naivelyApplyAllTightenings();
-
 };
 
 #endif // __Engine_h__

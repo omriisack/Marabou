@@ -216,7 +216,7 @@ void TableauState::setDimensions( unsigned m, unsigned n, const IBasisFactorizat
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		_boundsExplainer = new BoundsExplainer(n, m );
+		_boundsExplainer = new BoundExplainer(n, m );
 		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::basisFactorization" );
 	}

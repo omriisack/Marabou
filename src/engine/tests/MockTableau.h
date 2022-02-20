@@ -651,12 +651,12 @@ public:
 	}
 
 
-	void injectExplanation( const std::vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
+	void injectExplanation( const Vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
 	{
 	}
 
-	std::vector<double> _mockExpl = std::vector<double>( 0 );
-	const std::vector<double>& explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
+	Vector<double> _mockExpl = Vector<double>( 0 );
+	const Vector<double> &explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
 	{
 		return _mockExpl;
 	}
@@ -666,12 +666,12 @@ public:
 		return true;
 	}
 
-	BoundsExplainer* getAllBoundsExplanations() const
+	BoundExplainer* getAllBoundsExplanations() const
 	{
 		return NULL;
 	}
 
-	void setAllBoundsExplanations(BoundsExplainer* /* boundsExplanations */ )
+	void setAllBoundsExplanations(BoundExplainer* /* boundsExplanations */ )
 	{
 	}
 

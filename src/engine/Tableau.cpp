@@ -331,7 +331,7 @@ void Tableau::setDimensions( unsigned m, unsigned n )
     	if( _boundsExplainer )
 			delete _boundsExplainer;
 
-		_boundsExplainer = new BoundsExplainer( _n, _m );  // Reset whenever new dimensions are set.
+		_boundsExplainer = new BoundExplainer(_n, _m );  // Reset whenever new dimensions are set.
 		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
 	}
@@ -1761,8 +1761,8 @@ void Tableau::restoreState( const TableauState &state )
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
 		*_boundsExplainer = *state._boundsExplainer;
-    	ASSERT( _boundsExplainer->getRowsNum() == _m );
-		ASSERT( _boundsExplainer->getVarsNum() == _n );
+    	ASSERT(_boundsExplainer->getNumberOfRows() == _m );
+		ASSERT(_boundsExplainer->getNumberOfVariables() == _n );
 	}
 
 
@@ -2734,7 +2734,7 @@ int Tableau::getInfeasibleVar() const
 	return -1;
 }
 
-const std::vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
+const Vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
 {
 	ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
 	return _boundsExplainer->getExplanation( variable, isUpper );
@@ -2817,18 +2817,18 @@ void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 	_boundsExplainer->resetExplanation( var, isUpper );
 }
 
-void Tableau::injectExplanation( const std::vector<double>& expl, const unsigned var, const bool isUpper ) const
+void Tableau::injectExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
 {
-	ASSERT( expl.size() == _m || expl.empty() );
-	_boundsExplainer->injectExplanation( expl, var, isUpper );
+	ASSERT( explanation.size() == _m || explanation.empty() );
+	_boundsExplainer->injectExplanation( explanation, var, isUpper );
 }
 
-BoundsExplainer* Tableau::getAllBoundsExplanations() const
+BoundExplainer *Tableau::getAllBoundsExplanations() const
 {
 	return _boundsExplainer;
 }
 
-void Tableau::setAllBoundsExplanations( BoundsExplainer* boundsExplanations )
+void Tableau::setAllBoundsExplanations( BoundExplainer *boundsExplanations )
 {
 	*_boundsExplainer = *boundsExplanations;
 }

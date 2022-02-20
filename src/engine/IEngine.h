@@ -19,7 +19,7 @@
 #include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
 #include "List.h"
-#include <vector>
+#include "Vector.h"
 
 #ifdef _WIN32
 #undef ERROR
@@ -124,17 +124,17 @@ public:
 	/*
  	* Return all ground bounds as a vector
  	*/
-	virtual const std::vector<double>& getGroundBounds( bool isUpper ) const = 0;
+	virtual const Vector<double> &getGroundBounds( bool isUpper ) const = 0;
 
 	/*
  	* Return all decision levels of the ground bounds as a vector
  	*/
-	virtual const std::vector<unsigned>& getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
+	virtual const Vector<unsigned> &getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
 
 	/*
  	* Sets all decision levels of the ground bounds as a vector
  	*/
-	virtual void setGroundBoundsDecisionLevels( const std::vector<unsigned>& decisionLevels, bool isUpper ) const = 0;
+	virtual void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper ) const = 0;
 
 	/*
 	 * Get the current pointer in the UNSAT certificate

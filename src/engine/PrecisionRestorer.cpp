@@ -42,12 +42,12 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     memcpy( lowerBounds, tableau.getLowerBounds(), sizeof(double) * targetN );
     memcpy( upperBounds, tableau.getUpperBounds(), sizeof(double) * targetN );
 
-	BoundsExplainer tableauExplanations = BoundsExplainer( targetN, targetM );
-	std::vector<double> upperGBBackup;
-	std::vector<double> lowerGBBackup;
+	BoundExplainer tableauExplanations = BoundExplainer(targetN, targetM );
+	Vector<double> upperGBBackup;
+	Vector<double> lowerGBBackup;
 
-	std::vector<unsigned> upperDLBackup;
-	std::vector<unsigned> lowerDLBackup;
+	Vector<unsigned> upperDLBackup;
+	Vector<unsigned> lowerDLBackup;
 
 	unsigned PLCExplListSize = 0;
 
@@ -55,11 +55,11 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 	{
 		tableauExplanations = *tableau.getAllBoundsExplanations();
 
-		upperGBBackup = std::vector<double>( engine.getGroundBounds(true ) );
-		lowerGBBackup = std::vector<double>( engine.getGroundBounds(false ) );
+		upperGBBackup = Vector<double>( engine.getGroundBounds(true ) );
+		lowerGBBackup = Vector<double>( engine.getGroundBounds(false ) );
 
-		upperDLBackup = std::vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
-		lowerDLBackup = std::vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
+		upperDLBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
+		lowerDLBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
 
 		PLCExplListSize = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations().size();
 	}
