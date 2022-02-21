@@ -148,24 +148,24 @@ void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, dou
     }
 }
 
-void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& row )
+void ConstraintBoundTightener::registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row )
 {
 
 	if ( bound > _lowerBounds[variable] )
 	{
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, false ) )
-			_tableau.updateExplanation( row, false, variable );
+			_tableau.updateExplanation( *row, false, variable );
 
 		registerTighterLowerBound( variable, bound );
 	}
 }
 
-void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& row )
+void ConstraintBoundTightener::registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row )
 {
 	if ( bound < _upperBounds[variable] )
 	{
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.isBoundTightest( variable, bound, true ) )
-			_tableau.updateExplanation( row, true, variable );
+			_tableau.updateExplanation( *row, true, variable );
 
 		registerTighterUpperBound( variable, bound );
 	}

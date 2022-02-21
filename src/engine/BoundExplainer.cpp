@@ -173,7 +173,7 @@ void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<double
 
 void BoundExplainer::extractRowCoefficients( const TableauRow &row, Vector<double> &coefficients, double ci ) const
 {
-    ASSERT(coefficients.size() == _numberOfRows && (row._size == _numberOfVariables || row._size == _numberOfVariables - _numberOfRows ) );
+    ASSERT( coefficients.size() == _numberOfRows && row._size <= _numberOfVariables );
 
     // The coefficients of the row m highest-indices vars are the coefficients of slack variables
     for ( unsigned i = 0; i < row._size; ++i )

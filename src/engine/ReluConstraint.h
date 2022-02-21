@@ -257,7 +257,9 @@ private:
     */
     bool haveOutOfBoundVariables() const;
 
-    SparseUnsortedList createTighteningRow() const;
+    std::shared_ptr<TableauRow> _tighteningRow;
+
+    void createTighteningRow();
 };
 
 #endif // __ReluConstraint_h__
