@@ -1014,10 +1014,8 @@ void ReluConstraint::updateScoreBasedOnPolarity()
 void ReluConstraint::createTighteningRow()
 {
     // Create the row only when needed and not already created
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE || _tighteningRow )
+    if ( !GlobalConfiguration::PROOF_CERTIFICATE || _tighteningRow || !_auxVarInUse || !_tableauAuxVar )
         return;
-
-    ASSERT( _auxVarInUse && _constraintBoundTightener && _tableauAuxVar );
 
     _tighteningRow = std::unique_ptr<TableauRow>( new TableauRow ( 3 ) );
 

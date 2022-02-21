@@ -78,12 +78,12 @@ public:
         _tightenings.append( Tightening( variable, bound, Tightening::UB ) );
     }
 
-	void registerTighterLowerBound( unsigned variable, double bound, const SparseUnsortedList& /* row */ )
+	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> /* row */ )
 	{
 		_tightenings.append( Tightening( variable, bound, Tightening::LB ) );
 	}
 
-	void registerTighterUpperBound( unsigned variable, double bound, const SparseUnsortedList& /* row */ )
+	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> /* row */ )
 	{
 		_tightenings.append( Tightening( variable, bound, Tightening::UB ) );
 	}
