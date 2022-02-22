@@ -64,7 +64,6 @@ public:
       These callbacks are invoked when a watched variable's value
       changes, or when its bounds change.
     */
-    void notifyVariableValue( unsigned variable, double value ) override;
     void notifyLowerBound( unsigned variable, double bound ) override;
     void notifyUpperBound( unsigned variable, double bound ) override;
 
@@ -156,20 +155,12 @@ public:
       Transform the disjunction into a disjunction where each disjunct only
       contains variable bounds.
     */
-    void transformToUseAuxVariablesIfNeeded( InputQuery &inputQuery ) override;
+    void transformToUseAuxVariables( InputQuery &inputQuery ) override;
 
     /*
       Dump the current state of the constraint.
     */
     void dump( String &output ) const override;
-
-    /*
-      For preprocessing: get any auxiliary equations that this
-      constraint would like to add to the equation pool. In the Disjunction
-      case, this is an equation of the form aux = f - b, where aux is
-      non-negative.
-    */
-    void addAuxiliaryEquations( InputQuery &inputQuery ) override;
 
     /*
       Returns string with shape: disjunction, _f, _b

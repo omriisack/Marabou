@@ -116,6 +116,8 @@ void SmtCore::reportRejectedPhasePatternProposal()
          _deepSoIRejectionThreshold )
     {
         _needToSplit = true;
+        _engine->applyAllBoundTightenings();
+        _engine->applyAllValidConstraintCaseSplits();
         if ( !pickSplitPLConstraint() )
             // If pickSplitConstraint failed to pick one, use the native
             // relu-violation based splitting heuristic.
@@ -165,7 +167,8 @@ void SmtCore::performSplit()
     EngineState *stateBeforeSplits = new EngineState;
     stateBeforeSplits->_stateId = _stateId;
     ++_stateId;
-    _engine->storeState( *stateBeforeSplits, true );
+    _engine->storeState( *stateBeforeSplits,
+                         TableauStateStorageLevel::STORE_BOUNDS_ONLY );
 
 	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
@@ -179,6 +182,7 @@ void SmtCore::performSplit()
     SmtStackEntry *stackEntry = new SmtStackEntry;
     // Perform the first split: add bounds and equations
     List<PiecewiseLinearCaseSplit>::iterator split = splits.begin();
+    ASSERT( split->getEquations().size() == 0 );
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
 		//Set the current node of the UNSAT certificate to be the child corresponding to the first split
@@ -304,6 +308,7 @@ bool SmtCore::popSplit()
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
 	}
     SMT_LOG( "\tApplying new split..." );
+    ASSERT( split->getEquations().size() == 0 );
     _engine->applySplit( *split );
     SMT_LOG( "\tApplying new split - DONE" );
 
@@ -510,7 +515,8 @@ void SmtCore::replaySmtStackEntry( SmtStackEntry *stackEntry )
     EngineState *stateBeforeSplits = new EngineState;
     stateBeforeSplits->_stateId = _stateId;
     ++_stateId;
-    _engine->storeState( *stateBeforeSplits, true );
+    _engine->storeState( *stateBeforeSplits,
+                         TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE );
     stackEntry->_engineState = stateBeforeSplits;
 
     // Apply all the splits

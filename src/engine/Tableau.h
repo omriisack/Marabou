@@ -17,8 +17,10 @@
 #define __Tableau_h__
 
 #include "BoundManager.h"
+#include "GurobiWrapper.h"
 #include "IBasisFactorization.h"
 #include "ITableau.h"
+#include "LPSolverType.h"
 #include "MString.h"
 #include "Map.h"
 #include "Set.h"
@@ -46,6 +48,11 @@ public:
       m: number of constraints (rows)
     */
     void setDimensions( unsigned m, unsigned n );
+
+    /*
+      Allocate space for the bound arrays.
+    */
+    void setBoundDimension( unsigned n );
 
     /*
       Initialize the constraint matrix
@@ -109,6 +116,11 @@ public:
     */
     unsigned getM() const;
     unsigned getN() const;
+
+    /*
+      Check if an assignment exists for the variable.
+    */
+    bool existsValue( unsigned variable ) const;
 
     /*
       Get the assignment of a variable, either basic or non-basic
@@ -347,8 +359,8 @@ public:
       - The current indexing
       - The current basis
     */
-    void storeState( TableauState &state ) const;
-    void restoreState( const TableauState &state );
+    void storeState( TableauState &state, TableauStateStorageLevel level ) const;
+    void restoreState( const TableauState &state, TableauStateStorageLevel level );
 
     /*
       Register or unregister to watch a variable.
@@ -371,9 +383,10 @@ public:
       Notify all watchers of the given variable of a value update,
       or of changes to its bounds.
     */
-    void notifyVariableValue( unsigned variable, double value );
     void notifyLowerBound( unsigned variable, double bound );
     void notifyUpperBound( unsigned variable, double bound );
+
+    void setGurobi( GurobiWrapper *gurobi );
 
     /*
       Have the Tableau start reporting statistics.
@@ -656,6 +669,14 @@ private:
       simplify some of the computations.
      */
     bool _rhsIsAllZeros;
+
+    /*
+      True if and only if we are using the native Simplex implementation for
+      LP solving.
+    */
+    LPSolverType _lpSolverType;
+
+    GurobiWrapper *_gurobi;
 
     /*
       Free all allocated memory.

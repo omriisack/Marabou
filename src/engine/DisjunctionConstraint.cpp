@@ -144,11 +144,6 @@ void DisjunctionConstraint::unregisterAsWatcher( ITableau *tableau )
         tableau->unregisterToWatchVariable( this, variable );
 }
 
-void DisjunctionConstraint::notifyVariableValue( unsigned variable, double value )
-{
-    _assignment[variable] = value;
-}
-
 void DisjunctionConstraint::notifyLowerBound( unsigned variable, double bound )
 {
     if ( _statistics )
@@ -200,11 +195,17 @@ bool DisjunctionConstraint::satisfied() const
 
 List<PiecewiseLinearConstraint::Fix> DisjunctionConstraint::getPossibleFixes() const
 {
+    // Reluplex does not currently work with Gurobi.
+    ASSERT( _gurobi == NULL );
+
     return List<PiecewiseLinearConstraint::Fix>();
 }
 
 List<PiecewiseLinearConstraint::Fix> DisjunctionConstraint::getSmartFixes( ITableau */* tableau */ ) const
 {
+    // Reluplex does not currently work with Gurobi.
+    ASSERT( _gurobi == NULL );
+
     return getPossibleFixes();
 }
 
@@ -241,7 +242,7 @@ PiecewiseLinearCaseSplit DisjunctionConstraint::getValidCaseSplit() const
     return getImpliedCaseSplit();
 }
 
-void DisjunctionConstraint::transformToUseAuxVariablesIfNeeded( InputQuery
+void DisjunctionConstraint::transformToUseAuxVariables( InputQuery
                                                                 &inputQuery )
 {
     Vector<PiecewiseLinearCaseSplit> newDisjuncts;
@@ -337,6 +338,10 @@ void DisjunctionConstraint::dump( String &output ) const
 
 void DisjunctionConstraint::updateVariableIndex( unsigned oldIndex, unsigned newIndex )
 {
+    // Variable reindexing can only occur in preprocessing before Gurobi is
+    // registered.
+    ASSERT( _gurobi == NULL );
+
     ASSERT( !participatingVariable( newIndex ) );
 
     if ( _assignment.exists( oldIndex ) )
@@ -375,10 +380,6 @@ bool DisjunctionConstraint::constraintObsolete() const
 }
 
 void DisjunctionConstraint::getEntailedTightenings( List<Tightening> &/* tightenings */ ) const
-{
-}
-
-void DisjunctionConstraint::addAuxiliaryEquations( InputQuery &/* inputQuery */ )
 {
 }
 
@@ -442,12 +443,12 @@ bool DisjunctionConstraint::disjunctSatisfied( const PiecewiseLinearCaseSplit &d
     {
         if ( bound._type == Tightening::LB )
         {
-            if ( _assignment[bound._variable] < bound._value )
+            if ( getAssignment( bound._variable ) < bound._value )
                 return false;
         }
         else
         {
-            if ( _assignment[bound._variable] > bound._value )
+            if ( getAssignment( bound._variable ) > bound._value )
                 return false;
         }
     }
@@ -457,7 +458,7 @@ bool DisjunctionConstraint::disjunctSatisfied( const PiecewiseLinearCaseSplit &d
     {
         double result = 0;
         for ( const auto &addend : equation._addends )
-            result += addend._coefficient * _assignment[addend._variable];
+            result += addend._coefficient * getAssignment( addend._variable );
 
         if ( !FloatUtils::areEqual( result, equation._scalar ) )
             return false;

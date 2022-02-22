@@ -19,11 +19,13 @@
 #include "PrecisionRestorer.h"
 #include "MarabouError.h"
 #include "SmtCore.h"
+#include "TableauStateStorageLevel.h"
 #include "UNSATCertificate.h"
 
 void PrecisionRestorer::storeInitialEngineState( const IEngine &engine )
 {
-    engine.storeState( _initialEngineState, true );
+    engine.storeState( _initialEngineState,
+                       TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE );
 }
 
 void PrecisionRestorer::restorePrecision( IEngine &engine,
@@ -67,7 +69,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     try
     {
         EngineState targetEngineState;
-        engine.storeState( targetEngineState, false );
+        engine.storeState( targetEngineState, TableauStateStorageLevel::STORE_NONE );
 
         // Store the case splits performed so far
         List<PiecewiseLinearCaseSplit> targetSplits;
@@ -171,7 +173,8 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
                 }
 
                 EngineState currentEngineState;
-                engine.storeState( currentEngineState, false );
+                engine.storeState( currentEngineState,
+                                   TableauStateStorageLevel::STORE_NONE );
 
                 ASSERT( currentEngineState._numPlConstraintsDisabledByValidSplits ==
                         targetEngineState._numPlConstraintsDisabledByValidSplits );

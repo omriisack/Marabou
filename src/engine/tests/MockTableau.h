@@ -138,6 +138,11 @@ public:
         nextBtranOutput = new double[m];
     }
 
+    void setBoundDimension( unsigned n )
+    {
+        lastN = n;
+    }
+
     double *lastEntries;
     void setConstraintMatrix( const double *A )
     {
@@ -178,6 +183,17 @@ public:
     }
 
     Map<unsigned, double> nextValues;
+
+    void setValue( unsigned variable, double value )
+    {
+        nextValues[variable] = value;
+    }
+
+    bool existsValue( unsigned variable ) const
+    {
+        return nextValues.exists( variable );
+    }
+
     double getValue( unsigned variable ) const
     {
         TS_ASSERT( nextValues.exists( variable ) );
@@ -475,11 +491,13 @@ public:
     {
     }
 
-    void storeState( TableauState &/* state */ ) const
+    void storeState( TableauState &/* state */,
+                     TableauStateStorageLevel /*level*/ ) const
     {
     }
 
-    void restoreState( const TableauState &/* state */ )
+    void restoreState( const TableauState &/* state */,
+                       TableauStateStorageLevel /*level*/ )
     {
     }
 
@@ -529,6 +547,10 @@ public:
     }
 
     void computeBasicCosts()
+    {
+    }
+
+    void setGurobi( GurobiWrapper */* gurobi */ )
     {
     }
 

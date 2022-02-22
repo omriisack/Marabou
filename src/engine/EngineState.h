@@ -1,4 +1,3 @@
-
 /*********************                                                        */
 /*! \file EngineState.h
  ** \verbatim
@@ -20,6 +19,7 @@
 #include "Map.h"
 #include "PiecewiseLinearConstraint.h"
 #include "TableauState.h"
+#include "TableauStateStorageLevel.h"
 
 class EngineState
 {
@@ -27,17 +27,17 @@ public:
 	EngineState();
 	~EngineState();
 
-	/*
-	  The state of the tableau
-	*/
-	bool _tableauStateIsStored;
-	TableauState _tableauState;
+    /*
+      The state of the tableau
+    */
+    TableauStateStorageLevel _tableauStateStorageLevel;
+    TableauState _tableauState;
 
-	/*
-	  The state of each of the PL constraints
-	*/
-	Map<PiecewiseLinearConstraint *, PiecewiseLinearConstraint *> _plConstraintToState;
-	unsigned _numPlConstraintsDisabledByValidSplits;
+    /*
+      The state of each of the PL constraints
+    */
+    Map<PiecewiseLinearConstraint *, PiecewiseLinearConstraint *> _plConstraintToState;
+    unsigned _numPlConstraintsDisabledByValidSplits;
 
 	Vector<double> _groundUpperBounds;
 	Vector<double> _groundLowerBounds;

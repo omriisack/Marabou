@@ -18,6 +18,7 @@
 
 #include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
+#include "TableauStateStorageLevel.h"
 #include "List.h"
 #include "Vector.h"
 
@@ -67,7 +68,7 @@ public:
     /*
       Methods for storing and restoring the state of the engine.
     */
-    virtual void storeState( EngineState &state, bool storeAlsoTableauState ) const = 0;
+    virtual void storeState( EngineState &state, TableauStateStorageLevel level ) const = 0;
     virtual void restoreState( const EngineState &state ) = 0;
     virtual void setNumPlConstraintsDisabledByValidSplits( unsigned numConstraints ) = 0;
 
@@ -121,6 +122,9 @@ public:
 	virtual void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel ) = 0;
 	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
 
+    virtual void applyAllBoundTightenings() = 0;
+
+    virtual bool applyAllValidConstraintCaseSplits() = 0;
 	/*
  	* Return all ground bounds as a vector
  	*/

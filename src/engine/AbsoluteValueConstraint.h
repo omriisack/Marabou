@@ -68,7 +68,6 @@ public:
       These callbacks are invoked when a watched variable's value
       changes, or when its bounds change.
     */
-    void notifyVariableValue( unsigned variable, double value ) override;
     void notifyLowerBound( unsigned variable, double bound ) override;
     void notifyUpperBound( unsigned variable, double bound ) override;
 
@@ -159,9 +158,10 @@ public:
 
     /*
       For preprocessing: get any auxiliary equations that this constraint would
-      like to add to the equation pool.
+      like to add to the equation pool. This way, case splits will be bound
+      update of the aux variables.
     */
-    void addAuxiliaryEquations( InputQuery &inputQuery ) override;
+    void transformToUseAuxVariables( InputQuery &inputQuery ) override;
 
     /*
       Whether the constraint can contribute the SoI cost function.
@@ -195,6 +195,11 @@ public:
     inline unsigned getB() const { return _b; };
 
     inline unsigned getF() const { return _f; };
+
+    inline bool auxVariablesInUse() const { return _auxVarsInUse; };
+
+    inline unsigned getPosAux() const { return _posAux; };
+    inline unsigned getNegAux() const { return _negAux; };
 
 private:
     /*
