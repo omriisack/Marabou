@@ -15,6 +15,7 @@
 
 #include "DnCMarabou.h"
 #include "Error.h"
+#include "GlobalConfiguration.h"
 #include "Marabou.h"
 #include "Options.h"
 
@@ -76,7 +77,7 @@ int main( int argc, char **argv )
             return 0;
         };
 
-        if ( options->getBool( Options::DNC_MODE ) )
+        if ( options->getBool( Options::DNC_MODE ) && !GlobalConfiguration::PROOF_CERTIFICATE )
 	{
 #ifdef ENABLE_OPENBLAS
 	    openblas_set_num_threads(1);
