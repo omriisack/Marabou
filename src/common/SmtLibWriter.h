@@ -41,12 +41,12 @@ public:
     /*
       Adds a line representing ReLU constraint, in SMTLIB format, to the SMTLIB instance
     */
-    static void addReLUConstraint( unsigned b, unsigned f, PhaseStatus status, List<String> &instance );
+    static void addReLUConstraint( unsigned b, unsigned f, const PhaseStatus status, List<String> &instance );
 
     /*
       Adds a line representing a Tableau Row, in SMTLIB format, to the SMTLIB instance
     */
-    static void addTableauRow( const SparseUnsortedList &row, List<String> &instance );
+    static void addTableauRow( const Vector<double> &row, List<String> &instance );
 
     /*
       Adds lines representing the ground upper bounds, in SMTLIB format, to the SMTLIB instance
@@ -61,8 +61,9 @@ public:
     /*
       Writes an instances to a file
      */
-    static void writeInstanceToFile( const String &directory, unsigned delegationNumber, const List<String> &instance );
+    static void writeInstanceToFile( IFile &file, const List<String> &instance );
 
+private:
     /*
       Returns a string representing the value of a double
      */

@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file BoundExplainer.h
+/*! \file Test_BoundExplainer.h
  ** \verbatim
  ** Top contributors (to current version):
  **   Omri Isac, Guy Katz
@@ -20,26 +20,19 @@
 class BoundsExplainerTestSuite : public CxxTest::TestSuite
 {
 public:
-    void setUp()
-    {
-    }
-
-    void tearDown()
-    {
-    }
-
     /*
        Test initialization of BoundExplainer
     */
     void testInitialization()
     {
-        unsigned numberOfVariables = 3, numberOfRows = 5;
-        BoundExplainer be(numberOfVariables, numberOfRows );
+        unsigned numberOfVariables = 3;
+        unsigned numberOfRows = 5;
+        BoundExplainer be( numberOfVariables, numberOfRows );
 
         TS_ASSERT_EQUALS( be.getNumberOfRows(), numberOfRows );
         TS_ASSERT_EQUALS( be.getNumberOfVariables(), numberOfVariables );
 
-        for (unsigned i = 0; i < numberOfVariables; ++i )
+        for ( unsigned i = 0; i < numberOfVariables; ++i )
         {
             TS_ASSERT( be.getExplanation( i, true ).empty() );
             TS_ASSERT( be.getExplanation( i, false ).empty() );
@@ -51,7 +44,8 @@ public:
     */
     void testExplanationInjection()
     {
-        unsigned numberOfVariables = 2, numberOfRows = 2;
+        unsigned numberOfVariables = 2;
+        unsigned numberOfRows = 2;
         double value = -2.55;
         BoundExplainer be( numberOfVariables, numberOfRows );
 
@@ -67,8 +61,10 @@ public:
     */
     void testVariableAddition()
     {
-        unsigned numberOfVariables = 2, numberOfRows = 2;
+        unsigned numberOfVariables = 2;
+        unsigned numberOfRows = 2;
         BoundExplainer be( numberOfVariables, numberOfRows );
+
         TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfVariables, 1 ), numberOfVariables - 1, true ) );
         TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfVariables, 5 ), numberOfVariables - 1, false ) );
         be.addVariable();
@@ -76,14 +72,14 @@ public:
         TS_ASSERT_EQUALS( be.getNumberOfRows(), numberOfRows + 1 );
         TS_ASSERT_EQUALS( be.getNumberOfVariables(), numberOfVariables + 1 );
 
-        for ( unsigned i = 0; i < numberOfVariables; ++ i)
+        for ( unsigned i = 0; i < numberOfVariables; ++ i )
         {
-            TS_ASSERT(be.getExplanation( i, true ).empty() || ( be.getExplanation( i, true ).last() == 0 && be.getExplanation( i, true ).size() == numberOfVariables + 1 ) );
-            TS_ASSERT(be.getExplanation( i, false ).empty() || ( be.getExplanation( i, false ).last() == 0 && be.getExplanation( i, false ).size() == numberOfVariables + 1 ) );
+            TS_ASSERT( be.getExplanation( i, true ).empty() || ( be.getExplanation( i, true ).last() == 0 && be.getExplanation( i, true ).size() == numberOfVariables + 1 ) );
+            TS_ASSERT( be.getExplanation( i, false ).empty() || ( be.getExplanation( i, false ).last() == 0 && be.getExplanation( i, false ).size() == numberOfVariables + 1 ) );
         }
 
-        TS_ASSERT(be.getExplanation( numberOfVariables, true ).empty() );
-        TS_ASSERT(be.getExplanation( numberOfVariables, false ).empty() ) ;
+        TS_ASSERT( be.getExplanation( numberOfVariables, true ).empty() );
+        TS_ASSERT( be.getExplanation( numberOfVariables, false ).empty() ) ;
     }
 
     /*
@@ -91,13 +87,14 @@ public:
     */
     void testExplanationReset()
     {
-        unsigned numberOfVariables = 1, numberOfRows = 1;
+        unsigned numberOfVariables = 1;
+        unsigned numberOfRows = 1;
         BoundExplainer be( numberOfVariables, numberOfRows );
 
         TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfRows, 1 ), 0, true ) );
         TS_ASSERT( !be.getExplanation( 0 , true ).empty() );
 
-        be.resetExplanation(0, true );
+        be.resetExplanation( 0, true );
         TS_ASSERT( be.getExplanation( 0 , true ).empty() );
     }
 
@@ -106,7 +103,8 @@ public:
     */
     void testExplanationUpdates()
     {
-        unsigned numberOfVariables = 6, numberOfRows = 3;
+        unsigned numberOfVariables = 6;
+        unsigned numberOfRows = 3;
         BoundExplainer be( numberOfVariables, numberOfRows );
         Vector<double> row1 { 1, 0, 0 };
         Vector<double> row2 { 0, -1, 0 };
@@ -156,10 +154,3 @@ public:
         TS_ASSERT_EQUALS( be.getExplanation( 5, true ), res4 );
     }
 };
-
-//
-// Local Variables:
-// compile-command: "make -C ../../.. "
-// tags-file-name: "../../../TAGS"
-// c-basic-offset: 4
-// End:

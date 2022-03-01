@@ -87,7 +87,7 @@ void Options::initializeDefaultValues()
     _stringOptions[QUERY_DUMP_FILE] = "";
     _stringOptions[SOI_SEARCH_STRATEGY] = "mcmc";
     _stringOptions[SOI_INITIALIZATION_STRATEGY] = "input-assignment";
-    _stringOptions[LP_SOLVER] = "";
+    _stringOptions[LP_SOLVER] = "native";
 }
 
 void Options::parseOptions( int argc, char **argv )

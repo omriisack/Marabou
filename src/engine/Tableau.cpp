@@ -1712,6 +1712,10 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
         memcpy( state._lowerBounds, _lowerBounds, sizeof(double) *_n );
         memcpy( state._upperBounds, _upperBounds, sizeof(double) *_n );
         state._boundsValid = _boundsValid;
+
+        // Store bounds explanations
+        if ( GlobalConfiguration::PROOF_CERTIFICATE  )
+            *state._boundsExplainer = *_boundsExplainer;
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
     {
@@ -1756,7 +1760,7 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
         state._mergedVariables = _mergedVariables;
 
         // Store bounds explanations
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && state._boundsExplainer )
             *state._boundsExplainer = *_boundsExplainer;
     }
     else
@@ -1777,6 +1781,14 @@ void Tableau::restoreState( const TableauState &state,
         memcpy( _upperBounds, state._upperBounds, sizeof(double) *_n );
 
         _boundsValid = state._boundsValid;
+
+        // Restore bounds explanations
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        {
+            *_boundsExplainer = *state._boundsExplainer;
+            ASSERT( _boundsExplainer->getNumberOfRows() == _m );
+            ASSERT( _boundsExplainer->getNumberOfVariables() == _n );
+        }
 
         if ( _lpSolverType == LPSolverType::NATIVE )
         {
@@ -1841,8 +1853,8 @@ void Tableau::restoreState( const TableauState &state,
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
         {
             *_boundsExplainer = *state._boundsExplainer;
-            ASSERT(_boundsExplainer->getNumberOfRows() == _m );
-            ASSERT(_boundsExplainer->getNumberOfVariables() == _n );
+            ASSERT( _boundsExplainer->getNumberOfRows() == _m );
+            ASSERT( _boundsExplainer->getNumberOfVariables() == _n );
         }
 
         computeAssignment();

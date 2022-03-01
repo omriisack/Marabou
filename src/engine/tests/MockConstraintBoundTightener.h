@@ -78,12 +78,12 @@ public:
         _tightenings.append( Tightening( variable, bound, Tightening::UB ) );
     }
 
-	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> /* row */ )
+	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> &/* row */ )
 	{
 		_tightenings.append( Tightening( variable, bound, Tightening::LB ) );
 	}
 
-	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> /* row */ )
+	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> &/* row */ )
 	{
 		_tightenings.append( Tightening( variable, bound, Tightening::UB ) );
 	}
@@ -95,10 +95,10 @@ public:
     }
 
 	void clearEngineUpdates(){}
-	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper, const unsigned,
-							  bool, PiecewiseLinearFunctionType /* constraintType */ )
+	void externalExplanationUpdate( unsigned var, const double value, BoundType affectedVarBound, unsigned, BoundType,
+                                    PiecewiseLinearFunctionType  )
 	{
-		isAffectedBoundUpper ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+        affectedVarBound ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
     }
 
 	double getUpperBound( unsigned /* var */ ) const

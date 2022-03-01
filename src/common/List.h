@@ -65,6 +65,11 @@ public:
         _container.push_front( value );
     }
 
+    void appendHead( const List<T> &other )
+    {
+        _container.insert( begin(), other.begin(), other.end() );
+    }
+
     iterator begin()
     {
         return _container.begin();

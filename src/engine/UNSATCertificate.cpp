@@ -12,15 +12,55 @@
  ** [[ Add lengthier description here ]]
  **/
 
+#include <Options.h>
 #include "UNSATCertificate.h"
 
+PLCExplanation::PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel )
+    :_causingVar( causingVar )
+    ,_affectedVar( affectedVar )
+    ,_bound( bound )
+    ,_causingVarBound( causingVarBound )
+    ,_affectedVarBound( affectedVarBound )
+    ,_explanation( explanation )
+    ,_constraintType( constraintType )
+    ,_decisionLevel( decisionLevel )
+{
+}
+
+PLCExplanation::~PLCExplanation()
+{
+    if ( _explanation )
+    {
+        delete [] _explanation;
+        _explanation = NULL;
+    }
+}
+
+Contradiction::Contradiction( unsigned var, double *upperBoundExplanation, double *lowerBoundExplanation )
+    :_var( var )
+    ,_upperBoundExplanation( upperBoundExplanation )
+    ,_lowerBoundExplanation( lowerBoundExplanation )
+{
+}
+
+Contradiction::~Contradiction()
+{
+    if ( _upperBoundExplanation )
+    {
+        delete [] _upperBoundExplanation;
+        _upperBoundExplanation = NULL;
+    }
+
+    if ( _lowerBoundExplanation )
+    {
+        delete [] _lowerBoundExplanation;
+        _lowerBoundExplanation = NULL;
+    }
+}
+
 CertificateNode::CertificateNode( Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
-    : _children()
-    , _problemConstraints()
-    , _parent( NULL )
-    , _PLCExplanations()
+    : _parent( NULL )
     , _contradiction( NULL )
-    , _headSplit( )
     , _hasSATSolution( false )
     , _wasVisited( false )
     , _delegationStatus( DelegationStatus::DONT_DELEGATE )
@@ -32,10 +72,7 @@ CertificateNode::CertificateNode( Vector<Vector<double>> *initialTableau, Vector
 }
 
 CertificateNode::CertificateNode( CertificateNode *parent, PiecewiseLinearCaseSplit split )
-    : _children()
-    , _problemConstraints()
-    , _parent( parent )
-    , _PLCExplanations()
+    : _parent( parent )
     , _contradiction( NULL )
     , _headSplit( std::move( split ) )
     , _hasSATSolution( false )
@@ -51,7 +88,7 @@ CertificateNode::CertificateNode( CertificateNode *parent, PiecewiseLinearCaseSp
 
 CertificateNode::~CertificateNode()
 {
-    for ( auto child : _children )
+    for ( auto *child : _children )
     {
         if ( child )
         {
@@ -92,7 +129,7 @@ const PiecewiseLinearCaseSplit &CertificateNode::getSplit() const
     return _headSplit;
 }
 
-const List<PLCExplanation*> &CertificateNode::getPLCExplanations() const
+const List<std::shared_ptr<PLCExplanation>> &CertificateNode::getPLCExplanations() const
 {
     return _PLCExplanations;
 }
@@ -115,15 +152,15 @@ void CertificateNode::makeLeaf()
 
 void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitConstraint )
 {
-    for ( auto* child : _children )
+    for ( auto *child : _children )
     {
         child->copyGroundBounds( _groundUpperBounds, _groundLowerBounds );
         child->_initialTableau = _initialTableau;
 
-        for ( auto &con : _problemConstraints )
+        for ( auto &constraint : _problemConstraints )
         {
-            if ( &con != childrenSplitConstraint )
-                child->addProblemConstraint( con._type, con._constraintVars, con._status );
+            if ( &constraint != childrenSplitConstraint )
+                child->addProblemConstraint( constraint._type, constraint._constraintVars, constraint._status );
         }
 
         //Add the constraint corresponding to head split with correct phase
@@ -140,14 +177,14 @@ void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitCon
 bool CertificateNode::certify()
 {
     // Update ground bounds according to head split
-    for ( auto& tightening : _headSplit.getBoundTightenings() )
+    for ( auto &tightening : _headSplit.getBoundTightenings() )
     {
-        auto& temp = tightening._type == Tightening::UB ? _groundUpperBounds : _groundLowerBounds;
+        auto &temp = tightening._type == Tightening::UB ? _groundUpperBounds : _groundLowerBounds;
         temp[tightening._variable] = tightening._value;
     }
 
     // Certify all PLC bound propagations
-    if ( !certifyAllPLCExplanations( 0.0025 ) )
+    if ( !certifyAllPLCExplanations( UNSATCertificateUtils::CERTIFICATION_TOLERANCE ) )
         return false;
 
     // Save to file if marked
@@ -168,14 +205,15 @@ bool CertificateNode::certify()
         return true;
 
     // Otherwise, should be a valid non-leaf node
-    if ( !isValidNoneLeaf() )
+    if ( !isValidNonLeaf() )
         return false;
 
     // If so, certify all children and return true iff all children are certified
     // Also make sure that they are split correctly (i.e by ReLU constraint or by a single var)
     bool answer = true;
     List<PiecewiseLinearCaseSplit> childrenSplits;
-    for ( auto& child : _children )
+
+    for ( auto &child : _children )
         childrenSplits.append( child->_headSplit );
 
     auto *childrenSplitConstraint = getCorrespondingReLUConstraint( childrenSplits );
@@ -194,21 +232,22 @@ bool CertificateNode::certify()
 bool CertificateNode::certifyContradiction()
 {
     ASSERT( isValidLeaf() && !_hasSATSolution );
-    unsigned var = _contradiction->_var, m = _initialTableau->size();
+    unsigned var = _contradiction->_var;
+    unsigned length = _initialTableau->size();
 
     auto upperBoundExplanation = Vector<double>( 0, 0 );
     auto lowerBoundExplanation = Vector<double>( 0, 0 );
 
     if ( _contradiction->_upperBoundExplanation )
     {
-        upperBoundExplanation = Vector<double>( m, 0 );
-        std::copy( _contradiction->_upperBoundExplanation, _contradiction->_upperBoundExplanation + m, upperBoundExplanation.begin() );
+        upperBoundExplanation = Vector<double>( length, 0 );
+        std::copy( _contradiction->_upperBoundExplanation, _contradiction->_upperBoundExplanation + length, upperBoundExplanation.begin() );
     }
 
     if ( _contradiction->_lowerBoundExplanation )
     {
-        lowerBoundExplanation = Vector<double>( m, 0 );
-        std::copy( _contradiction->_lowerBoundExplanation, _contradiction->_lowerBoundExplanation + m, lowerBoundExplanation.begin() );
+        lowerBoundExplanation = Vector<double>( length, 0 );
+        std::copy( _contradiction->_lowerBoundExplanation, _contradiction->_lowerBoundExplanation + length, lowerBoundExplanation.begin() );
     }
 
     double computedUpper = explainBound( var, true, upperBoundExplanation );
@@ -233,17 +272,17 @@ bool CertificateNode::isValidLeaf() const
     return _contradiction && _children.empty();
 }
 
-bool CertificateNode::isValidNoneLeaf() const
+bool CertificateNode::isValidNonLeaf() const
 {
     return !_contradiction && !_children.empty();
 }
 
-void CertificateNode::addPLCExplanation( PLCExplanation *explanation )
+void CertificateNode::addPLCExplanation( std::shared_ptr<PLCExplanation> &explanation )
 {
     _PLCExplanations.append( explanation );
 }
 
-void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status )
+void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status )
 {
     _problemConstraints.append( { type, constraintVars, status } );
 }
@@ -253,7 +292,8 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
     if ( splits.size() != 2 )
         return NULL;
 
-    auto firstSplitTightenings = splits.front().getBoundTightenings(), secondSplitTightenings = splits.back().getBoundTightenings();
+    auto firstSplitTightenings = splits.front().getBoundTightenings();
+    auto secondSplitTightenings = splits.back().getBoundTightenings();
 
     // Find the LB tightening, its var is b
     auto &activeSplit = firstSplitTightenings.front()._type == Tightening::LB ? firstSplitTightenings : secondSplitTightenings;
@@ -272,10 +312,10 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
 
     // Certify that f = b + aux corresponds to a problem constraints
     ProblemConstraint *correspondingConstraint = NULL;
-    for ( ProblemConstraint &con : _problemConstraints )
+    for ( ProblemConstraint &constraint : _problemConstraints )
     {
-        if ( con._type == PiecewiseLinearFunctionType::RELU && con._constraintVars.front() == b && con._constraintVars.exists( f ) && ( activeSplit.size() == 1 || con._constraintVars.back() == aux ) )
-            correspondingConstraint = &con;
+        if ( constraint._type == PiecewiseLinearFunctionType::RELU && constraint._constraintVars.front() == b && constraint._constraintVars.exists( f ) && ( activeSplit.size() == 1 || constraint._constraintVars.back() == aux ) )
+            correspondingConstraint = &constraint;
     }
 
     // Return the constraint for which f=relu(b)
@@ -287,94 +327,100 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
     // Create copies of the gb, check for their validity, and pass these changes to all the children
     // Assuming the splits of the children are ok.
     // NOTE, this will change as PLCExplanation will
-    for ( auto* expl : _PLCExplanations )
+    for ( const auto &explanation : _PLCExplanations )
     {
-        bool constraintMatched = false, tighteningMatched = false;
+        bool constraintMatched = false;
+        bool tighteningMatched = false;
         unsigned length = _initialTableau->size();
         auto explanationVector = Vector<double>( 0, 0 );
 
-        if ( expl->_explanation )
+        if ( explanation->_explanation )
         {
             explanationVector = Vector<double>( length, 0 );
-            std::copy( expl->_explanation, expl->_explanation + length, explanationVector.begin() );
+            std::copy( explanation->_explanation, explanation->_explanation + length, explanationVector.begin() );
         }
 
-        double explainedBound = UNSATCertificateUtils::computeBound( expl->_causingVar, expl->_isCausingBoundUpper, explanationVector, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
-        unsigned b = 0, f = 0, aux = 0;
+        double explainedBound = UNSATCertificateUtils::computeBound( explanation->_causingVar, explanation->_causingVarBound == UPPER, explanationVector, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
+        unsigned b = 0;
+        unsigned f = 0;
+        unsigned aux = 0;
+
         // Make sure propagation was by a problem constraint
-        for ( ProblemConstraint &con : _problemConstraints )
+        for ( ProblemConstraint &constraint : _problemConstraints )
         {
-            if ( expl->_constraintType == PiecewiseLinearFunctionType::RELU && con._constraintVars.exists( expl->_affectedVar ) && con._constraintVars.exists( expl->_causingVar ) )
-            {   //TODO reconsider design
-                Vector<unsigned> conVec( con._constraintVars.begin(), con._constraintVars.end() );
-                b = conVec[0], f = conVec[1], aux = conVec[2];
+            if (explanation->_constraintType == PiecewiseLinearFunctionType::RELU && constraint._constraintVars.exists(explanation->_affectedVar ) && constraint._constraintVars.exists(explanation->_causingVar ) )
+            {
+                Vector<unsigned> conVec( constraint._constraintVars.begin(), constraint._constraintVars.end() );
+                b = conVec[0];
+                f = conVec[1];
+                aux = conVec[2];
                 constraintMatched = true;
 
                 // If explanation is phase fixing, mark it
-                if ( ( !expl->_isAffectedBoundUpper && expl->_affectedVar == f && FloatUtils::isPositive( expl->_bound ) ) || ( expl->_isAffectedBoundUpper && expl->_affectedVar == aux && FloatUtils::isZero( expl->_bound ) ) )
-                    con._status = PhaseStatus::RELU_PHASE_ACTIVE;
-                else if ( ( !expl->_isAffectedBoundUpper && expl->_affectedVar == aux && FloatUtils::isPositive( expl->_bound ) ) || ( expl->_isAffectedBoundUpper && expl->_affectedVar == f && FloatUtils::isZero( expl->_bound ) ) )
-                    con._status = PhaseStatus::RELU_PHASE_INACTIVE;
+                if ( ( explanation->_affectedVarBound == LOWER && explanation->_affectedVar == f && FloatUtils::isPositive(explanation->_bound ) ) || ( explanation->_affectedVarBound == UPPER && explanation->_affectedVar == aux && FloatUtils::isZero(explanation->_bound ) ) )
+                    constraint._status = PhaseStatus::RELU_PHASE_ACTIVE;
+                else if ( ( explanation->_affectedVarBound == LOWER && explanation->_affectedVar == aux && FloatUtils::isPositive(explanation->_bound ) ) || ( explanation->_affectedVarBound == UPPER && explanation->_affectedVar == f && FloatUtils::isZero(explanation->_bound ) ) )
+                    constraint._status = PhaseStatus::RELU_PHASE_INACTIVE;
             }
         }
 
         if ( !constraintMatched )
             return false;
 
-        if ( expl->_causingVar != b && expl->_causingVar != f && expl->_causingVar != aux )
+        if ( explanation->_causingVar != b && explanation->_causingVar != f && explanation->_causingVar != aux )
             return false;
 
         // Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each rule in ReluConstraint.cpp
         // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
 
         // If lb of b is non negative, then ub of aux is 0
-        if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
+        if ( explanation->_causingVar == b && explanation->_causingVarBound == LOWER && explanation->_affectedVar == aux && explanation->_affectedVarBound == UPPER && FloatUtils::isZero(explanation->_bound ) && !FloatUtils::isNegative(explainedBound + epsilon ) )
             tighteningMatched = true;
 
         // If lb of f is positive, then ub if aux is 0
-        else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
+        else if ( explanation->_causingVar == f && explanation->_causingVarBound == LOWER && explanation->_affectedVar == aux && explanation->_affectedVarBound == UPPER && FloatUtils::isZero(explanation->_bound ) && FloatUtils::isPositive(explainedBound + epsilon ) )
             tighteningMatched = true;
 
         // If lb of b is positive x, then lb of aux is -x
-        else if ( expl->_causingVar == b && !expl->_isCausingBoundUpper && expl->_affectedVar == aux && expl->_isAffectedBoundUpper && FloatUtils::gte( explainedBound, - expl->_bound - epsilon ) && expl->_bound > 0 )
+        else if ( explanation->_causingVar == b && explanation->_causingVarBound == LOWER && explanation->_affectedVar == aux && explanation->_affectedVarBound == UPPER && FloatUtils::gte(explainedBound, - explanation->_bound - epsilon ) && explanation->_bound > 0 )
             tighteningMatched = true;
 
         // If lb of aux is positive, then ub of f is 0
-        else if ( expl->_causingVar == aux && !expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
+        else if ( explanation->_causingVar == aux && explanation->_causingVarBound ==LOWER && explanation->_affectedVar == f && explanation->_affectedVarBound == UPPER && FloatUtils::isZero(explanation->_bound ) && FloatUtils::isPositive(explainedBound + epsilon ) )
             tighteningMatched = true;
 
         // If lb of f is negative, then it is 0
-        else if ( expl->_causingVar == f && !expl->_isCausingBoundUpper && expl->_affectedVar == f && !expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && FloatUtils::isNegative( explainedBound - epsilon ) )
+        else if ( explanation->_causingVar == f && explanation->_causingVarBound == LOWER && explanation->_affectedVar == f && explanation->_affectedVarBound == LOWER && FloatUtils::isZero(explanation->_bound ) && FloatUtils::isNegative(explainedBound - epsilon ) )
             tighteningMatched = true;
 
         // Propagate ub from f to b
-        else if ( expl->_causingVar == f && expl->_isCausingBoundUpper && expl->_affectedVar == b && expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
+        else if ( explanation->_causingVar == f && explanation->_causingVarBound == UPPER && explanation->_affectedVar == b && explanation->_affectedVarBound == UPPER && FloatUtils::lte(explainedBound, explanation->_bound + epsilon ) )
             tighteningMatched = true;
 
         // If ub of b is non positive, then ub of f is 0
-        else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isZero( expl->_bound ) && !FloatUtils::isPositive( explainedBound - epsilon ) )
+        else if ( explanation->_causingVar == b && explanation->_causingVarBound == UPPER && explanation->_affectedVar == f && explanation->_affectedVarBound == UPPER && FloatUtils::isZero(explanation->_bound ) && !FloatUtils::isPositive(explainedBound - epsilon ) )
             tighteningMatched = true;
 
         // If ub of b is non positive x, then lb of aux is -x
-        else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == aux && !expl->_isAffectedBoundUpper && expl->_bound > 0 && !FloatUtils::isPositive( explainedBound - epsilon ) && FloatUtils::lte( explainedBound, -expl->_bound + epsilon) )
+        else if ( explanation->_causingVar == b && explanation->_causingVarBound == UPPER && explanation->_affectedVar == aux && explanation->_affectedVarBound == LOWER && explanation->_bound > 0 && !FloatUtils::isPositive(explainedBound - epsilon ) && FloatUtils::lte(explainedBound, -explanation->_bound + epsilon) )
             tighteningMatched = true;
 
         // If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
-        else if ( expl->_causingVar == b && expl->_isCausingBoundUpper && expl->_affectedVar == f && expl->_isAffectedBoundUpper && FloatUtils::isPositive( expl->_bound )  && FloatUtils::lte( explainedBound, expl->_bound + epsilon ) )
+        else if ( explanation->_causingVar == b && explanation->_causingVarBound == UPPER && explanation->_affectedVar == f && explanation->_affectedVarBound == UPPER && FloatUtils::isPositive(explanation->_bound ) && FloatUtils::lte(explainedBound, explanation->_bound + epsilon ) )
             tighteningMatched = true;
 
         // If ub of aux is x, then lb of b is -x
-        else if ( expl->_causingVar == aux && expl->_isCausingBoundUpper && expl->_affectedVar == b && !expl->_isAffectedBoundUpper && FloatUtils::lte( explainedBound, -expl->_bound + epsilon ) )
+        else if ( explanation->_causingVar == aux && explanation->_causingVarBound == UPPER && explanation->_affectedVar == b && explanation->_affectedVarBound == LOWER && FloatUtils::lte(explainedBound, -explanation->_bound + epsilon ) )
             tighteningMatched = true;
 
         if ( !tighteningMatched )
             return false;
 
         // If so, update the ground bounds and continue
-        Vector<double>& temp = expl->_isAffectedBoundUpper ? _groundUpperBounds : _groundLowerBounds;
-        bool isTighter =  expl->_isAffectedBoundUpper ? FloatUtils::lt( expl->_bound, temp[expl->_affectedVar] ) : FloatUtils::gt( expl->_bound, temp[expl->_affectedVar] );
+        Vector<double> &temp = explanation->_affectedVarBound ? _groundUpperBounds : _groundLowerBounds;
+        bool isTighter = explanation->_affectedVarBound ? FloatUtils::lt( explanation->_bound, temp[explanation->_affectedVar] ) : FloatUtils::gt( explanation->_bound, temp[explanation->_affectedVar] );
         if ( isTighter )
-            temp[expl->_affectedVar] = expl->_bound;
+            temp[explanation->_affectedVar] = explanation->_bound;
     }
     return true;
 }
@@ -382,9 +428,9 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 /*
  * Get a pointer to a child by a head split, or NULL if not found
  */
-CertificateNode* CertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit &split ) const
+CertificateNode *CertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit &split ) const
 {
-    for ( CertificateNode* child : _children )
+    for ( CertificateNode *child : _children )
     {
         if ( child->_headSplit == split )
             return child;
@@ -393,12 +439,12 @@ CertificateNode* CertificateNode::getChildBySplit( const PiecewiseLinearCaseSpli
     return NULL;
 }
 
-void CertificateNode::hasSATSolution()
+void CertificateNode::setSATSolution()
 {
     _hasSATSolution = true;
 }
 
-void CertificateNode::wasVisited()
+void CertificateNode::setVisited()
 {
     _wasVisited = true;
 }
@@ -441,31 +487,16 @@ bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSpli
 
 void CertificateNode::deletePLCExplanations()
 {
-    if ( !_PLCExplanations.empty() )
-    {
-        for ( auto explanation : _PLCExplanations )
-            delete explanation;
-
-        _PLCExplanations.clear();
-    }
+    _PLCExplanations.clear();
 }
 
 /*
  * Removes all PLC explanations from a certain point
  */
-void CertificateNode::resizePLCExplanationsList( unsigned newSize )
+void CertificateNode::setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations )
 {
-    unsigned originalSize = _PLCExplanations.size();
-    if ( newSize >= originalSize )
-        return;
-
-    for ( unsigned i =0; i < originalSize - newSize; ++i )
-    {
-        delete _PLCExplanations.back();
-        _PLCExplanations.back() = NULL;
-        _PLCExplanations.popBack();
-    }
-    ASSERT( _PLCExplanations.size() == newSize );
+    _PLCExplanations.clear();
+    _PLCExplanations = explanations;
 }
 
 void CertificateNode::writeLeafToFile()
@@ -473,24 +504,17 @@ void CertificateNode::writeLeafToFile()
     ASSERT( _children.empty() && _delegationStatus == DelegationStatus::DELEGATE_SAVE );
     List<String> leafInstance;
 
-    // Write to smtWriter
-    unsigned m = _initialTableau->size(), n = _groundUpperBounds.size(), b, f;
+    // Write with SmtLibWriter
+    unsigned b, f;
+    unsigned m = _initialTableau->size();
+    unsigned n = _groundUpperBounds.size();
+
     SmtLibWriter::addHeader( n, leafInstance );
     SmtLibWriter::addGroundUpperBounds( _groundUpperBounds, leafInstance );
     SmtLibWriter::addGroundLowerBounds( _groundLowerBounds, leafInstance );
 
     for ( unsigned i = 0; i < m; ++i )
-    {
-        SparseUnsortedList tempRow = SparseUnsortedList();
-        for ( unsigned  j = 0; j < n; ++j ) //TODO consider improving
-            if ( !FloatUtils::isZero( ( *_initialTableau )[i][j]) )
-            {
-                tempRow.append( j, ( *_initialTableau )[i][j] );
-                tempRow.incrementSize();
-            }
-        SmtLibWriter::addTableauRow( tempRow, leafInstance );
-        tempRow.clear();
-    }
+        SmtLibWriter::addTableauRow( ( *_initialTableau )[i], leafInstance );
 
     for ( auto &constraint : _problemConstraints )
         if ( constraint._type == PiecewiseLinearFunctionType::RELU )
@@ -503,12 +527,13 @@ void CertificateNode::writeLeafToFile()
         }
 
     SmtLibWriter::addFooter( leafInstance );
-    SmtLibWriter::writeInstanceToFile( "", _delegationNumber, leafInstance );
+    File file ( "delegated" + std::to_string( _delegationNumber ) + ".smtlib" );
+    SmtLibWriter::writeInstanceToFile( file, leafInstance );
 }
 
 void CertificateNode::removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel )
 {
-    _PLCExplanations.removeIf( [decisionLevel] ( PLCExplanation* explanation ){ return explanation->_decisionLevel <= decisionLevel; } );
+    _PLCExplanations.removeIf( [decisionLevel] ( std::shared_ptr<PLCExplanation> &explanation ){ return explanation->_decisionLevel <= decisionLevel; } );
 }
 
 double UNSATCertificateUtils::computeBound( unsigned var, bool isUpper, const Vector<double> &explanation,
@@ -520,7 +545,8 @@ double UNSATCertificateUtils::computeBound( unsigned var, bool isUpper, const Ve
     ASSERT( groundLowerBounds.size() == initialTableau[initialTableau.size() - 1 ].size() );
     ASSERT( var < groundUpperBounds.size() );
 
-    double derived_bound = 0, temp;
+    double derivedBound = 0;
+    double temp;
     unsigned n = groundUpperBounds.size();
 
     if ( explanation.empty() )
@@ -528,7 +554,7 @@ double UNSATCertificateUtils::computeBound( unsigned var, bool isUpper, const Ve
 
     // Create linear combination of original rows implied from explanation
     Vector<double> explanationRowsCombination;
-    UNSATCertificateUtils::getExplanationRowCombination(var, explanationRowsCombination, explanation, initialTableau );
+    UNSATCertificateUtils::getExplanationRowCombination( var, explanationRowsCombination, explanation, initialTableau );
 
     // Set the bound derived from the linear combination, using original bounds.
     for ( unsigned i = 0; i < n; ++i )
@@ -542,18 +568,19 @@ double UNSATCertificateUtils::computeBound( unsigned var, bool isUpper, const Ve
                 temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundLowerBounds[i] : groundUpperBounds[i];
 
             if ( !FloatUtils::isZero( temp ) )
-                derived_bound += temp;
+                derivedBound += temp;
         }
     }
 
-    return derived_bound;
+    return derivedBound;
 }
 
-void UNSATCertificateUtils::getExplanationRowCombination(unsigned var, Vector<double> &explanationRowCombination, const Vector<double> &explanation,
+void UNSATCertificateUtils::getExplanationRowCombination( unsigned var, Vector<double> &explanationRowCombination, const Vector<double> &explanation,
 										 const Vector<Vector<double>> &initialTableau )
 {
     explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
-    unsigned n = initialTableau[0].size(), m = explanation.size();
+    unsigned n = initialTableau[0].size();
+    unsigned m = explanation.size();
     for ( unsigned i = 0; i < m; ++i )
     {
         for ( unsigned j = 0; j < n; ++j )
@@ -573,5 +600,5 @@ void UNSATCertificateUtils::getExplanationRowCombination(unsigned var, Vector<do
 
     // Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
     // We have: var = - Sum (ci * xi) - (c - 1) * var
-    explanationRowCombination[var] += 1;
+    ++explanationRowCombination[var];
 }

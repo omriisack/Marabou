@@ -27,30 +27,34 @@ void SmtLibWriter::addFooter( List<String> &instance )
     instance.append(  "( exit )\n" );
 }
 
-void SmtLibWriter::addReLUConstraint( unsigned b, unsigned f, PhaseStatus status, List<String> &instance )
+void SmtLibWriter::addReLUConstraint( unsigned b, unsigned f, const PhaseStatus status, List<String> &instance )
 {
     if ( status == PHASE_NOT_FIXED )
-        instance.append(  "( assert ( = x" + std::to_string( f ) + " ( ite ( >= x" + std::to_string( b ) + " 0) x" + std::to_string( b )+ " 0 ) ) )\n" );
+        instance.append(  "( assert ( = x" + std::to_string( f ) + " ( ite ( >= x" + std::to_string( b ) + " 0 ) x" + std::to_string( b )+ " 0 ) ) )\n" );
     else if ( status == RELU_PHASE_ACTIVE )
         instance.append(  "( assert ( = x" + std::to_string( f ) + " x" + std::to_string( b ) + " ) )\n" );
     else if ( status == RELU_PHASE_INACTIVE )
         instance.append(  "( assert ( = x" + std::to_string( f ) + " 0 ) )\n" );
 }
 
-void SmtLibWriter::addTableauRow( const SparseUnsortedList &row, List<String> &instance )
+void SmtLibWriter::addTableauRow( const Vector<double> &row, List<String> &instance )
 {
-    unsigned size = row.getSize(), counter = 0;
+    unsigned size = row.size();
+    unsigned counter = 0;
     String assertRowLine = "( assert ( = 0";
-    for ( auto &entry : row )
+
+    for ( unsigned i = 0; i < size - 1; ++i )
     {
-        if ( counter != size - 1 )
-            assertRowLine += String( " ( + ( * " ) + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
-        else
-            assertRowLine += String( " ( * " ) + signedValue( entry._value ) + " x" + std::to_string( entry._index ) + " )";
+        if ( FloatUtils::isZero( row[i] ) )
+            continue;
+
+        assertRowLine += String( " ( + ( * " ) + signedValue( row[i] ) + " x" + std::to_string( i ) + " )";
         ++counter;
     }
 
-    for ( unsigned i = 0; i < counter + 1 ; ++i )
+    assertRowLine += String( " ( * " ) + signedValue( row[size - 1] ) + " x" + std::to_string( size - 1 ) + " )";
+
+    for ( unsigned i = 0; i < counter + 2 ; ++i )
         assertRowLine += String( ")" );
 
     instance.append( assertRowLine + "\n" );
@@ -60,20 +64,19 @@ void SmtLibWriter::addGroundUpperBounds( Vector<double> &bounds, List<String> &i
 {
     unsigned n = bounds.size();
     for ( unsigned i = 0; i < n; ++i )
-        instance.append( String( " ( assert ( >= x" + std::to_string( i ) ) + String( " " ) + signedValue( bounds[i] ) + " ) )\n" );
+        instance.append( String( "( assert ( <= x" + std::to_string( i ) ) + String( " " ) + signedValue( bounds[i] ) + " ) )\n" );
 }
 
 void SmtLibWriter::addGroundLowerBounds( Vector<double> &bounds, List<String> &instance )
 {
     unsigned n = bounds.size();
     for ( unsigned i = 0; i < n; ++i )
-        instance.append( String( " ( assert ( >= x" + std::to_string( i ) ) + String( " " ) + signedValue( bounds[i] ) + " ) )\n" );
+        instance.append( String( "( assert ( >= x" + std::to_string( i ) ) + String( " " ) + signedValue( bounds[i] ) + " ) )\n" );
 }
 
-void SmtLibWriter::writeInstanceToFile( const String &directory, unsigned delegationNumber, const List<String> &instance )
+void SmtLibWriter::writeInstanceToFile( IFile &file, const List<String> &instance )
 {
-    File file ( directory + "delegated" + std::to_string( delegationNumber ) + ".smtlib" );
-    file.open(File::MODE_WRITE_TRUNCATE );
+    file.open( File::MODE_WRITE_TRUNCATE );
 
     for ( const String &s : instance )
         file.write( s );

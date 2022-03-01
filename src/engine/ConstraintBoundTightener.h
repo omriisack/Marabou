@@ -62,8 +62,8 @@ public:
 	/*
  	As previous methods, but with additional Tableau row for explaining the bound tightening.
 	*/
-	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row );
-	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> row );
+	void registerTighterLowerBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> &row );
+	void registerTighterUpperBound( unsigned variable, double bound, const std::shared_ptr<TableauRow> &row );
 
     /*
       Get the tightenings previously registered by the constraints
@@ -73,8 +73,8 @@ public:
 	/*
 	 * Replaces the indicating row by equation which is added to the Tableau
 	 */
-	void externalExplanationUpdate( const unsigned var, const double value, const bool isAffectedBoundUpper,
-								   const unsigned causingVar, bool isCausingBoundUpper,
+	void externalExplanationUpdate( unsigned var, double value, BoundType affectedVarBound,
+								   unsigned causingVar, BoundType causingVarBound,
 								   PiecewiseLinearFunctionType constraintType );
 
 

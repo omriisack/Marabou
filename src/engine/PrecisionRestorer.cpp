@@ -44,26 +44,26 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     memcpy( lowerBounds, tableau.getLowerBounds(), sizeof(double) * targetN );
     memcpy( upperBounds, tableau.getUpperBounds(), sizeof(double) * targetN );
 
-	BoundExplainer tableauExplanations = BoundExplainer(targetN, targetM );
-	Vector<double> upperGBBackup;
-	Vector<double> lowerGBBackup;
+	BoundExplainer tableauExplanations = BoundExplainer( targetN, targetM );
+	Vector<double> upperGroundBoundsBackup;
+	Vector<double> lowerGroundBoundsBackup;
 
-	Vector<unsigned> upperDLBackup;
-	Vector<unsigned> lowerDLBackup;
+	Vector<unsigned> upperDecisionLevelsBackup;
+	Vector<unsigned> lowerDecisionLevelsBackup;
 
-	unsigned PLCExplListSize = 0;
+	List<std::shared_ptr<PLCExplanation>> PLCExplListBackup;
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
 		tableauExplanations = *tableau.getAllBoundsExplanations();
 
-		upperGBBackup = Vector<double>( engine.getGroundBounds(true ) );
-		lowerGBBackup = Vector<double>( engine.getGroundBounds(false ) );
+		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds(true ) );
+		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds(false ) );
 
-		upperDLBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
-		lowerDLBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
+        upperDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
+        lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
 
-		PLCExplListSize = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations().size();
+        PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations();
 	}
 
     try
@@ -136,14 +136,11 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
 			for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
 			{
-				engine.updateGroundUpperBound( i, upperGBBackup[i], upperDLBackup[i] );
-				engine.updateGroundLowerBound( i, lowerGBBackup[i], lowerDLBackup[i] );
+				engine.updateGroundUpperBound( i, upperGroundBoundsBackup[i], upperDecisionLevelsBackup[i] );
+				engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i], lowerDecisionLevelsBackup[i] );
 			}
 
-			engine.setGroundBoundsDecisionLevels( upperDLBackup, true );
-			engine.setGroundBoundsDecisionLevels( lowerDLBackup, false );
-
-			engine.getUNSATCertificateCurrentPointer()->resizePLCExplanationsList( PLCExplListSize );
+            engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup );
 		}
 
         for ( unsigned i = 0; i < targetN; ++i )

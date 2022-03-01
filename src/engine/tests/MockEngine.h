@@ -228,7 +228,7 @@ public:
 		return _mockUnsignedVec;
 	}
 
-	void setGroundBoundsDecisionLevels( const Vector<unsigned>& /* decisionLevels */, bool /* isUpper */ ) const
+	void setGroundBoundsDecisionLevels( const Vector<unsigned>& /* decisionLevels */, bool /* isUpper */ )
 	{
 	}
 

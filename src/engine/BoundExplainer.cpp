@@ -52,9 +52,12 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         return;
 
     ASSERT ( var < _numberOfVariables );
-    double curCoefficient, ci = 0, realCoefficient;
+    double curCoefficient;
+    double ci = 0;
+    double realCoefficient;
     bool tempUpper;
     unsigned curVar;
+
     if ( var != row._lhs )
     {
         for ( unsigned i = 0; i < row._size; ++i )
@@ -120,7 +123,10 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
 
     ASSERT( var < _numberOfVariables );
     bool tempUpper;
-    double curCoefficient, ci = 0, realCoefficient;
+    double curCoefficient;
+    double ci = 0;
+    double realCoefficient;
+
     for ( const auto &entry : row )
     {
         if ( entry._index == var )

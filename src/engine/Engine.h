@@ -241,7 +241,7 @@ public:
 	/*
  	* Sets all decision levels of the ground bounds as a vector
  	*/
-	void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper ) const;
+	void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper );
 
 	/*
 	 * Get the current pointer of the UNSAT certificate

@@ -12,14 +12,19 @@
  ** [[ Add lengthier description here ]]
  **/
 
-
-#ifndef __UNSATCertificate_h__
-#define __UNSATCertificate_h__
+#ifndef __UnsatCertificate_h__
+#define __UnsatCertificate_h__
 
 #include "BoundExplainer.h"
 #include "SmtLibWriter.h"
 #include "PiecewiseLinearFunctionType.h"
 #include "ReluConstraint.h"
+
+enum BoundType : bool
+{
+    UPPER = true,
+    LOWER = false,
+};
 
 /*
   Contains all necessary info of a ground bound update during a run (i.e from ReLU phase-fixing)
@@ -29,24 +34,18 @@ struct PLCExplanation
     unsigned _causingVar;
     unsigned _affectedVar;
     double _bound;
-    bool _isCausingBoundUpper;
-    bool _isAffectedBoundUpper;
+    BoundType _causingVarBound;
+    BoundType _affectedVarBound;
     double *_explanation;
     PiecewiseLinearFunctionType _constraintType;
     unsigned _decisionLevel;
 
-    ~PLCExplanation()
-    {
-        if ( _explanation )
-        {
-            delete [] _explanation;
-            _explanation = NULL;
-        }
-    }
+    PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel );
+    ~PLCExplanation();
 };
 
 /*
-  Contains all ino relevant for a simple Marabou contradiction - i.e. explanations of contradicting bounds of a variable
+  Contains all info relevant for a simple Marabou contradiction - i.e. explanations of contradicting bounds of a variable
 */
 struct Contradiction
 {
@@ -54,24 +53,12 @@ struct Contradiction
     double *_upperBoundExplanation;
     double *_lowerBoundExplanation;
 
-    ~Contradiction()
-    {
-        if ( _upperBoundExplanation )
-        {
-            delete [] _upperBoundExplanation;
-            _upperBoundExplanation = NULL;
-        }
-
-        if ( _lowerBoundExplanation )
-        {
-            delete [] _lowerBoundExplanation;
-            _lowerBoundExplanation = NULL;
-        }
-    }
+    Contradiction( unsigned var, double *upperBoundExplanation, double *lowerBoundExplanation );
+    ~Contradiction();
 };
 
 /*
-  A smaller representation of a problem constraint
+  A representation of a problem constraint, smaller than a PiecewiseLinearConstraint instance
 */
 struct ProblemConstraint
 {
@@ -138,17 +125,22 @@ public:
     /*
      Returns the list of PLC explanations of the node
     */
-    const List<PLCExplanation*> &getPLCExplanations() const;
+    const List<std::shared_ptr<PLCExplanation>> &getPLCExplanations() const;
+
+    /*
+     Sets  the list of PLC explanations of the node
+    */
+    void setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations );
 
     /*
       Adds an PLC explanation to the list
     */
-    void addPLCExplanation( PLCExplanation *explanation );
+    void addPLCExplanation( std::shared_ptr<PLCExplanation> &explanation );
 
     /*
      Adds an a problem constraint to the list
     */
-    void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned int> constraintVars, PhaseStatus status );
+    void addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status );
 
     /*
       Returns a pointer to a child by a head split, or NULL if not found
@@ -158,12 +150,12 @@ public:
     /*
       Sets value of _hasSATSolution to be true
     */
-    void hasSATSolution();
+    void setSATSolution();
 
     /*
       Sets value of _wasVisited to be true
     */
-    void wasVisited();
+    void setVisited();
 
     /*
       Sets value of _shouldDelegate to be true
@@ -175,11 +167,6 @@ public:
      Removes all PLC explanations
     */
     void deletePLCExplanations();
-
-    /*
-     Removes all PLC explanations from a certain point
-    */
-    void resizePLCExplanationsList( unsigned newSize );
 
     /*
       Deletes all offsprings of the node and makes it a leaf
@@ -195,8 +182,8 @@ public:
 private:
     List<CertificateNode*> _children;
     List<ProblemConstraint> _problemConstraints;
-    CertificateNode* _parent;
-    List<PLCExplanation*> _PLCExplanations;
+    CertificateNode *_parent;
+    List<std::shared_ptr<PLCExplanation>> _PLCExplanations;
     Contradiction *_contradiction;
     PiecewiseLinearCaseSplit _headSplit;
 
@@ -230,7 +217,7 @@ private:
     /*
       Checks if the node is a valid none-leaf
     */
-    bool isValidNoneLeaf() const;
+    bool isValidNonLeaf() const;
 
     /*
       Write a leaf marked to delegate to a smtlib file format
@@ -278,5 +265,8 @@ public:
     */
     static void getExplanationRowCombination( unsigned var, Vector<double> &explanationRowCombination, const Vector<double> &explanation,
                                              const Vector<Vector<double>> &initialTableau );
+
+    constexpr static const double CERTIFICATION_TOLERANCE = 0.0025;
 };
-#endif //__UNSATCertificate_h__
+
+#endif //__UnsatCertificate_h__
