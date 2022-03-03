@@ -16,7 +16,7 @@
 #include "FloatUtils.h"
 #include "MarabouError.h"
 #include "Statistics.h"
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
 ConstraintBoundTightener::ConstraintBoundTightener( ITableau &tableau, IEngine &engine )
     : _tableau( tableau )

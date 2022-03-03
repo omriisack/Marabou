@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file UNSATCertificate.cpp
+/*! \file UnsatCertificateNode.cpp
  ** \verbatim
  ** Top contributors (to current version):
  **   Omri Isac, Guy Katz
@@ -13,52 +13,10 @@
  **/
 
 #include <Options.h>
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
-PLCExplanation::PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel )
-    :_causingVar( causingVar )
-    ,_affectedVar( affectedVar )
-    ,_bound( bound )
-    ,_causingVarBound( causingVarBound )
-    ,_affectedVarBound( affectedVarBound )
-    ,_explanation( explanation )
-    ,_constraintType( constraintType )
-    ,_decisionLevel( decisionLevel )
-{
-}
 
-PLCExplanation::~PLCExplanation()
-{
-    if ( _explanation )
-    {
-        delete [] _explanation;
-        _explanation = NULL;
-    }
-}
-
-Contradiction::Contradiction( unsigned var, double *upperBoundExplanation, double *lowerBoundExplanation )
-    :_var( var )
-    ,_upperBoundExplanation( upperBoundExplanation )
-    ,_lowerBoundExplanation( lowerBoundExplanation )
-{
-}
-
-Contradiction::~Contradiction()
-{
-    if ( _upperBoundExplanation )
-    {
-        delete [] _upperBoundExplanation;
-        _upperBoundExplanation = NULL;
-    }
-
-    if ( _lowerBoundExplanation )
-    {
-        delete [] _lowerBoundExplanation;
-        _lowerBoundExplanation = NULL;
-    }
-}
-
-CertificateNode::CertificateNode( Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
+UnsatCertificateNode::UnsatCertificateNode(Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
     : _parent( NULL )
     , _contradiction( NULL )
     , _hasSATSolution( false )
@@ -71,7 +29,7 @@ CertificateNode::CertificateNode( Vector<Vector<double>> *initialTableau, Vector
 {
 }
 
-CertificateNode::CertificateNode( CertificateNode *parent, PiecewiseLinearCaseSplit split )
+UnsatCertificateNode::UnsatCertificateNode(UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split )
     : _parent( parent )
     , _contradiction( NULL )
     , _headSplit( std::move( split ) )
@@ -86,7 +44,7 @@ CertificateNode::CertificateNode( CertificateNode *parent, PiecewiseLinearCaseSp
     parent->_children.append( this );
 }
 
-CertificateNode::~CertificateNode()
+UnsatCertificateNode::~UnsatCertificateNode()
 {
     for ( auto *child : _children )
     {
@@ -109,34 +67,34 @@ CertificateNode::~CertificateNode()
     _parent = NULL;
 }
 
-void CertificateNode::setContradiction( Contradiction *contradiction )
+void UnsatCertificateNode::setContradiction(Contradiction *contradiction )
 {
     _contradiction = contradiction;
 }
 
-Contradiction *CertificateNode::getContradiction() const
+Contradiction *UnsatCertificateNode::getContradiction() const
 {
     return _contradiction;
 }
 
-CertificateNode *CertificateNode::getParent() const
+UnsatCertificateNode *UnsatCertificateNode::getParent() const
 {
     return _parent;
 }
 
-const PiecewiseLinearCaseSplit &CertificateNode::getSplit() const
+const PiecewiseLinearCaseSplit &UnsatCertificateNode::getSplit() const
 {
     return _headSplit;
 }
 
-const List<std::shared_ptr<PLCExplanation>> &CertificateNode::getPLCExplanations() const
+const List<std::shared_ptr<PLCExplanation>> &UnsatCertificateNode::getPLCExplanations() const
 {
     return _PLCExplanations;
 }
 
-void CertificateNode::makeLeaf()
+void UnsatCertificateNode::makeLeaf()
 {
-    for ( CertificateNode *child : _children )
+    for ( UnsatCertificateNode *child : _children )
     {
         if ( child )
         {
@@ -150,7 +108,7 @@ void CertificateNode::makeLeaf()
     _children.clear();
 }
 
-void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitConstraint )
+void UnsatCertificateNode::passChangesToChildren(UnsatCertificateProblemConstraint *childrenSplitConstraint )
 {
     for ( auto *child : _children )
     {
@@ -174,7 +132,7 @@ void CertificateNode::passChangesToChildren( ProblemConstraint *childrenSplitCon
     }
 }
 
-bool CertificateNode::certify()
+bool UnsatCertificateNode::certify()
 {
     // Update ground bounds according to head split
     for ( auto &tightening : _headSplit.getBoundTightenings() )
@@ -226,10 +184,13 @@ bool CertificateNode::certify()
         if ( !child->certify() )
             answer = false;
 
+    // After all subtree is checked, no use in these vectors.
+    _groundUpperBounds.clear();
+    _groundLowerBounds.clear();
     return answer;
 }
 
-bool CertificateNode::certifyContradiction()
+bool UnsatCertificateNode::certifyContradiction()
 {
     ASSERT( isValidLeaf() && !_hasSATSolution );
     unsigned var = _contradiction->_var;
@@ -256,38 +217,38 @@ bool CertificateNode::certifyContradiction()
     return computedUpper < computedLower;
 }
 
-double CertificateNode::explainBound( unsigned var, bool isUpper, Vector<double> &explanation )
+double UnsatCertificateNode::explainBound(unsigned var, bool isUpper, Vector<double> &explanation )
 {
     return UNSATCertificateUtils::computeBound( var, isUpper, explanation, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
-void CertificateNode::copyGroundBounds( Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
+void UnsatCertificateNode::copyGroundBounds(Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
 {
     _groundUpperBounds = Vector<double>( groundUpperBounds );
     _groundLowerBounds = Vector<double>( groundLowerBounds );
 }
 
-bool CertificateNode::isValidLeaf() const
+bool UnsatCertificateNode::isValidLeaf() const
 {
     return _contradiction && _children.empty();
 }
 
-bool CertificateNode::isValidNonLeaf() const
+bool UnsatCertificateNode::isValidNonLeaf() const
 {
     return !_contradiction && !_children.empty();
 }
 
-void CertificateNode::addPLCExplanation( std::shared_ptr<PLCExplanation> &explanation )
+void UnsatCertificateNode::addPLCExplanation(std::shared_ptr<PLCExplanation> &explanation )
 {
     _PLCExplanations.append( explanation );
 }
 
-void CertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status )
+void UnsatCertificateNode::addProblemConstraint(PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status )
 {
     _problemConstraints.append( { type, constraintVars, status } );
 }
 
-ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits )
+UnsatCertificateProblemConstraint *UnsatCertificateNode::getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits )
 {
     if ( splits.size() != 2 )
         return NULL;
@@ -311,8 +272,8 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
         return NULL;
 
     // Certify that f = b + aux corresponds to a problem constraints
-    ProblemConstraint *correspondingConstraint = NULL;
-    for ( ProblemConstraint &constraint : _problemConstraints )
+    UnsatCertificateProblemConstraint *correspondingConstraint = NULL;
+    for ( UnsatCertificateProblemConstraint &constraint : _problemConstraints )
     {
         if ( constraint._type == PiecewiseLinearFunctionType::RELU && constraint._constraintVars.front() == b && constraint._constraintVars.exists( f ) && ( activeSplit.size() == 1 || constraint._constraintVars.back() == aux ) )
             correspondingConstraint = &constraint;
@@ -322,7 +283,7 @@ ProblemConstraint *CertificateNode::getCorrespondingReLUConstraint( const List<P
     return correspondingConstraint;
 }
 
-bool CertificateNode::certifyAllPLCExplanations( double epsilon )
+bool UnsatCertificateNode::certifyAllPLCExplanations(double epsilon )
 {
     // Create copies of the gb, check for their validity, and pass these changes to all the children
     // Assuming the splits of the children are ok.
@@ -346,9 +307,9 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
         unsigned aux = 0;
 
         // Make sure propagation was by a problem constraint
-        for ( ProblemConstraint &constraint : _problemConstraints )
+        for ( UnsatCertificateProblemConstraint &constraint : _problemConstraints )
         {
-            if (explanation->_constraintType == PiecewiseLinearFunctionType::RELU && constraint._constraintVars.exists(explanation->_affectedVar ) && constraint._constraintVars.exists(explanation->_causingVar ) )
+            if ( explanation->_constraintType == PiecewiseLinearFunctionType::RELU && constraint._constraintVars.exists(explanation->_affectedVar ) && constraint._constraintVars.exists(explanation->_causingVar ) )
             {
                 Vector<unsigned> conVec( constraint._constraintVars.begin(), constraint._constraintVars.end() );
                 b = conVec[0];
@@ -428,9 +389,9 @@ bool CertificateNode::certifyAllPLCExplanations( double epsilon )
 /*
  * Get a pointer to a child by a head split, or NULL if not found
  */
-CertificateNode *CertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit &split ) const
+UnsatCertificateNode *UnsatCertificateNode::getChildBySplit(const PiecewiseLinearCaseSplit &split ) const
 {
-    for ( CertificateNode *child : _children )
+    for ( UnsatCertificateNode *child : _children )
     {
         if ( child->_headSplit == split )
             return child;
@@ -439,24 +400,24 @@ CertificateNode *CertificateNode::getChildBySplit( const PiecewiseLinearCaseSpli
     return NULL;
 }
 
-void CertificateNode::setSATSolution()
+void UnsatCertificateNode::setSATSolution()
 {
     _hasSATSolution = true;
 }
 
-void CertificateNode::setVisited()
+void UnsatCertificateNode::setVisited()
 {
     _wasVisited = true;
 }
 
-void CertificateNode::shouldDelegate( unsigned delegationNumber, DelegationStatus delegationStatus )
+void UnsatCertificateNode::shouldDelegate(unsigned delegationNumber, DelegationStatus delegationStatus )
 {
     ASSERT( delegationStatus != DelegationStatus::DONT_DELEGATE );
     _delegationStatus = delegationStatus;
     _delegationNumber = delegationNumber;
 }
 
-bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const
+bool UnsatCertificateNode::certifySingleVarSplits(const List<PiecewiseLinearCaseSplit> &splits ) const
 {
     if ( splits.size() != 2 )
         return false;
@@ -485,7 +446,7 @@ bool CertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSpli
     return true;
 }
 
-void CertificateNode::deletePLCExplanations()
+void UnsatCertificateNode::deletePLCExplanations()
 {
     _PLCExplanations.clear();
 }
@@ -493,13 +454,13 @@ void CertificateNode::deletePLCExplanations()
 /*
  * Removes all PLC explanations from a certain point
  */
-void CertificateNode::setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations )
+void UnsatCertificateNode::setPLCExplanations(const List<std::shared_ptr<PLCExplanation>> &explanations )
 {
     _PLCExplanations.clear();
     _PLCExplanations = explanations;
 }
 
-void CertificateNode::writeLeafToFile()
+void UnsatCertificateNode::writeLeafToFile()
 {
     ASSERT( _children.empty() && _delegationStatus == DelegationStatus::DELEGATE_SAVE );
     List<String> leafInstance;
@@ -531,74 +492,7 @@ void CertificateNode::writeLeafToFile()
     SmtLibWriter::writeInstanceToFile( file, leafInstance );
 }
 
-void CertificateNode::removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel )
+void UnsatCertificateNode::removePLCExplanationsBelowDecisionLevel(unsigned decisionLevel )
 {
     _PLCExplanations.removeIf( [decisionLevel] ( std::shared_ptr<PLCExplanation> &explanation ){ return explanation->_decisionLevel <= decisionLevel; } );
-}
-
-double UNSATCertificateUtils::computeBound( unsigned var, bool isUpper, const Vector<double> &explanation,
-							const Vector<Vector<double>> &initialTableau, const Vector<double> &groundUpperBounds, const Vector<double> &groundLowerBounds )
-{
-    ASSERT( groundLowerBounds.size() == groundUpperBounds.size() );
-    ASSERT( initialTableau.size() == explanation.size() || explanation.empty() );
-    ASSERT( groundLowerBounds.size() == initialTableau[0].size() );
-    ASSERT( groundLowerBounds.size() == initialTableau[initialTableau.size() - 1 ].size() );
-    ASSERT( var < groundUpperBounds.size() );
-
-    double derivedBound = 0;
-    double temp;
-    unsigned n = groundUpperBounds.size();
-
-    if ( explanation.empty() )
-        return isUpper ? groundUpperBounds[var]  : groundLowerBounds[var];
-
-    // Create linear combination of original rows implied from explanation
-    Vector<double> explanationRowsCombination;
-    UNSATCertificateUtils::getExplanationRowCombination( var, explanationRowsCombination, explanation, initialTableau );
-
-    // Set the bound derived from the linear combination, using original bounds.
-    for ( unsigned i = 0; i < n; ++i )
-    {
-        temp = explanationRowsCombination[i];
-        if ( !FloatUtils::isZero( temp ) )
-        {
-            if ( isUpper )
-                temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundUpperBounds[i] : groundLowerBounds[i];
-            else
-                temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundLowerBounds[i] : groundUpperBounds[i];
-
-            if ( !FloatUtils::isZero( temp ) )
-                derivedBound += temp;
-        }
-    }
-
-    return derivedBound;
-}
-
-void UNSATCertificateUtils::getExplanationRowCombination( unsigned var, Vector<double> &explanationRowCombination, const Vector<double> &explanation,
-										 const Vector<Vector<double>> &initialTableau )
-{
-    explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
-    unsigned n = initialTableau[0].size();
-    unsigned m = explanation.size();
-    for ( unsigned i = 0; i < m; ++i )
-    {
-        for ( unsigned j = 0; j < n; ++j )
-        {
-            if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( explanation[i] ) )
-                explanationRowCombination[j] += initialTableau[i][j] * explanation[i];
-        }
-    }
-
-    for ( unsigned i = 0; i < n; ++i )
-    {
-        if ( !FloatUtils::isZero( explanationRowCombination[i] ) )
-            explanationRowCombination[i] *= -1;
-        else
-            explanationRowCombination[i] = 0;
-    }
-
-    // Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
-    // We have: var = - Sum (ci * xi) - (c - 1) * var
-    ++explanationRowCombination[var];
 }

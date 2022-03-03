@@ -1,5 +1,5 @@
 /*********************                                                        */
-/*! \file UNSATCertificate.h
+/*! \file UnsatCertificateNode.h
  ** \verbatim
  ** Top contributors (to current version):
  **   Omri Isac, Guy Katz
@@ -12,65 +12,17 @@
  ** [[ Add lengthier description here ]]
  **/
 
-#ifndef __UnsatCertificate_h__
-#define __UnsatCertificate_h__
+#ifndef __CertificateNode_h__
+#define __CertificateNode_h__
 
 #include "BoundExplainer.h"
+#include "Contradiction.h"
+#include "UnsatCertificateProblemConstraint.h"
 #include "SmtLibWriter.h"
 #include "PiecewiseLinearFunctionType.h"
+#include "PlcExplanation.h"
 #include "ReluConstraint.h"
-
-enum BoundType : bool
-{
-    UPPER = true,
-    LOWER = false,
-};
-
-/*
-  Contains all necessary info of a ground bound update during a run (i.e from ReLU phase-fixing)
-*/
-struct PLCExplanation
-{
-    unsigned _causingVar;
-    unsigned _affectedVar;
-    double _bound;
-    BoundType _causingVarBound;
-    BoundType _affectedVarBound;
-    double *_explanation;
-    PiecewiseLinearFunctionType _constraintType;
-    unsigned _decisionLevel;
-
-    PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel );
-    ~PLCExplanation();
-};
-
-/*
-  Contains all info relevant for a simple Marabou contradiction - i.e. explanations of contradicting bounds of a variable
-*/
-struct Contradiction
-{
-    unsigned _var;
-    double *_upperBoundExplanation;
-    double *_lowerBoundExplanation;
-
-    Contradiction( unsigned var, double *upperBoundExplanation, double *lowerBoundExplanation );
-    ~Contradiction();
-};
-
-/*
-  A representation of a problem constraint, smaller than a PiecewiseLinearConstraint instance
-*/
-struct ProblemConstraint
-{
-    PiecewiseLinearFunctionType _type;
-    List<unsigned> _constraintVars;
-    PhaseStatus _status;
-
-    bool operator==( const ProblemConstraint other ) const
-    {
-        return _type == other._type && _constraintVars == other._constraintVars;
-    }
-};
+#include "UnsatCertificateUtils.h"
 
 enum DelegationStatus : unsigned
 {
@@ -82,20 +34,20 @@ enum DelegationStatus : unsigned
 /*
   A certificate node in the tree representing the UNSAT certificate
 */
-class CertificateNode
+class UnsatCertificateNode
 {
 public:
     /*
       Constructor for the root
     */
-    CertificateNode( Vector<Vector<double>> *_initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds );
+    UnsatCertificateNode(Vector<Vector<double>> *_initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds );
 
     /*
       Constructor for a regular node
     */
-    CertificateNode( CertificateNode *parent, PiecewiseLinearCaseSplit split );
+    UnsatCertificateNode(UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split );
 
-    ~CertificateNode();
+    ~UnsatCertificateNode();
 
     /*
       Certifies the tree is indeed a correct proof of unsatisfiability;
@@ -115,7 +67,7 @@ public:
     /*
      Returns the parent of a node
     */
-    CertificateNode *getParent() const;
+    UnsatCertificateNode *getParent() const;
 
     /*
       Returns the head split of a node
@@ -145,7 +97,7 @@ public:
     /*
       Returns a pointer to a child by a head split, or NULL if not found
     */
-    CertificateNode *getChildBySplit( const PiecewiseLinearCaseSplit &split ) const;
+    UnsatCertificateNode *getChildBySplit( const PiecewiseLinearCaseSplit &split ) const;
 
     /*
       Sets value of _hasSATSolution to be true
@@ -175,14 +127,13 @@ public:
 
     /*
       Removes all PLCExplanations above a certain decision level WITHOUT deleting them
-      ASSUMPTION - explanations pointers are kept elsewhere before removal
     */
     void removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel );
 
 private:
-    List<CertificateNode*> _children;
-    List<ProblemConstraint> _problemConstraints;
-    CertificateNode *_parent;
+    List<UnsatCertificateNode*> _children;
+    List<UnsatCertificateProblemConstraint> _problemConstraints;
+    UnsatCertificateNode *_parent;
     List<std::shared_ptr<PLCExplanation>> _PLCExplanations;
     Contradiction *_contradiction;
     PiecewiseLinearCaseSplit _headSplit;
@@ -207,7 +158,7 @@ private:
       Inherits the initialTableau pointer, the ground bounds and the problem constraint from parent, if exists.
       Fixes the phase of the constraint that corresponds to the head split
     */
-    void passChangesToChildren( ProblemConstraint *childrenSplitConstraint );
+    void passChangesToChildren( UnsatCertificateProblemConstraint *childrenSplitConstraint );
 
     /*
       Checks if the node is a valid leaf
@@ -237,7 +188,7 @@ private:
     /*
       Return a pointer to the problem constraint representing the split
     */
-    ProblemConstraint *getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+    UnsatCertificateProblemConstraint *getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits );
 
     /*
       Certifies a contradiction
@@ -250,23 +201,4 @@ private:
     double explainBound( unsigned var, bool isUpper, Vector<double> &explanation );
 };
 
-class UNSATCertificateUtils
-{
-public:
-    /*
-      Use explanation to compute a bound (aka explained bound)
-      Given a variable, an explanation, initial tableau and ground bounds.
-    */
-    static double computeBound( unsigned var, bool isUpper, const Vector<double> &explanation,
-                              const Vector<Vector<double>> &initialTableau, const Vector<double> &groundUpperBounds, const Vector<double> &groundLowerBounds );
-
-    /*
-      Given a var, a tableau and a column vector, create a linear combination used to explain a bound
-    */
-    static void getExplanationRowCombination( unsigned var, Vector<double> &explanationRowCombination, const Vector<double> &explanation,
-                                             const Vector<Vector<double>> &initialTableau );
-
-    constexpr static const double CERTIFICATION_TOLERANCE = 0.0025;
-};
-
-#endif //__UnsatCertificate_h__
+#endif //__CertificateNode_h__

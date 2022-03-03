@@ -22,7 +22,7 @@
 #include "IEngine.h"
 #include "Equation.h"
 #include "PiecewiseLinearFunctionType.h"
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
 class IConstraintBoundTightener : public ITableau::VariableWatcher, public ITableau::ResizeWatcher
 {

@@ -1393,7 +1393,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
             {
-                _UNSATCertificate = new CertificateNode( &_initialTableau, _groundUpperBounds, _groundLowerBounds );
+                _UNSATCertificate = new UnsatCertificateNode(&_initialTableau, _groundUpperBounds, _groundLowerBounds );
                 for ( auto& plConstraint : _plConstraints )
                     _UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables(), PhaseStatus::PHASE_NOT_FIXED );
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
@@ -3442,17 +3442,17 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, SparseUns
     return false;
 }
 
-CertificateNode* Engine::getUNSATCertificateCurrentPointer() const
+UnsatCertificateNode* Engine::getUNSATCertificateCurrentPointer() const
 {
     return _UNSATCertificateCurrentPointer;
 }
 
-void Engine::setUNSATCertificateCurrentPointer( CertificateNode* node )
+void Engine::setUNSATCertificateCurrentPointer(UnsatCertificateNode* node )
 {
     _UNSATCertificateCurrentPointer = node;
 }
 
-CertificateNode* Engine::getUNSATCertificateRoot() const
+UnsatCertificateNode* Engine::getUNSATCertificateRoot() const
 {
     return _UNSATCertificate;
 }
@@ -3564,7 +3564,7 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
         return;
 
     //Use another pointer so popping can be performed as usual
-    CertificateNode *curCertificatePointer = _UNSATCertificateCurrentPointer;
+    UnsatCertificateNode *curCertificatePointer = _UNSATCertificateCurrentPointer;
     auto explOnPath = List<std::shared_ptr<PLCExplanation>>();
     List<std::shared_ptr<PLCExplanation>> curExplList = List<std::shared_ptr<PLCExplanation>>();
 
@@ -3575,7 +3575,7 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
         ASSERT( curCertificatePointer );
         for ( const auto &expl : curCertificatePointer->getPLCExplanations() )
         {
-            if ( expl->_decisionLevel <= _smtCore.getStackDepth() - jumpSize )
+            if ( expl->getDecisionLevel() <= _smtCore.getStackDepth() - jumpSize )
                 curExplList.append( expl );
         }
 

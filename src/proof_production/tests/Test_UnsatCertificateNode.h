@@ -1,8 +1,10 @@
 /*********************                                                        */
-/*! \file Test_CertificateNode.h
+/*! \file Test_UnsatCertificateNode.h
  ** \verbatim
+ ** Top contributors (to current version):
+ **   Omri Isac, Guy Katz
  ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
+ ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
  ** All rights reserved. See the file COPYING in the top-level source
  ** directory for licensing information.\endverbatim
@@ -14,9 +16,9 @@
 #include "context/cdlist.h"
 #include "context/context.h"
 #include <cxxtest/TestSuite.h>
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
-class CertificateNodeTestSuite : public CxxTest::TestSuite
+class UnsatCertificateNodeTestSuite : public CxxTest::TestSuite
 {
 public:
     /*
@@ -32,7 +34,7 @@ public:
         Vector<double> groundUpperBounds( 6, 1 );
         Vector<double> groundLowerBounds( 6, 0 );
 
-        auto *root = new CertificateNode( &initialTableau, groundUpperBounds, groundLowerBounds );
+        auto *root = new UnsatCertificateNode(&initialTableau, groundUpperBounds, groundLowerBounds );
 
         ReluConstraint relu = ReluConstraint( 1, 3 );
         auto splits = relu.getCaseSplits();
@@ -41,8 +43,8 @@ public:
         PiecewiseLinearCaseSplit split1 = splits.back();
         PiecewiseLinearCaseSplit split2 = splits.front();
 
-        auto *child1 = new CertificateNode( root, split1 );
-        auto *child2 = new CertificateNode( root, split2 );
+        auto *child1 = new UnsatCertificateNode(root, split1 );
+        auto *child2 = new UnsatCertificateNode(root, split2 );
 
         TS_ASSERT_EQUALS( child1->getParent(), root );
         TS_ASSERT_EQUALS( child2->getParent(), root );
@@ -70,7 +72,7 @@ public:
         Vector<double> groundUpperBounds( 1, 1 );
         Vector<double> groundLowerBounds( 1, 0 );
 
-        CertificateNode root = CertificateNode( &initialTableau, groundUpperBounds, groundLowerBounds );
+        UnsatCertificateNode root = UnsatCertificateNode(&initialTableau, groundUpperBounds, groundLowerBounds );
         auto upperBoundExplanation = new double[1];
         upperBoundExplanation[0] = 1;
 
@@ -91,7 +93,7 @@ public:
         Vector<double> groundUpperBounds( 1, 1 );
         Vector<double> groundLowerBounds( 1, -1 );
 
-        CertificateNode root = CertificateNode( &initialTableau, groundUpperBounds, groundLowerBounds );
+        UnsatCertificateNode root = UnsatCertificateNode(&initialTableau, groundUpperBounds, groundLowerBounds );
 
         auto explanation1 = std::shared_ptr<PLCExplanation>( new PLCExplanation( 1, 1, 0, UPPER, UPPER, NULL, RELU, 0 ) );
         auto explanation2 = std::shared_ptr<PLCExplanation>( new PLCExplanation( 1, 1, -1, UPPER, UPPER, NULL, RELU, 1 ) );
@@ -133,7 +135,7 @@ public:
         groundUpperBounds[6] = 2;
 
         // Set a complete tree of depth 3, using 2 ReLUs
-        auto *root = new CertificateNode( &initialTableau, groundUpperBounds, groundLowerBounds );
+        auto *root = new UnsatCertificateNode(&initialTableau, groundUpperBounds, groundLowerBounds );
 
         ReluConstraint relu1 = ReluConstraint( 0, 2 ); // aux var is 4
         ReluConstraint relu2 = ReluConstraint( 1, 3 ) ; // aux var is 5
@@ -154,11 +156,11 @@ public:
 
         TS_ASSERT_EQUALS( split1_2.getBoundTightenings().size(), 2U );
 
-        auto *child1 = new CertificateNode( root, split1_1 ); // Child with missing aux tightening
-        auto *child2 = new CertificateNode( root, split1_2 );
+        auto *child1 = new UnsatCertificateNode(root, split1_1 ); // Child with missing aux tightening
+        auto *child2 = new UnsatCertificateNode(root, split1_2 );
 
-        auto *child2_1 = new CertificateNode( child2, split2_1 );
-        auto *child2_2 = new CertificateNode( child2, split2_2 );
+        auto *child2_1 = new UnsatCertificateNode(child2, split2_1 );
+        auto *child2_2 = new UnsatCertificateNode(child2, split2_2 );
 
         root->setVisited();
         child2->setVisited();

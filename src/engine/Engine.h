@@ -42,9 +42,9 @@
 #include "SnCDivideStrategy.h"
 #include "Statistics.h"
 #include "SumOfInfeasibilitiesManager.h"
-#include "UNSATCertificate.h"
 #include "SymbolicBoundTighteningType.h"
 #include "SmtLibWriter.h"
+#include "UnsatCertificateNode.h"
 
 #include <context/context.h>
 #include <atomic>
@@ -246,17 +246,17 @@ public:
 	/*
 	 * Get the current pointer of the UNSAT certificate
 	 */
-	CertificateNode* getUNSATCertificateCurrentPointer() const;
+	UnsatCertificateNode* getUNSATCertificateCurrentPointer() const;
 
 	/*
 	  * Set the current pointer of the UNSAT certificate
 	  */
-	void setUNSATCertificateCurrentPointer( CertificateNode* node );
+	void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node );
 
 	/*
      * Get the pointer to the root of the UNSAT certificate
      */
-	CertificateNode* getUNSATCertificateRoot() const;
+	UnsatCertificateNode* getUNSATCertificateRoot() const;
 
 	/*
 	 * Certify the UNSAT certificate
@@ -781,8 +781,8 @@ private:
 	Vector<double> _groundLowerBounds;
 	Vector<unsigned> _upperDecisionLevels;
 	Vector<unsigned> _lowerDecisionLevels;
-	CertificateNode* _UNSATCertificate;
-	CertificateNode* _UNSATCertificateCurrentPointer;
+	UnsatCertificateNode* _UNSATCertificate;
+	UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 
 	/*
 	  Prints coefficients of Simplex equations that witness UNSAT

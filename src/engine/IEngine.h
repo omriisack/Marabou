@@ -32,7 +32,7 @@ class PiecewiseLinearCaseSplit;
 class SmtState;
 class String;
 class PiecewiseLinearConstraint;
-class CertificateNode;
+class UnsatCertificateNode;
 
 class IEngine
 {
@@ -143,17 +143,17 @@ public:
 	/*
 	 * Get the current pointer in the UNSAT certificate
 	 */
-	virtual CertificateNode* getUNSATCertificateCurrentPointer() const = 0;
+	virtual UnsatCertificateNode* getUNSATCertificateCurrentPointer() const = 0;
 
 	/*
 	 * Set the current pointer in the UNSAT certificate
 	 */
-	virtual void setUNSATCertificateCurrentPointer( CertificateNode* node ) = 0;
+	virtual void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node ) = 0;
 
 	/*
 	 * Get the root of the UNSAT certificate
 	 */
-	virtual CertificateNode* getUNSATCertificateRoot() const = 0;
+	virtual UnsatCertificateNode* getUNSATCertificateRoot() const = 0;
 
 	/*
 	 * Certify the UNSAT certificate

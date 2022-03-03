@@ -20,7 +20,7 @@
 #include "MarabouError.h"
 #include "SmtCore.h"
 #include "TableauStateStorageLevel.h"
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
 void PrecisionRestorer::storeInitialEngineState( const IEngine &engine )
 {

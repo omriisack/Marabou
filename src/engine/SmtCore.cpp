@@ -25,7 +25,7 @@
 #include "PseudoImpactTracker.h"
 #include "ReluConstraint.h"
 #include "SmtCore.h"
-#include "UNSATCertificate.h"
+#include "UnsatCertificateNode.h"
 
 SmtCore::SmtCore( IEngine *engine )
     : _statistics( NULL )
@@ -170,13 +170,13 @@ void SmtCore::performSplit()
     _engine->storeState( *stateBeforeSplits,
                          TableauStateStorageLevel::STORE_BOUNDS_ONLY );
 
-	CertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
+	UnsatCertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
 		//Create children for UNSATCertificate current node, and assign a split to each of them
 		ASSERT( certificateNode );
 		for ( PiecewiseLinearCaseSplit& childSplit : splits )
-			 new CertificateNode( certificateNode, childSplit );
+			 new UnsatCertificateNode(certificateNode, childSplit );
 	}
 
     SmtStackEntry *stackEntry = new SmtStackEntry;
@@ -245,7 +245,7 @@ bool SmtCore::popSplit()
 
     // Remove any entries that have no alternatives
     String error;
-	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+	UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
 
     while ( _stack.back()->_alternativeSplits.empty() )
     {
@@ -298,7 +298,7 @@ bool SmtCore::popSplit()
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
 		//Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
-		CertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
+		UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
 		ASSERT( certificateNode );
 		certificateNode = certificateNode->getParent();
 		ASSERT( certificateNode );
@@ -565,7 +565,7 @@ bool SmtCore::backjump( unsigned backjumpLevel )
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !backjumpLevel )
 		return true;
 
-	CertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+	UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
 	// Remove any entries that have no alternatives
 
 	for ( unsigned  i = 0; i < backjumpLevel; ++i)

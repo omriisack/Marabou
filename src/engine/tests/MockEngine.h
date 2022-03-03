@@ -233,16 +233,16 @@ public:
 	}
 
 
-	CertificateNode* getUNSATCertificateCurrentPointer() const
+    UnsatCertificateNode *getUNSATCertificateCurrentPointer() const
 	{
 		return NULL;
 	}
 
-	void setUNSATCertificateCurrentPointer( CertificateNode* /* node*/ )
+	void setUNSATCertificateCurrentPointer( UnsatCertificateNode */* node*/ )
 	{
 	}
 
-	CertificateNode* getUNSATCertificateRoot() const
+    UnsatCertificateNode *getUNSATCertificateRoot() const
 	{
 		return NULL;
 	}
