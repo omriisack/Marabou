@@ -83,8 +83,6 @@ Engine::Engine()
 
     _activeEntryStrategy = _projectedSteepestEdgeRule;
     _activeEntryStrategy->setStatistics( &_statistics );
-
-    srand( Options::get()->getInt( Options::SEED ) );
     _statistics.stampStartingTime();
 }
 
@@ -128,6 +126,11 @@ void Engine::applySnCSplit( PiecewiseLinearCaseSplit sncSplit, String queryId )
 	_sncSplit = sncSplit;
 	_queryId = queryId;
 	applySplit( sncSplit );
+}
+
+void Engine::setRandomSeed( unsigned seed )
+{
+    srand( seed );
 }
 
 InputQuery Engine::prepareSnCInputQuery()

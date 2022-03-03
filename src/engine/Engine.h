@@ -48,7 +48,7 @@
 
 #include <context/context.h>
 #include <atomic>
-#include <assert.h>
+
 
 #ifdef _WIN32
 #undef ERROR
@@ -221,6 +221,8 @@ public:
       Return true if a valid case split has been applied.
     */
     bool applyAllValidConstraintCaseSplits();
+
+    void setRandomSeed( unsigned seed );
 
 	/*
 	 * Update the ground bounds
