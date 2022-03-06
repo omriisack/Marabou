@@ -52,10 +52,11 @@ void SmtLibWriter::addTableauRow( const Vector<double> &row, List<String> &insta
         ++counter;
     }
 
+    // Add last element
     assertRowLine += String( " ( * " ) + signedValue( row[size - 1] ) + " x" + std::to_string( size - 1 ) + " )";
 
     for ( unsigned i = 0; i < counter + 2 ; ++i )
-        assertRowLine += String( ")" );
+        assertRowLine += String( " )" );
 
     instance.append( assertRowLine + "\n" );
 }

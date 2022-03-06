@@ -12,8 +12,8 @@
  ** [[ Add lengthier description here ]]
  **/
 
-#ifndef __CertificateNode_h__
-#define __CertificateNode_h__
+#ifndef __UnsatCertificateNode_h__
+#define __UnsatCertificateNode_h__
 
 #include "BoundExplainer.h"
 #include "Contradiction.h"
@@ -40,12 +40,12 @@ public:
     /*
       Constructor for the root
     */
-    UnsatCertificateNode(Vector<Vector<double>> *_initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds );
+    UnsatCertificateNode( Vector<Vector<double>> *_initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds );
 
     /*
       Constructor for a regular node
     */
-    UnsatCertificateNode(UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split );
+    UnsatCertificateNode( UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split );
 
     ~UnsatCertificateNode();
 
@@ -201,4 +201,4 @@ private:
     double explainBound( unsigned var, bool isUpper, Vector<double> &explanation );
 };
 
-#endif //__CertificateNode_h__
+#endif //__UnsatCertificateNode_h__

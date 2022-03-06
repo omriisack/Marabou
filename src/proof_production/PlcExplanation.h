@@ -33,6 +33,7 @@ public:
     ~PLCExplanation();
 
     unsigned getDecisionLevel();
+
 private:
     unsigned _causingVar;
     unsigned _affectedVar;

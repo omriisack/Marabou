@@ -16,7 +16,7 @@
 #include "UnsatCertificateNode.h"
 
 
-UnsatCertificateNode::UnsatCertificateNode(Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
+UnsatCertificateNode::UnsatCertificateNode( Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
     : _parent( NULL )
     , _contradiction( NULL )
     , _hasSATSolution( false )
@@ -29,7 +29,7 @@ UnsatCertificateNode::UnsatCertificateNode(Vector<Vector<double>> *initialTablea
 {
 }
 
-UnsatCertificateNode::UnsatCertificateNode(UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split )
+UnsatCertificateNode::UnsatCertificateNode( UnsatCertificateNode *parent, PiecewiseLinearCaseSplit split )
     : _parent( parent )
     , _contradiction( NULL )
     , _headSplit( std::move( split ) )
@@ -67,7 +67,7 @@ UnsatCertificateNode::~UnsatCertificateNode()
     _parent = NULL;
 }
 
-void UnsatCertificateNode::setContradiction(Contradiction *contradiction )
+void UnsatCertificateNode::setContradiction( Contradiction *contradiction )
 {
     _contradiction = contradiction;
 }
@@ -108,7 +108,7 @@ void UnsatCertificateNode::makeLeaf()
     _children.clear();
 }
 
-void UnsatCertificateNode::passChangesToChildren(UnsatCertificateProblemConstraint *childrenSplitConstraint )
+void UnsatCertificateNode::passChangesToChildren( UnsatCertificateProblemConstraint *childrenSplitConstraint )
 {
     for ( auto *child : _children )
     {
@@ -121,7 +121,7 @@ void UnsatCertificateNode::passChangesToChildren(UnsatCertificateProblemConstrai
                 child->addProblemConstraint( constraint._type, constraint._constraintVars, constraint._status );
         }
 
-        //Add the constraint corresponding to head split with correct phase
+        // Add the constraint corresponding to head split with correct phase
         if ( childrenSplitConstraint && childrenSplitConstraint->_type == PiecewiseLinearFunctionType::RELU )
         {
             if ( child->_headSplit.getBoundTightenings().front()._type == Tightening::LB || child->_headSplit.getBoundTightenings().back()._type == Tightening::LB  )
@@ -217,12 +217,12 @@ bool UnsatCertificateNode::certifyContradiction()
     return computedUpper < computedLower;
 }
 
-double UnsatCertificateNode::explainBound(unsigned var, bool isUpper, Vector<double> &explanation )
+double UnsatCertificateNode::explainBound( unsigned var, bool isUpper, Vector<double> &explanation )
 {
     return UNSATCertificateUtils::computeBound( var, isUpper, explanation, *_initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
-void UnsatCertificateNode::copyGroundBounds(Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
+void UnsatCertificateNode::copyGroundBounds( Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
 {
     _groundUpperBounds = Vector<double>( groundUpperBounds );
     _groundLowerBounds = Vector<double>( groundLowerBounds );
@@ -238,12 +238,12 @@ bool UnsatCertificateNode::isValidNonLeaf() const
     return !_contradiction && !_children.empty();
 }
 
-void UnsatCertificateNode::addPLCExplanation(std::shared_ptr<PLCExplanation> &explanation )
+void UnsatCertificateNode::addPLCExplanation( std::shared_ptr<PLCExplanation> &explanation )
 {
     _PLCExplanations.append( explanation );
 }
 
-void UnsatCertificateNode::addProblemConstraint(PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status )
+void UnsatCertificateNode::addProblemConstraint( PiecewiseLinearFunctionType type, List<unsigned> constraintVars, PhaseStatus status )
 {
     _problemConstraints.append( { type, constraintVars, status } );
 }
@@ -283,7 +283,7 @@ UnsatCertificateProblemConstraint *UnsatCertificateNode::getCorrespondingReLUCon
     return correspondingConstraint;
 }
 
-bool UnsatCertificateNode::certifyAllPLCExplanations(double epsilon )
+bool UnsatCertificateNode::certifyAllPLCExplanations( double epsilon )
 {
     // Create copies of the gb, check for their validity, and pass these changes to all the children
     // Assuming the splits of the children are ok.
@@ -389,7 +389,7 @@ bool UnsatCertificateNode::certifyAllPLCExplanations(double epsilon )
 /*
  * Get a pointer to a child by a head split, or NULL if not found
  */
-UnsatCertificateNode *UnsatCertificateNode::getChildBySplit(const PiecewiseLinearCaseSplit &split ) const
+UnsatCertificateNode *UnsatCertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit &split ) const
 {
     for ( UnsatCertificateNode *child : _children )
     {
@@ -410,14 +410,14 @@ void UnsatCertificateNode::setVisited()
     _wasVisited = true;
 }
 
-void UnsatCertificateNode::shouldDelegate(unsigned delegationNumber, DelegationStatus delegationStatus )
+void UnsatCertificateNode::shouldDelegate( unsigned delegationNumber, DelegationStatus delegationStatus )
 {
     ASSERT( delegationStatus != DelegationStatus::DONT_DELEGATE );
     _delegationStatus = delegationStatus;
     _delegationNumber = delegationNumber;
 }
 
-bool UnsatCertificateNode::certifySingleVarSplits(const List<PiecewiseLinearCaseSplit> &splits ) const
+bool UnsatCertificateNode::certifySingleVarSplits( const List<PiecewiseLinearCaseSplit> &splits ) const
 {
     if ( splits.size() != 2 )
         return false;
@@ -454,7 +454,7 @@ void UnsatCertificateNode::deletePLCExplanations()
 /*
  * Removes all PLC explanations from a certain point
  */
-void UnsatCertificateNode::setPLCExplanations(const List<std::shared_ptr<PLCExplanation>> &explanations )
+void UnsatCertificateNode::setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations )
 {
     _PLCExplanations.clear();
     _PLCExplanations = explanations;
@@ -492,7 +492,7 @@ void UnsatCertificateNode::writeLeafToFile()
     SmtLibWriter::writeInstanceToFile( file, leafInstance );
 }
 
-void UnsatCertificateNode::removePLCExplanationsBelowDecisionLevel(unsigned decisionLevel )
+void UnsatCertificateNode::removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel )
 {
     _PLCExplanations.removeIf( [decisionLevel] ( std::shared_ptr<PLCExplanation> &explanation ){ return explanation->_decisionLevel <= decisionLevel; } );
 }
