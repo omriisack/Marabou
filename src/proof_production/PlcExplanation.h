@@ -19,8 +19,8 @@
 
 enum BoundType : bool
 {
-    UPPER = 0,
-    LOWER = 1,
+    UPPER = 1,
+    LOWER = 0,
 };
 
 /*

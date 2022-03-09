@@ -207,9 +207,9 @@ void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double v
     auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
 	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
 
-    affectedVarBound ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel );
+    affectedVarBound == UPPER ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel );
 	_tableau.resetExplanation( var, affectedVarBound );
-    affectedVarBound ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+    affectedVarBound == UPPER ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
 }
 
 
