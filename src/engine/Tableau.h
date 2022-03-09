@@ -764,7 +764,7 @@ private:
 	/*
  	* Artificially updates an explanation, without using the recursive rule
  	*/
-	void injectExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
+	void setExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
 
 	/*
      * Explainer of all bounds

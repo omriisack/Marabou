@@ -19,8 +19,8 @@
 
 enum BoundType : bool
 {
-    UPPER = true,
-    LOWER = false,
+    UPPER = 1,
+    LOWER = 0,
 };
 
 /*
@@ -32,7 +32,7 @@ public:
     PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel );
     ~PLCExplanation();
 
-    unsigned getDecisionLevel();
+    unsigned getDecisionLevel() const;
 
 private:
     unsigned _causingVar;

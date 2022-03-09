@@ -202,7 +202,7 @@ public:
 	virtual void updateExplanation( const TableauRow &row, bool isUpper, unsigned var ) const = 0;
 	virtual void updateExplanation( const SparseUnsortedList &row, bool isUpper, unsigned var ) const = 0;
 	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
-	virtual void injectExplanation( const Vector<double> &explanations, unsigned var,  bool isUpper ) const = 0;
+	virtual void setExplanation( const Vector<double> &explanations, unsigned var,  bool isUpper ) const = 0;
 	virtual bool checkCostFunctionSlack() = 0;
 	virtual BoundExplainer *getAllBoundsExplanations() const = 0;
 	virtual void setAllBoundsExplanations( BoundExplainer* boundsExplanations ) = 0;

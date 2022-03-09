@@ -70,7 +70,7 @@ public:
     /*
       Updates an explanation, without necessarily using the recursive rule
      */
-    void injectExplanation( const Vector<double> &explanation, unsigned var, bool isUpper );
+    void setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper );
 
 private:
     unsigned _numberOfVariables;
