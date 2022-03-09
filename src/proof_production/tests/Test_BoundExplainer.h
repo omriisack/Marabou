@@ -40,16 +40,16 @@ public:
     }
 
     /*
-      Test explanation injection
+      Test setExplanation
     */
-    void testExplanationInjection()
+    void testSetExplanation()
     {
         unsigned numberOfVariables = 2;
         unsigned numberOfRows = 2;
         double value = -2.55;
         BoundExplainer be( numberOfVariables, numberOfRows );
 
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfVariables, value ), 0, true ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( Vector<double>( numberOfVariables, value ), 0, true ) );
         auto explanation = be.getExplanation( 0, true );
 
         for ( auto num : explanation )
@@ -65,8 +65,8 @@ public:
         unsigned numberOfRows = 2;
         BoundExplainer be( numberOfVariables, numberOfRows );
 
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfVariables, 1 ), numberOfVariables - 1, true ) );
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfVariables, 5 ), numberOfVariables - 1, false ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( Vector<double>( numberOfVariables, 1 ), numberOfVariables - 1, true ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( Vector<double>( numberOfVariables, 5 ), numberOfVariables - 1, false ) );
         be.addVariable();
 
         TS_ASSERT_EQUALS( be.getNumberOfRows(), numberOfRows + 1 );
@@ -91,7 +91,7 @@ public:
         unsigned numberOfRows = 1;
         BoundExplainer be( numberOfVariables, numberOfRows );
 
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( Vector<double>( numberOfRows, 1 ), 0, true ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( Vector<double>( numberOfRows, 1 ), 0, true ) );
         TS_ASSERT( !be.getExplanation( 0 , true ).empty() );
 
         be.resetExplanation( 0, true );
@@ -123,9 +123,9 @@ public:
         updateTableauRow._row[3] = TableauRow::Entry( 4, 1 );
         updateTableauRow._row[4] = TableauRow::Entry( 5, 0 );
 
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( row1, 0, true ) );
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( row2, 1, true ) );
-        TS_ASSERT_THROWS_NOTHING( be.injectExplanation( row3, 1, false ) ); // Will not be possible in an actual tableau
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( row1, 0, true ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( row2, 1, true ) );
+        TS_ASSERT_THROWS_NOTHING( be.setExplanation( row3, 1, false ) ); // Will not be possible in an actual tableau
 
         be.updateBoundExplanation( updateTableauRow, true );
         // Result is { 1, 0, 0 } + 2 * { 0, -1, 0 } + { -1, 1, 0}
