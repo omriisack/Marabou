@@ -113,7 +113,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
     extractRowCoefficients( row, rowCoefficients, ci );
     addVecTimesScalar( sum, rowCoefficients, 1 );
 
-    injectExplanation( sum, var, isUpper );
+    setExplanation( sum, var, isUpper );
 }
 
 void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row, bool isUpper, unsigned var )
@@ -163,7 +163,7 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
     extractSparseRowCoefficients( row, rowCoefficients, ci );
     addVecTimesScalar( sum, rowCoefficients, 1 );
 
-    injectExplanation( sum, var, isUpper );
+    setExplanation( sum, var, isUpper );
 }
 
 void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<double> &input,  double scalar ) const
