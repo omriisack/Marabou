@@ -15,7 +15,6 @@
 #include <Options.h>
 #include "UnsatCertificateNode.h"
 
-
 UnsatCertificateNode::UnsatCertificateNode( Vector<Vector<double>> *initialTableau, Vector<double> &groundUpperBounds, Vector<double> &groundLowerBounds )
     : _parent( NULL )
     , _contradiction( NULL )
@@ -72,7 +71,7 @@ void UnsatCertificateNode::setContradiction( Contradiction *contradiction )
     _contradiction = contradiction;
 }
 
-Contradiction *UnsatCertificateNode::getContradiction() const
+const Contradiction *UnsatCertificateNode::getContradiction() const
 {
     return _contradiction;
 }

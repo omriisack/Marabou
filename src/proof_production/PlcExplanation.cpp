@@ -15,14 +15,14 @@
 #include "PlcExplanation.h"
 
 PLCExplanation::PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel )
-        :_causingVar( causingVar )
-        ,_affectedVar( affectedVar )
-        ,_bound( bound )
-        ,_causingVarBound( causingVarBound )
-        ,_affectedVarBound( affectedVarBound )
-        ,_explanation( explanation )
-        ,_constraintType( constraintType )
-        ,_decisionLevel( decisionLevel )
+    :_causingVar( causingVar )
+    , _affectedVar( affectedVar )
+    , _bound( bound )
+    , _causingVarBound( causingVarBound )
+    , _affectedVarBound( affectedVarBound )
+    , _explanation( explanation )
+    , _constraintType( constraintType )
+    , _decisionLevel( decisionLevel )
 {
 }
 
@@ -35,7 +35,7 @@ PLCExplanation::~PLCExplanation()
     }
 }
 
-unsigned PLCExplanation::getDecisionLevel()
+unsigned PLCExplanation::getDecisionLevel() const
 {
     return _decisionLevel;
 }

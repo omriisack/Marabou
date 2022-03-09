@@ -673,7 +673,7 @@ public:
 	}
 
 
-	void injectExplanation( const Vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
+	void setExplanation( const Vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
 	{
 	}
 

@@ -2906,10 +2906,10 @@ void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
 	_boundsExplainer->resetExplanation( var, isUpper );
 }
 
-void Tableau::injectExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
+void Tableau::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
 {
 	ASSERT( explanation.size() == _m || explanation.empty() );
-	_boundsExplainer->injectExplanation( explanation, var, isUpper );
+	_boundsExplainer->setExplanation( explanation, var, isUpper );
 }
 
 BoundExplainer *Tableau::getAllBoundsExplanations() const

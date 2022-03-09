@@ -16,9 +16,9 @@
 #include "Contradiction.h"
 
 Contradiction::Contradiction( unsigned var, double *upperBoundExplanation, double *lowerBoundExplanation )
-        :_var( var )
-        ,_upperBoundExplanation( upperBoundExplanation )
-        ,_lowerBoundExplanation( lowerBoundExplanation )
+    :_var( var )
+    , _upperBoundExplanation( upperBoundExplanation )
+    , _lowerBoundExplanation( lowerBoundExplanation )
 {
 }
 

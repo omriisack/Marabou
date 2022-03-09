@@ -173,26 +173,26 @@ void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<double
 
     ASSERT( sum.size() == _numberOfRows && input.size() == _numberOfRows );
 
-    for (unsigned i = 0; i < _numberOfRows; ++i )
+    for ( unsigned i = 0; i < _numberOfRows; ++i )
         sum[i] += scalar * input[i];
 }
 
 void BoundExplainer::extractRowCoefficients( const TableauRow &row, Vector<double> &coefficients, double ci ) const
 {
     ASSERT( coefficients.size() == _numberOfRows && row._size <= _numberOfVariables );
+    ASSERT( !FloatUtils::isZero( ci ) );
 
     // The coefficients of the row m highest-indices vars are the coefficients of slack variables
     for ( unsigned i = 0; i < row._size; ++i )
     {
-        if (row._row[i]._var >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero(row._row[i]._coefficient ) )
+        if ( row._row[i]._var >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero( row._row[i]._coefficient ) )
             coefficients[row._row[i]._var - _numberOfVariables + _numberOfRows] = - row._row[i]._coefficient / ci;
     }
 
     // If the lhs was part of original basis, its coefficient is 1 / ci
-    if (row._lhs >= _numberOfVariables - _numberOfRows )
+    if ( row._lhs >= _numberOfVariables - _numberOfRows )
         coefficients[row._lhs - _numberOfVariables + _numberOfRows] = 1 / ci;
 }
-
 
 void BoundExplainer::extractSparseRowCoefficients( const SparseUnsortedList &row, Vector<double> &coefficients, double ci ) const
 {
@@ -201,7 +201,7 @@ void BoundExplainer::extractSparseRowCoefficients( const SparseUnsortedList &row
     // The coefficients of the row m highest-indices vars are the coefficients of slack variables
     for ( const auto &entry : row )
     {
-        if (entry._index >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero( entry._value ) )
+        if ( entry._index >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero( entry._value ) )
             coefficients[entry._index - _numberOfVariables + _numberOfRows] = - entry._value / ci;
     }
 }
@@ -213,7 +213,7 @@ void BoundExplainer::addVariable()
     _upperBoundExplanations.append( Vector<double>( 0 ) );
     _lowerBoundExplanations.append( Vector<double>( 0 ) );
 
-    for (unsigned i = 0; i < _numberOfVariables; ++i )
+    for ( unsigned i = 0; i < _numberOfVariables; ++i )
     {
         if ( !_upperBoundExplanations[i].empty() )
             _upperBoundExplanations[i].append( 0 );
@@ -225,13 +225,13 @@ void BoundExplainer::addVariable()
 
 void BoundExplainer::resetExplanation( unsigned var, bool isUpper )
 {
-    ASSERT(var < _numberOfVariables );
+    ASSERT( var < _numberOfVariables );
     isUpper ? _upperBoundExplanations[var].clear() : _lowerBoundExplanations[var].clear();
 }
 
-void BoundExplainer::injectExplanation( const Vector<double> &explanation, unsigned var, bool isUpper )
+void BoundExplainer::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper )
 {
-    ASSERT(var < _numberOfVariables && (explanation.empty() || explanation.size() == _numberOfRows ) );
+    ASSERT( var < _numberOfVariables && (explanation.empty() || explanation.size() == _numberOfRows ) );
     Vector<double> *temp = isUpper ? &_upperBoundExplanations[var] : &_lowerBoundExplanations[var];
     *temp = explanation;
 }

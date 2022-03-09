@@ -62,7 +62,7 @@ public:
     /*
       Returns the leaf contradiction certificate of the node
     */
-    Contradiction *getContradiction() const;
+    const Contradiction *getContradiction() const;
 
     /*
      Returns the parent of a node

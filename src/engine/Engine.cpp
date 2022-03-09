@@ -3428,7 +3428,7 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, TableauRo
     if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
         return true;
 
-    _tableau->injectExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+    _tableau->setExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
 
     return false;
 }
@@ -3441,7 +3441,7 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, SparseUns
     if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
         return true;
 
-    _tableau->injectExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+    _tableau->setExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
 
     return false;
 }
