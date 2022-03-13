@@ -16,6 +16,7 @@
 #define __PlcExplanation_h__
 
 #include "PiecewiseLinearConstraint.h"
+#include "Vector.h"
 
 enum BoundType : bool
 {
@@ -29,7 +30,15 @@ enum BoundType : bool
 class PLCExplanation
 {
 public:
-    PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel );
+    PLCExplanation( unsigned causingVar,
+                    unsigned affectedVar,
+                    double bound,
+                    BoundType causingVarBound,
+                    BoundType affectedVarBound,
+                    const Vector<double> &explanation,
+                    PiecewiseLinearFunctionType constraintType,
+                    unsigned decisionLevel );
+
     ~PLCExplanation();
 
     unsigned getDecisionLevel() const;

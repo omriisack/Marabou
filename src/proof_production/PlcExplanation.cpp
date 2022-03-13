@@ -14,16 +14,29 @@
 
 #include "PlcExplanation.h"
 
-PLCExplanation::PLCExplanation( unsigned causingVar, unsigned affectedVar, double bound, BoundType causingVarBound, BoundType affectedVarBound, double *explanation, PiecewiseLinearFunctionType constraintType, unsigned decisionLevel )
-    :_causingVar( causingVar )
+PLCExplanation::PLCExplanation( unsigned causingVar,
+                                unsigned affectedVar,
+                                double bound,
+                                BoundType causingVarBound,
+                                BoundType affectedVarBound,
+                                const Vector<double> &explanation,
+                                PiecewiseLinearFunctionType constraintType,
+                                unsigned decisionLevel )
+    : _causingVar( causingVar )
     , _affectedVar( affectedVar )
     , _bound( bound )
     , _causingVarBound( causingVarBound )
     , _affectedVarBound( affectedVarBound )
-    , _explanation( explanation )
     , _constraintType( constraintType )
     , _decisionLevel( decisionLevel )
 {
+    if ( explanation.empty() )
+        _explanation = NULL;
+    else
+    {
+        _explanation = new double[explanation.size()];
+        std::copy( explanation.begin(), explanation.end(), _explanation );
+    }
 }
 
 PLCExplanation::~PLCExplanation()

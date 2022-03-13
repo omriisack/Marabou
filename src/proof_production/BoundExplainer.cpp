@@ -92,7 +92,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
 
         // If we're currently explaining an upper bound, we use upper bound explanation iff variable's coefficient is positive
         // If we're currently explaining a lower bound, we use upper bound explanation iff variable's coefficient is negative
-        tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 );
+        tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
         tempBound = tempUpper ? _upperBoundExplanations[curVar] : _lowerBoundExplanations[curVar];
         addVecTimesScalar( sum, tempBound, realCoefficient );
     }
@@ -103,7 +103,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         realCoefficient = 1 / ci;
         if ( !FloatUtils::isZero( realCoefficient ) )
         {
-            tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 );
+            tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
             tempBound = tempUpper ? _upperBoundExplanations[row._lhs] : _lowerBoundExplanations[row._lhs];
             addVecTimesScalar( sum, tempBound, realCoefficient );
         }
@@ -154,7 +154,7 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
 
         // If we're currently explaining an upper bound, we use upper bound explanation iff variable's coefficient is positive
         // If we're currently explaining a lower bound, we use upper bound explanation iff variable's coefficient is negative
-        tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper &&  realCoefficient < 0 );
+        tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
         tempBound = tempUpper ? _upperBoundExplanations[entry._index] : _lowerBoundExplanations[entry._index];
         addVecTimesScalar( sum, tempBound, realCoefficient );
     }
@@ -186,23 +186,24 @@ void BoundExplainer::extractRowCoefficients( const TableauRow &row, Vector<doubl
     for ( unsigned i = 0; i < row._size; ++i )
     {
         if ( row._row[i]._var >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero( row._row[i]._coefficient ) )
-            coefficients[row._row[i]._var - _numberOfVariables + _numberOfRows] = - row._row[i]._coefficient / ci;
+            coefficients[row._row[i]._var - _numberOfVariables + _numberOfRows] = row._row[i]._coefficient / ci;
     }
 
-    // If the lhs was part of original basis, its coefficient is 1 / ci
+    // If the lhs was part of original basis, its coefficient is -1 / ci
     if ( row._lhs >= _numberOfVariables - _numberOfRows )
-        coefficients[row._lhs - _numberOfVariables + _numberOfRows] = 1 / ci;
+        coefficients[row._lhs - _numberOfVariables + _numberOfRows] = -1 / ci;
 }
 
 void BoundExplainer::extractSparseRowCoefficients( const SparseUnsortedList &row, Vector<double> &coefficients, double ci ) const
 {
-    ASSERT(coefficients.size() == _numberOfRows );
+    ASSERT( coefficients.size() == _numberOfRows );
+    ASSERT( !FloatUtils::isZero( ci ) );
 
     // The coefficients of the row m highest-indices vars are the coefficients of slack variables
     for ( const auto &entry : row )
     {
         if ( entry._index >= _numberOfVariables - _numberOfRows && !FloatUtils::isZero( entry._value ) )
-            coefficients[entry._index - _numberOfVariables + _numberOfRows] = - entry._value / ci;
+            coefficients[entry._index - _numberOfVariables + _numberOfRows] = entry._value / ci;
     }
 }
 

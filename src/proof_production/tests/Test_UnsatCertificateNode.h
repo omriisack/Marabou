@@ -170,7 +170,7 @@ public:
         // Visited leaves have no contradiction, so certification will fail
         TS_ASSERT( !root->certify() );
 
-        // Mark visited leaves with flags that immediately certify them
+        // Mark visited leaves with flags that immediately certify them, for debugging purposes only
         child1->setSATSolution();
         child2_1->shouldDelegate( 0, DelegationStatus::DELEGATE_DONT_SAVE );
         TS_ASSERT( root->certify() );

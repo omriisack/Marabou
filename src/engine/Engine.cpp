@@ -3523,27 +3523,8 @@ void Engine::markLeafToDelegate()
 
 void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
 {
-    auto upperBoundExplanationVector = _tableau->explainBound( infeasibleVar, true );
-    auto lowerBoundExplanationVector = _tableau->explainBound( infeasibleVar, false );
-
-    double *upperBoundExplanation;
-    double *lowerBoundExplanation;
-
-    if ( upperBoundExplanationVector.empty() )
-       upperBoundExplanation = NULL;
-    else
-    {
-       upperBoundExplanation = new double[upperBoundExplanationVector.size()];
-       std::copy( upperBoundExplanationVector.begin(), upperBoundExplanationVector.end(), upperBoundExplanation );
-    }
-
-    if ( lowerBoundExplanationVector.empty() )
-       lowerBoundExplanation = NULL;
-    else
-    {
-        lowerBoundExplanation = new double[lowerBoundExplanationVector.size()];
-        std::copy( lowerBoundExplanationVector.begin(), lowerBoundExplanationVector.end(), lowerBoundExplanation );
-    }
+    auto upperBoundExplanation = _tableau->explainBound( infeasibleVar, true );
+    auto lowerBoundExplanation = _tableau->explainBound( infeasibleVar, false );
 
     _UNSATCertificateCurrentPointer->setContradiction( new Contradiction( infeasibleVar, upperBoundExplanation, lowerBoundExplanation ) );
 }

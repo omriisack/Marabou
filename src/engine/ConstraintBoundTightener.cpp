@@ -192,17 +192,7 @@ void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double v
 
 	// Register new ground bound, update certificate, and reset explanation
 	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, causingVarBound );
-	auto explanationVector = _tableau.explainBound( causingVar, causingVarBound );
-
-    double *explanation;
-
-	if ( explanationVector.empty() )
-        explanation = NULL;
-	else
-	{
-        explanation = new double[explanationVector.size()];
-		std::copy( explanationVector.begin(), explanationVector.end(), explanation );
-	}
+	auto explanation = _tableau.explainBound( causingVar, causingVarBound );
 
     auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
 	_engine.getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );

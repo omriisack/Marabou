@@ -72,13 +72,11 @@ void UNSATCertificateUtils::getExplanationRowCombination( unsigned var, Vector<d
 
     for ( unsigned i = 0; i < n; ++i )
     {
-        if ( !FloatUtils::isZero( explanationRowCombination[i] ) )
-            explanationRowCombination[i] *= -1;
-        else
+        if ( FloatUtils::isZero( explanationRowCombination[i] ) )
             explanationRowCombination[i] = 0;
     }
 
-    // Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c - 1) * var + var
-    // We have: var = - Sum (ci * xi) - (c - 1) * var
+    // Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c + 1) * var - var
+    // We have: var = Sum (ci * xi) + (c + 1) * var
     ++explanationRowCombination[var];
 }
