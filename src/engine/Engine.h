@@ -23,6 +23,7 @@
 #include "AutoTableau.h"
 #include "BlandsRule.h"
 #include "BoundManager.h"
+#include "Checker.h"
 #include "DantzigsRule.h"
 #include "DegradationChecker.h"
 #include "DivideStrategy.h"

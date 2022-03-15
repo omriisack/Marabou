@@ -399,7 +399,7 @@ void Statistics::print()
 	printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
 	printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
 	if ( getUnsignedAttribute( Statistics::NUM_POPS ) )
-		printf( "\tAvg jump level: %.5lf\n", ( ( double ) getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ) ) / getUnsignedAttribute( Statistics::NUM_POPS ) );
+		printf( "\tAverage jump level: %.5lf\n", ( ( double ) getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ) ) / getUnsignedAttribute( Statistics::NUM_POPS ) );
 
 }
 

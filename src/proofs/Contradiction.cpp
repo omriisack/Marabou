@@ -48,3 +48,18 @@ Contradiction::~Contradiction()
         _lowerBoundExplanation = NULL;
     }
 }
+
+unsigned Contradiction::getVar() const
+{
+    return _var;
+}
+
+const double *Contradiction::getUpperBoundExplanation() const
+{
+    return _upperBoundExplanation;
+}
+
+const double *Contradiction::getLowerBoundExplanation() const
+{
+    return _lowerBoundExplanation;
+}

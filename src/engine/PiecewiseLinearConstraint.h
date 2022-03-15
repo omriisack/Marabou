@@ -452,7 +452,17 @@ public:
     	_tableauAuxVar = counterpart;
 	}
 
+    /*
+       Method to set PhaseStatus of the constraint. Encapsulates both context
+       dependent and context-less behavior. Initialized to PHASE_NOT_FIXED.
+     */
+    void setPhaseStatus( PhaseStatus phaseStatus );
 
+    /*
+       Method to get PhaseStatus of the constraint. Encapsulates both context
+       dependent and context-less behavior.
+    */
+    PhaseStatus getPhaseStatus() const;
 protected:
     unsigned _numCases; // Number of possible cases/phases for this constraint
                         // (e.g. 2 for ReLU, ABS, SIGN; >=2 for Max and Disjunction )
@@ -515,18 +525,6 @@ protected:
        Check whether a case is marked as infeasible under current search prefix.
      */
     bool isCaseInfeasible( PhaseStatus phase ) const;
-
-    /*
-       Method to set PhaseStatus of the constraint. Encapsulates both context
-       dependent and context-less behavior. Initialized to PHASE_NOT_FIXED.
-     */
-    void setPhaseStatus( PhaseStatus phaseStatus );
-
-    /*
-       Method to get PhaseStatus of the constraint. Encapsulates both context
-       dependent and context-less behavior.
-    */
-    PhaseStatus getPhaseStatus() const;
 
     /**********************************************************************/
     /*                         BOUND WRAPPER METHODS                      */

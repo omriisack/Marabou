@@ -18,7 +18,7 @@
 #include "PiecewiseLinearConstraint.h"
 #include "Vector.h"
 
-enum BoundType : bool
+enum BoundType : unsigned
 {
     UPPER = 1,
     LOWER = 0,
@@ -41,6 +41,17 @@ public:
 
     ~PLCExplanation();
 
+
+    /*
+     Getters for all fields
+    */
+    unsigned getCausingVar() const;
+    unsigned getAffectedVar() const;
+    double getBound() const;
+    BoundType getCausingVarBound() const;
+    BoundType getAffectedVarBound() const;
+    const double *getExplanation() const;
+    PiecewiseLinearFunctionType getConstraintType() const;
     unsigned getDecisionLevel() const;
 
 private:
@@ -52,8 +63,6 @@ private:
     double *_explanation;
     PiecewiseLinearFunctionType _constraintType;
     unsigned _decisionLevel;
-
-friend class UnsatCertificateNode;
 };
 
 #endif //__PlcExplanation_h__

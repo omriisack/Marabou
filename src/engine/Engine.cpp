@@ -299,7 +299,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
                     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 					{
                     	ASSERT( _UNSATCertificateCurrentPointer );
-                        _UNSATCertificateCurrentPointer->setSATSolution();
+                        _UNSATCertificateCurrentPointer->setSATSolutionFlag();
 					}
 					_exitCode = Engine::SAT;
                     return true;
@@ -1394,9 +1394,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
             {
-                _UNSATCertificate = new UnsatCertificateNode(&_initialTableau, _groundUpperBounds, _groundLowerBounds );
-                for ( auto& plConstraint : _plConstraints )
-                    _UNSATCertificate->addProblemConstraint( plConstraint->getType(), plConstraint->getParticipatingVariables(), PhaseStatus::PHASE_NOT_FIXED );
+                _UNSATCertificate = new UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
                 _UNSATCertificate->setVisited();
             }
@@ -2956,7 +2954,8 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-    return UNSATCertificateUtils::computeBound( var, isUpper, _tableau->explainBound( var, isUpper ), _initialTableau, _groundUpperBounds, _groundLowerBounds );
+    const double *explanation = _tableau->explainBound( var, isUpper ).empty() ? NULL : _tableau->explainBound( var, isUpper ).data();
+    return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
 bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
@@ -2969,7 +2968,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
     if ( isUpper )
     {
         real = _tableau->getUpperBound( var );
-        if ( explained - real > epsilon || explained - real < -M  || abs(explained) > 10 * M )
+        if ( explained - real > epsilon || explained - real < -M  || FloatUtils::abs( explained ) > M )
         {
             printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
             return false;
@@ -2978,7 +2977,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
     else
     {
         real = _tableau->getLowerBound( var );
-        if ( explained - real  < -epsilon || explained - real > M || abs(explained) > 10 * M )
+        if ( explained - real  < -epsilon || explained - real > M || FloatUtils::abs( explained ) > M )
         {
             printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
             return false;
@@ -3371,7 +3370,7 @@ void Engine::explainSimplexFailure()
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
     _statistics.incUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES );
 
-    //performJumpForUNSATCertificate( computeJumpLevel( infeasibleVar ) );
+//    performJumpForUNSATCertificate( computeJumpLevel( infeasibleVar ) );
 
     writeContradictionToCertificate( infeasibleVar );
 }
@@ -3473,17 +3472,19 @@ bool Engine::certifyUNSATCertificate()
     if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_UNSATCertificate )
         return false;
 
-    for ( auto &plConstraint : _plConstraints )
+    for ( auto &constraint : _plConstraints )
     {
-        if ( plConstraint->getType() != RELU )
+        if ( constraint->getType() != RELU )
         {
             printf("Certification Error! Marabou doesn't support certification for none ReLU constraints.\n");
             return false;
         }
     }
 
+    Checker unsatCertificateChecker( _UNSATCertificate, _initialTableau, _groundUpperBounds, _groundLowerBounds, _plConstraints );
+
     struct timespec certificationStart = TimeUtils::sampleMicro();
-    bool certificationSucceeded = _UNSATCertificate->certify();  //TODO call only in case of UNSAT when done
+    bool certificationSucceeded = unsatCertificateChecker.check();  //TODO call only in case of UNSAT when done
     struct timespec certificationEnd = TimeUtils::sampleMicro();
 
     unsigned long long totalTime =  TimeUtils::timePassed( certificationStart, certificationEnd );
@@ -3523,7 +3524,7 @@ void Engine::markLeafToDelegate()
 
     // Mark leaf with toDelegate Flag
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->shouldDelegate( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ), DelegationStatus::DELEGATE_DONT_SAVE );
+    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
     _UNSATCertificateCurrentPointer->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }
@@ -3598,9 +3599,9 @@ unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) 
     unsigned explanationLevel = 0;
 
     // Retrieve bound explanation
-    Vector<double> expl = _tableau->explainBound( var, isUpper );
+    const double *expl = _tableau->explainBound( var, isUpper ).empty() ? NULL : _tableau->explainBound( var, isUpper ).data();
 
-    if ( expl.empty() )
+    if ( !expl )
         return isUpper ? _upperDecisionLevels[var] : _lowerDecisionLevels[var];
 
     Vector<double> explanationRowCombination;
@@ -3636,6 +3637,5 @@ void Engine::naivelyApplyAllTightenings()
     }
 
     struct timespec end = TimeUtils::sampleMicro();
-    _statistics.incLongAttribute( Statistics::TOTAL_TIME_APPLYING_STORED_TIGHTENINGS_MICRO,
-                                  TimeUtils::timePassed( start, end ) );
+    _statistics.incLongAttribute( Statistics::TOTAL_TIME_APPLYING_STORED_TIGHTENINGS_MICRO, TimeUtils::timePassed( start, end ) );
 }

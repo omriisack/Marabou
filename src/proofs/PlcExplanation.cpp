@@ -48,6 +48,41 @@ PLCExplanation::~PLCExplanation()
     }
 }
 
+unsigned PLCExplanation::getCausingVar() const
+{
+    return _causingVar;
+}
+
+unsigned PLCExplanation::getAffectedVar() const
+{
+    return _affectedVar;
+}
+
+double PLCExplanation::getBound() const
+{
+    return _bound;
+}
+
+BoundType PLCExplanation::getCausingVarBound() const
+{
+    return _causingVarBound;
+}
+
+BoundType PLCExplanation::getAffectedVarBound() const
+{
+    return _affectedVarBound;
+}
+
+const double *PLCExplanation::getExplanation() const
+{
+    return _explanation;
+}
+
+PiecewiseLinearFunctionType PLCExplanation::getConstraintType() const
+{
+    return _constraintType;
+}
+
 unsigned PLCExplanation::getDecisionLevel() const
 {
     return _decisionLevel;
