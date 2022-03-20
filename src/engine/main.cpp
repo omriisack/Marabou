@@ -78,7 +78,8 @@ int main( int argc, char **argv )
         };
 
         if ( !GlobalConfiguration::PROOF_CERTIFICATE && ( options->getBool( Options::DNC_MODE ) ||
-             ( options->getBool( Options::PARALLEL_DEEPSOI ) &&
+             ( !options->getBool( Options::NO_PARALLEL_DEEPSOI ) &&
+               !options->getBool( Options::SOLVE_WITH_MILP ) &&
                options->getInt( Options::NUM_WORKERS ) > 1 ) ) )
             DnCMarabou().run();
         else

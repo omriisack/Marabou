@@ -343,7 +343,7 @@ private:
     /*
       Preprocessed InputQuery
     */
-    InputQuery _preprocessedQuery;
+    std::unique_ptr<InputQuery> _preprocessedQuery;
 
     /*
       Pivot selection strategies.
@@ -512,6 +512,11 @@ private:
       Query Identifier
      */
     String _queryId;
+
+    /*
+      Frequency to print the statistics.
+    */
+    unsigned _statisticsPrintingFrequency;
 
     LinearExpression _heuristicCost;
 
