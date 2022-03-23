@@ -33,7 +33,7 @@ public:
 
         double explanation[3] = { 1, 1, 0 };
         // Linear combination is x0 = 2x0 - x1 + x2 + x3 + x4, thus explanation combination is only lhs
-        // This check computation method only, since no actual bound will be explained this way
+        // Checks computation method only, since no actual bound will be explained this way
 
         unsigned var = 0;
 
