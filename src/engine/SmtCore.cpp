@@ -173,10 +173,14 @@ void SmtCore::performSplit()
 	UnsatCertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
-		//Create children for UNSATCertificate current node, and assign a split to each of them
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        //Create children for UNSATCertificate current node, and assign a split to each of them
 		ASSERT( certificateNode );
 		for ( PiecewiseLinearCaseSplit& childSplit : splits )
 			 new UnsatCertificateNode(certificateNode, childSplit );
+
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
 
     SmtStackEntry *stackEntry = new SmtStackEntry;
@@ -185,11 +189,15 @@ void SmtCore::performSplit()
     ASSERT( split->getEquations().size() == 0 );
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
-		//Set the current node of the UNSAT certificate to be the child corresponding to the first split
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        //Set the current node of the UNSAT certificate to be the child corresponding to the first split
 		auto *firstSplitChild = certificateNode->getChildBySplit( *split );
 		ASSERT( firstSplitChild );
 		_engine->setUNSATCertificateCurrentPointer( firstSplitChild );
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
+
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
 	_stack.append( stackEntry ); //TODO moved here so depth will be accurate when applying the split
 
@@ -257,8 +265,12 @@ bool SmtCore::popSplit()
         }
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 		{
-			ASSERT( currentCertificateNode );
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+            ASSERT( currentCertificateNode );
 			currentCertificateNode = currentCertificateNode->getParent();
+
+            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
 		}
         delete _stack.back()->_engineState;
         delete _stack.back();
@@ -269,9 +281,13 @@ bool SmtCore::popSplit()
 
 		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 		{
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
 			// In case that the current pointer is not the root
 			ASSERT( currentCertificateNode );
 			_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+
+            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 		}
     }
 
@@ -297,7 +313,9 @@ bool SmtCore::popSplit()
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
-		//Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        //Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
 		UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
 		ASSERT( certificateNode );
 		certificateNode = certificateNode->getParent();
@@ -306,6 +324,8 @@ bool SmtCore::popSplit()
 		ASSERT(splitChild );
 		_engine->setUNSATCertificateCurrentPointer( splitChild );
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
+
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
     SMT_LOG( "\tApplying new split..." );
     ASSERT( split->getEquations().size() == 0 );
@@ -565,12 +585,13 @@ bool SmtCore::backjump( unsigned backjumpLevel )
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !backjumpLevel )
 		return true;
 
+    // TODO time is not measured since called from Engine::ExplainSimplexFailure
 	UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
 	// Remove any entries that have no alternatives
 
 	for ( unsigned  i = 0; i < backjumpLevel; ++i)
 	{
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		if ( _engine->getUNSATCertificateRoot() )
 		{
 			ASSERT( currentCertificateNode );
 			currentCertificateNode = currentCertificateNode->getParent();
@@ -581,7 +602,7 @@ bool SmtCore::backjump( unsigned backjumpLevel )
 		_stack.popBack();
 	}
 
-	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	if ( _engine->getUNSATCertificateRoot() )
 	{
 		// In case that the current pointer is not the root
 		ASSERT( currentCertificateNode );

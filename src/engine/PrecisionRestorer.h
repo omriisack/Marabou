@@ -28,15 +28,25 @@ public:
         DO_NOT_RESTORE_BASICS = 1,
     };
 
-    void storeInitialEngineState( const IEngine &engine );
+    void storeInitialEngineState( IEngine &engine );
 
     void restorePrecision( IEngine &engine,
                            ITableau &tableau,
                            SmtCore &smtCore,
                            RestoreBasics restoreBasics );
 
+    /*
+     Have the PrecisionRestorer start reporting statistics.
+    */
+    void setStatistics( Statistics *statistics );
+
 private:
     EngineState _initialEngineState;
+
+    /*
+      Statistics collection
+    */
+    Statistics *_statistics;
 };
 
 #endif // __PrecisionRestorer_h__

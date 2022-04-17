@@ -81,6 +81,8 @@ Engine::Engine()
     _rowBoundTightener->setStatistics( &_statistics );
     _constraintBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
+    _precisionRestorer.setStatistics( &_statistics );
+
 
     _activeEntryStrategy = _projectedSteepestEdgeRule;
     _activeEntryStrategy->setStatistics( &_statistics );
@@ -101,12 +103,14 @@ Engine::~Engine()
         _work = NULL;
     }
 
+    struct timespec proofProductionStart = TimeUtils::sampleMicro();
     if ( _UNSATCertificate ) //TODO consider deleting outside engine
 	{
 		delete _UNSATCertificate;
 		_UNSATCertificate = NULL;
 		_UNSATCertificateCurrentPointer = NULL;
 	}
+    _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 }
 
 void Engine::setVerbosity( unsigned verbosity )
@@ -1004,6 +1008,7 @@ double *Engine::createConstraintMatrix()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
         unsigned count = 0;
 
         _groundUpperBounds = Vector<double>( n );
@@ -1014,6 +1019,9 @@ double *Engine::createConstraintMatrix()
             _groundUpperBounds[i] = _preprocessedQuery->getUpperBound( i );
             _groundLowerBounds[i] = _preprocessedQuery->getLowerBound( i );
         }
+
+        _initialGroundUpperBounds = Vector<double>( _groundUpperBounds );
+        _initialGroundLowerBounds = Vector<double>( _groundLowerBounds );
 
         _upperDecisionLevels = Vector<unsigned>( n, 0 );
         _lowerDecisionLevels = Vector<unsigned>( n, 0 );
@@ -1031,6 +1039,7 @@ double *Engine::createConstraintMatrix()
             // After Preprocessing, all scalars should be zero
             ++count;
         }
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
     return constraintMatrix;
@@ -1315,8 +1324,12 @@ void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
     {
         plConstraint->registerConstraintBoundTightener( _constraintBoundTightener );
         // Assuming aux var is use
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
         if ( GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery->_lastAddendToAux.exists( plConstraint->getParticipatingVariables().back() ) )
             plConstraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( plConstraint->getParticipatingVariables().back() ) );
+
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
     _plConstraints = _preprocessedQuery->getPiecewiseLinearConstraints();
@@ -1403,9 +1416,11 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
             {
+                struct timespec proofProductionStart = TimeUtils::sampleMicro();
                 _UNSATCertificate = new UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
                 _UNSATCertificate->setVisited();
+                _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
             }
         }
         else
@@ -1691,7 +1706,7 @@ void Engine::reportPlViolation()
     _smtCore.reportViolatedConstraint( _plConstraintToFix );
 }
 
-void Engine::storeState( EngineState &state, TableauStateStorageLevel level ) const
+void Engine::storeState( EngineState &state, TableauStateStorageLevel level )
 {
     _tableau->storeState( state._tableauState, level );
     state._tableauStateStorageLevel = level;
@@ -1703,11 +1718,13 @@ void Engine::storeState( EngineState &state, TableauStateStorageLevel level ) co
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
-        state._groundLowerBounds = Vector<double>( _groundLowerBounds );
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();        state._groundLowerBounds = Vector<double>( _groundLowerBounds );
         state._groundUpperBounds = Vector<double>( _groundUpperBounds );
 
         state._upperDecisionLevels = Vector<unsigned>( _upperDecisionLevels );
         state._lowerDecisionLevels = Vector<unsigned >( _lowerDecisionLevels );
+
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
     }
 }
 
@@ -1735,11 +1752,15 @@ void Engine::restoreState( const EngineState &state )
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
         _groundUpperBounds = Vector<double>( state._groundUpperBounds );
         _groundLowerBounds = Vector<double>( state._groundLowerBounds );
 
         _upperDecisionLevels = Vector<unsigned>( state._upperDecisionLevels );
         _lowerDecisionLevels = Vector<unsigned>( state._lowerDecisionLevels );
+
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
     if ( _lpSolverType == LPSolverType::NATIVE )
@@ -1978,10 +1999,13 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
             if ( GlobalConfiguration::PROOF_CERTIFICATE && isBoundTightest( bound._variable, bound._value, false ) )
             {
+                struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
                 _tableau->resetExplanation( variable, false );
-                _groundLowerBounds[variable] = bound._value;
-                _lowerDecisionLevels[variable] = _smtCore.getStackDepth();
+                updateGroundLowerBound( variable, bound._value, _smtCore.getStackDepth() );
                 _tableau->tightenLowerBound( variable, bound._value );
+
+                _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
             }
             else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
             	_tableau->tightenLowerBound( variable, bound._value );
@@ -1991,10 +2015,13 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
             if ( GlobalConfiguration::PROOF_CERTIFICATE && isBoundTightest( bound._variable, bound._value, true ) )
             {
+                struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
                 _tableau->resetExplanation( variable, true );
-                _groundUpperBounds[variable] = bound._value;
-                _upperDecisionLevels[variable] = _smtCore.getStackDepth();
+                updateGroundUpperBound( variable, bound._value, _smtCore.getStackDepth() );
                 _tableau->tightenUpperBound( variable, bound._value );
+
+                _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
             }
             else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
                 _tableau->tightenUpperBound( variable, bound._value );
@@ -2002,7 +2029,13 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     }
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _UNSATCertificateCurrentPointer )
+    {
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
         _UNSATCertificateCurrentPointer->setVisited();
+
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
+    }
 
 	DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
@@ -2453,6 +2486,7 @@ void Engine::resetStatistics()
     _constraintBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
     _activeEntryStrategy->setStatistics( &_statistics );
+    _precisionRestorer.setStatistics( &_statistics );
 
     _statistics.stampStartingTime();
 }
@@ -3358,6 +3392,8 @@ void Engine::explainSimplexFailure()
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
         return;
 
+    struct timespec explanationStart = TimeUtils::sampleMicro();
+
     naivelyApplyAllTightenings();
 
 //    checkGroundBounds();  // TODO keep commented when running on Cluster
@@ -3381,9 +3417,12 @@ void Engine::explainSimplexFailure()
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
     _statistics.incUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES );
 
-//    performJumpForUNSATCertificate( computeJumpLevel( infeasibleVar ) );
+    if ( UNSATCertificateUtils::PERFORM_JUMP )
+        performJumpForUNSATCertificate( computeJumpLevel( infeasibleVar ) );
 
     writeContradictionToCertificate( infeasibleVar );
+
+    _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( explanationStart, TimeUtils::sampleMicro() ) );
 }
 
 void Engine::checkGroundBounds() const
@@ -3492,16 +3531,14 @@ bool Engine::certifyUNSATCertificate()
         }
     }
 
-    Checker unsatCertificateChecker( _UNSATCertificate, _initialTableau, _groundUpperBounds, _groundLowerBounds, _plConstraints );
-
     struct timespec certificationStart = TimeUtils::sampleMicro();
+
+    Checker unsatCertificateChecker( _UNSATCertificate, _initialTableau, _initialGroundUpperBounds, _initialGroundLowerBounds, _plConstraints );
     bool certificationSucceeded = unsatCertificateChecker.check();  //TODO call only in case of UNSAT when done
-    struct timespec certificationEnd = TimeUtils::sampleMicro();
 
-    unsigned long long totalTime =  TimeUtils::timePassed( certificationStart, certificationEnd );
-
-    _statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, totalTime );
-    _statistics.printLongAttributeAsTime( Statistics::TOTAL_CERTIFICATION_TIME );
+    _statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, TimeUtils::timePassed( certificationStart, TimeUtils::sampleMicro() ) );
+    printf( "Total certification time: " );
+    _statistics.printLongAttributeAsTime( _statistics.getLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME ) );
 
     if ( certificationSucceeded )
         printf("Certified\n");
@@ -3535,7 +3572,7 @@ void Engine::markLeafToDelegate()
 
     // Mark leaf with toDelegate Flag
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
+    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_SAVE );
     _UNSATCertificateCurrentPointer->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }
@@ -3606,6 +3643,9 @@ void Engine::performJumpForUNSATCertificate( unsigned jumpSize )
 
 unsigned Engine::computeExplanationDecisionLevel( unsigned var,  bool isUpper ) const
 {
+    if ( !GlobalConfiguration::PROOF_CERTIFICATE || !UNSATCertificateUtils::PERFORM_JUMP )
+        return _smtCore.getStackDepth();
+
     unsigned n = _tableau->getN();
     unsigned explanationLevel = 0;
 

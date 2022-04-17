@@ -188,7 +188,9 @@ void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double v
 	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_engine.isBoundTightest( var, value, affectedVarBound ) )
 		return;
 
-	ASSERT( causingVar < _tableau.getN() && var < _tableau.getN() );
+    struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+    ASSERT( causingVar < _tableau.getN() && var < _tableau.getN() );
 
 	// Register new ground bound, update certificate, and reset explanation
 	unsigned decisionLevel = _engine.computeExplanationDecisionLevel( causingVar, causingVarBound );
@@ -200,6 +202,8 @@ void ConstraintBoundTightener::externalExplanationUpdate( unsigned var, double v
     affectedVarBound == UPPER ? _engine.updateGroundUpperBound( var, value, decisionLevel ) : _engine.updateGroundLowerBound( var, value, decisionLevel );
 	_tableau.resetExplanation( var, affectedVarBound );
     affectedVarBound == UPPER ? registerTighterUpperBound( var, value ) : registerTighterLowerBound( var, value );
+
+    _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 }
 
 

@@ -333,12 +333,17 @@ void Tableau::setDimensions( unsigned m, unsigned n )
 
     if( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-    	if( _boundsExplainer )
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        if( _boundsExplainer )
 			delete _boundsExplainer;
 
 		_boundsExplainer = new BoundExplainer(_n, _m );  // Reset whenever new dimensions are set.
 		if ( !_boundsExplainer )
 			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
+
+        if ( _statistics )
+            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
 }
 
@@ -1715,7 +1720,14 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
 
         // Store bounds explanations
         if ( GlobalConfiguration::PROOF_CERTIFICATE  )
+        {
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
             *state._boundsExplainer = *_boundsExplainer;
+
+            if ( _statistics )
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+        }
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
     {
@@ -1761,7 +1773,14 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
 
         // Store bounds explanations
         if ( GlobalConfiguration::PROOF_CERTIFICATE && state._boundsExplainer )
+        {
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
             *state._boundsExplainer = *_boundsExplainer;
+
+            if ( _statistics )
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+        }
     }
     else
     {
@@ -1785,9 +1804,14 @@ void Tableau::restoreState( const TableauState &state,
         // Restore bounds explanations
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
         {
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
             *_boundsExplainer = *state._boundsExplainer;
             ASSERT( _boundsExplainer->getNumberOfRows() == _m );
             ASSERT( _boundsExplainer->getNumberOfVariables() == _n );
+
+            if ( _statistics )
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
         }
 
         if ( _lpSolverType == LPSolverType::NATIVE )
@@ -1852,9 +1876,14 @@ void Tableau::restoreState( const TableauState &state,
         // Restore bounds explanations
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
         {
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
             *_boundsExplainer = *state._boundsExplainer;
             ASSERT( _boundsExplainer->getNumberOfRows() == _m );
             ASSERT( _boundsExplainer->getNumberOfVariables() == _n );
+
+            if ( _statistics )
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
         }
 
         computeAssignment();
@@ -2271,7 +2300,14 @@ void Tableau::addRow()
     }
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		_boundsExplainer->addVariable();
+    {
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        _boundsExplainer->addVariable();
+
+        if ( _statistics )
+            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+    }
 
 }
 
@@ -2831,20 +2867,41 @@ const Vector<double>& Tableau::explainBound( const unsigned variable, const bool
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
 {
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		_boundsExplainer->updateBoundExplanation( row, isUpper );
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+        return;
+
+    struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+    _boundsExplainer->updateBoundExplanation( row, isUpper );
+
+    if ( _statistics )
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 }
 
 void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
 {
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		_boundsExplainer->updateBoundExplanation( row, isUpper, var );
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+	    return;
+
+    struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+    _boundsExplainer->updateBoundExplanation( row, isUpper, var );
+
+    if ( _statistics )
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 }
 
 void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-		_boundsExplainer->updateBoundExplanationSparse( row, isUpper, var );
+	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+	    return;
+
+    struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+    _boundsExplainer->updateBoundExplanationSparse( row, isUpper, var );
+
+    if ( _statistics )
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 }
 
 double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const

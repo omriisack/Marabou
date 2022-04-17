@@ -22,7 +22,7 @@
 #include "TableauStateStorageLevel.h"
 #include "UnsatCertificateNode.h"
 
-void PrecisionRestorer::storeInitialEngineState( const IEngine &engine )
+void PrecisionRestorer::storeInitialEngineState( IEngine &engine )
 {
     engine.storeState( _initialEngineState,
                        TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE );
@@ -55,7 +55,9 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-		tableauExplanations = *tableau.getAllBoundsExplanations();
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        tableauExplanations = *tableau.getAllBoundsExplanations();
 
 		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds(true ) );
 		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds(false ) );
@@ -64,6 +66,8 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
         lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
 
         PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations();
+
+        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
 
     try
@@ -132,7 +136,9 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
 		if ( GlobalConfiguration::PROOF_CERTIFICATE )
 		{
-			tableau.setAllBoundsExplanations( &tableauExplanations );
+            struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+            tableau.setAllBoundsExplanations( &tableauExplanations );
 
 			for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
 			{
@@ -141,6 +147,8 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 			}
 
             engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup );
+
+            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
 		}
 
         for ( unsigned i = 0; i < targetN; ++i )
@@ -189,6 +197,11 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
     delete[] lowerBounds;
     delete[] upperBounds;
+}
+
+void PrecisionRestorer::setStatistics( Statistics *statistics )
+{
+   _statistics = statistics;
 }
 
 //

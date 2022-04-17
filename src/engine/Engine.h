@@ -111,7 +111,7 @@ public:
     /*
       Methods for storing and restoring the state of the engine.
     */
-    void storeState( EngineState &state, TableauStateStorageLevel level ) const;
+    void storeState( EngineState &state, TableauStateStorageLevel level );
     void restoreState( const EngineState &state );
     void setNumPlConstraintsDisabledByValidSplits( unsigned numConstraints );
 
@@ -787,6 +787,8 @@ private:
 	Vector<Vector<double>> _initialTableau;
 	Vector<double> _groundUpperBounds;
 	Vector<double> _groundLowerBounds;
+    Vector<double> _initialGroundUpperBounds; //TODO check if actually needed
+    Vector<double> _initialGroundLowerBounds;
 	Vector<unsigned> _upperDecisionLevels;
 	Vector<unsigned> _lowerDecisionLevels;
 	UnsatCertificateNode* _UNSATCertificate;

@@ -86,6 +86,7 @@ Statistics::Statistics()
     _longAttributes[TOTAL_TIME_LOCAL_SEARCH_MICRO] = 0;
     _longAttributes[TOTAL_TIME_GETTING_SOI_PHASE_PATTERN_MICRO] = 0;
     _longAttributes[TIME_ADDING_CONSTRAINTS_TO_MILP_SOLVER_MICRO] = 0;
+    _longAttributes[TIME_PROOF_PRODUCTION] = 0;
     _longAttributes[TOTAL_CERTIFICATION_TIME] = 0;
 
     _doubleAttributes[CURRENT_DEGRADATION] = 0.0;
@@ -395,11 +396,15 @@ void Statistics::print()
             , printPercents( totalTimeGettingSoIPhasePatternMicro,
 
                              timeMainLoopMicro ) );
-	printf( "\t--- Proof Certificate ---\n" );
-	printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
-	printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
-	if ( getUnsignedAttribute( Statistics::NUM_POPS ) )
-		printf( "\tAverage jump level: %.5lf\n", ( ( double ) getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ) ) / getUnsignedAttribute( Statistics::NUM_POPS ) );
+    if (GlobalConfiguration::PROOF_CERTIFICATE )
+    {
+        printf( "\t--- Proof Certificate ---\n" );
+        printf( "\tTotal time of proof production: " );
+        printLongAttributeAsTime( getLongAttribute( Statistics::TIME_PROOF_PRODUCTION ) );
+        printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
+        printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
+        printf( "\tAverage jump level: %.5lf\n", printAverage( getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ), getUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES ) ) );
+    }
 
 }
 
@@ -448,11 +453,11 @@ double Statistics::printAverage( unsigned long long part, unsigned long long tot
 
     return (double)part / total;
 }
-void Statistics::printLongAttributeAsTime( StatisticsLongAttribute attr )
+void Statistics::printLongAttributeAsTime( unsigned long long longAsNumber )
 {
-	unsigned int seconds = _longAttributes[attr] / 1000000;
+	unsigned int seconds = longAsNumber / 1000000;
 	unsigned int minutes = seconds / 60;
 	unsigned int hours = minutes / 60;
-	printf( "\tCertification Total Time: %llu milli (%02u:%02u:%02u)\n",
-			_longAttributes[attr] / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
+	printf( "%llu milli (%02u:%02u:%02u)\n",
+            longAsNumber / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
 }
