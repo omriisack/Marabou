@@ -128,7 +128,7 @@ public:
     /*
      * Explainer for all bounds
      */
-    BoundExplainer *_boundsExplainer;
+    BoundExplainer *_boundExplainer;
 };
 
 #endif // __TableauState_h__

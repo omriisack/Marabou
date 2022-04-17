@@ -3572,7 +3572,7 @@ void Engine::markLeafToDelegate()
 
     // Mark leaf with toDelegate Flag
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_SAVE );
+    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
     _UNSATCertificateCurrentPointer->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }

@@ -769,7 +769,7 @@ private:
 	/*
      * Explainer of all bounds
     */
-	BoundExplainer *_boundsExplainer;
+	BoundExplainer *_boundExplainer;
 };
 
 #endif // __Tableau_h__
