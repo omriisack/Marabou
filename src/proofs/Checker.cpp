@@ -128,12 +128,17 @@ bool Checker::checkNode( const UnsatCertificateNode *node )
 bool Checker::checkContradiction( const UnsatCertificateNode *node ) const
 {
     ASSERT( node->isValidLeaf() && !node->getSATSolutionFlag() );
-    unsigned var = node->getContradiction()->getVar();
+    auto contradictionVec = node->getContradiction()->getContradictionVec();
 
-    double computedUpper = explainBound( var, true, node->getContradiction()->getUpperBoundExplanation() );
-    double computedLower = explainBound( var, false, node->getContradiction()->getLowerBoundExplanation() );
+    if ( contradictionVec == NULL )
+    {
+        double infeasibleVar = node->getContradiction()->getVar();
+        return FloatUtils::isNegative( _groundUpperBounds[infeasibleVar] - _groundLowerBounds[infeasibleVar] );
+    }
 
-    return computedUpper < computedLower;
+    double contradictionUpperBound = UNSATCertificateUtils::computeCombinationUpperBound( contradictionVec, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+
+    return FloatUtils::isNegative( contradictionUpperBound );
 }
 
 bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double epsilon )

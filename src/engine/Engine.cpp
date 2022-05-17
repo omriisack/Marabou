@@ -2993,8 +2993,9 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
         return false;
 
-    double computedUpper = getExplainedBound( var, true ), computedLower = getExplainedBound( var, false );
-    return computedLower > computedUpper;
+    auto contradictionVec = computeContradictionVec( var );
+    double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( contradictionVec.data(), _initialTableau, _groundUpperBounds, _groundLowerBounds );
+    return FloatUtils::isNegative( derivedBound );
 }
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
@@ -3577,12 +3578,27 @@ void Engine::markLeafToDelegate()
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 }
 
-void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
+const Vector<double> Engine::computeContradictionVec( unsigned infeasibleVar ) const
 {
+    unsigned m = _tableau->getM();
     auto upperBoundExplanation = _tableau->explainBound( infeasibleVar, true );
     auto lowerBoundExplanation = _tableau->explainBound( infeasibleVar, false );
+    if ( upperBoundExplanation.empty() && lowerBoundExplanation.empty() )
+        return Vector<double>( 0 );
 
-    _UNSATCertificateCurrentPointer->setContradiction( new Contradiction( infeasibleVar, upperBoundExplanation, lowerBoundExplanation ) );
+    auto contradictionVec = upperBoundExplanation.empty() ? Vector<double>( m, 0 )  : Vector<double>( upperBoundExplanation );
+    if ( !lowerBoundExplanation.empty() )
+        for ( unsigned i = 0; i < m; ++i )
+            contradictionVec[i] -= lowerBoundExplanation[i];
+
+    return  contradictionVec;
+}
+
+void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
+{
+    auto leafContradictionVec = computeContradictionVec( infeasibleVar );
+    Contradiction *leafContradiction = leafContradictionVec.empty() ? new Contradiction( infeasibleVar ) : new Contradiction( leafContradictionVec );
+    _UNSATCertificateCurrentPointer->setContradiction( leafContradiction );
 }
 
 unsigned Engine::computeJumpLevel( unsigned infeasibleVar )

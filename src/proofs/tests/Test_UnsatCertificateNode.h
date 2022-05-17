@@ -68,7 +68,7 @@ public:
         auto upperBoundExplanation = Vector<double>(1, 1);
         auto lowerBoundExplanation = Vector<double>(1, 1);
 
-        auto *contradiction = new Contradiction( 0, upperBoundExplanation, lowerBoundExplanation );
+        auto *contradiction = new Contradiction( Vector<double>(1, 0 ) );
         root.setContradiction( contradiction );
         TS_ASSERT_EQUALS( root.getContradiction(), contradiction );
     }

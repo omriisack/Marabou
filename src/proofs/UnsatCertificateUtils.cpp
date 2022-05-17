@@ -34,19 +34,19 @@ double UNSATCertificateUtils::computeBound( unsigned var,
         return isUpper ? groundUpperBounds[var]  : groundLowerBounds[var];
 
     // Create linear combination of original rows implied from explanation
-    Vector<double> explanationRowsCombination;
-    UNSATCertificateUtils::getExplanationRowCombination( var, explanationRowsCombination, explanation, initialTableau );
+    Vector<double> explanationRowCombination;
+    UNSATCertificateUtils::getExplanationRowCombination( var, explanationRowCombination, explanation, initialTableau );
 
     // Set the bound derived from the linear combination, using original bounds.
     for ( unsigned i = 0; i < n; ++i )
     {
-        temp = explanationRowsCombination[i];
+        temp = explanationRowCombination[i];
         if ( !FloatUtils::isZero( temp ) )
         {
             if ( isUpper )
-                temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundUpperBounds[i] : groundLowerBounds[i];
+                temp *= FloatUtils::isPositive( explanationRowCombination[i] ) ? groundUpperBounds[i] : groundLowerBounds[i];
             else
-                temp *= FloatUtils::isPositive( explanationRowsCombination[i] ) ? groundLowerBounds[i] : groundUpperBounds[i];
+                temp *= FloatUtils::isPositive( explanationRowCombination[i] ) ? groundLowerBounds[i] : groundUpperBounds[i];
 
             if ( !FloatUtils::isZero( temp ) )
                 derivedBound += temp;
@@ -61,6 +61,7 @@ void UNSATCertificateUtils::getExplanationRowCombination( unsigned var,
                                                           const double *explanation,
                                                           const Vector<Vector<double>> &initialTableau )
 {
+    ASSERT( explanation != NULL );
     explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
     unsigned n = initialTableau[0].size();
     unsigned m = initialTableau.size();
@@ -82,4 +83,41 @@ void UNSATCertificateUtils::getExplanationRowCombination( unsigned var,
     // Since: 0 = Sum (ci * xi) + c * var = Sum (ci * xi) + (c + 1) * var - var
     // We have: var = Sum (ci * xi) + (c + 1) * var
     ++explanationRowCombination[var];
+}
+
+double UNSATCertificateUtils::computeCombinationUpperBound( const double *explanation,
+                                                               const Vector<Vector<double>> &initialTableau,
+                                                               const Vector<double> &groundUpperBounds,
+                                                               const Vector<double> &groundLowerBounds)
+{
+    ASSERT( explanation != NULL );
+    auto explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
+    unsigned n = initialTableau[0].size();
+    unsigned m = initialTableau.size();
+    for ( unsigned i = 0; i < m; ++i )
+    {
+        for ( unsigned j = 0; j < n; ++j )
+        {
+            if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( explanation[i] ) )
+                explanationRowCombination[j] += initialTableau[i][j] * explanation[i];
+        }
+    }
+
+    double derivedBound = 0;
+    double temp;
+
+    // Set the bound derived from the linear combination, using original bounds.
+    for ( unsigned i = 0; i < n; ++i )
+    {
+        temp = explanationRowCombination[i];
+        if ( !FloatUtils::isZero( temp ) )
+        {
+            temp *= FloatUtils::isPositive( explanationRowCombination[i] ) ? groundUpperBounds[i] : groundLowerBounds[i];
+
+            if ( !FloatUtils::isZero( temp ) )
+                derivedBound += temp;
+        }
+    }
+
+    return derivedBound;
 }

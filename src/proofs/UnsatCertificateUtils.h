@@ -42,6 +42,11 @@ public:
                                               Vector<double> &explanationRowCombination,
                                               const double *explanation,
                                               const Vector<Vector<double>> &initialTableau );
+
+    static double computeCombinationUpperBound( const double *explanation,
+                                              const Vector<Vector<double>> &initialTableau,
+                                              const Vector<double> &groundUpperBounds,
+                                              const Vector<double> &groundLowerBounds);
 };
 
 #endif //__UnsatCertificateUtils_h__

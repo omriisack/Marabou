@@ -863,6 +863,12 @@ private:
 	void markLeafToDelegate();
 
 	/*
+	  Return the vector given by upper bound explanation - lower bound explanation
+	  Assuming infeasibleVar is indeed infeasible, then the result it a contradiction vector
+	 */
+    const Vector<double> computeContradictionVec( unsigned infeasibleVar ) const;
+
+    /*
 	  Writes the details of a contradiction to the UNSAT certificate
  	*/
 	void writeContradictionToCertificate( unsigned infeasibleVar );
