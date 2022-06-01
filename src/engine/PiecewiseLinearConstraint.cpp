@@ -21,13 +21,12 @@ PiecewiseLinearConstraint::PiecewiseLinearConstraint()
     , _constraintActive( true )
     , _phaseStatus( PHASE_NOT_FIXED )
     , _boundManager( nullptr )
+    , _tableau( nullptr )
     , _context( nullptr )
     , _cdConstraintActive( nullptr )
     , _cdPhaseStatus( nullptr )
     , _cdInfeasibleCases( nullptr )
     , _score( FloatUtils::negativeInfinity() )
-    , _tableau( NULL )
-    , _constraintBoundTightener( NULL )
     , _statistics( NULL )
     , _gurobi( NULL )
     , _tableauAuxVar ( 0 )
@@ -39,13 +38,12 @@ PiecewiseLinearConstraint::PiecewiseLinearConstraint( unsigned numCases )
     , _constraintActive( true )
     , _phaseStatus( PHASE_NOT_FIXED )
     , _boundManager( nullptr )
+    , _tableau( nullptr )
     , _context( nullptr )
     , _cdConstraintActive( nullptr )
     , _cdPhaseStatus( nullptr )
     , _cdInfeasibleCases( nullptr )
     , _score( FloatUtils::negativeInfinity() )
-    , _tableau( NULL )
-    , _constraintBoundTightener( NULL )
     , _statistics( NULL )
     , _gurobi( NULL )
 {
@@ -68,7 +66,7 @@ bool PiecewiseLinearConstraint::isActive() const
 }
 
 void PiecewiseLinearConstraint::registerBoundManager(
-    BoundManager *boundManager )
+    IBoundManager *boundManager )
 {
     ASSERT( _boundManager == nullptr );
     _boundManager = boundManager;
@@ -202,11 +200,6 @@ bool PiecewiseLinearConstraint::isCaseInfeasible( PhaseStatus phase ) const
 void PiecewiseLinearConstraint::setStatistics( Statistics *statistics )
 {
     _statistics = statistics;
-}
-
-void PiecewiseLinearConstraint::registerConstraintBoundTightener( IConstraintBoundTightener *tightener )
-{
-    _constraintBoundTightener = tightener;
 }
 
 //

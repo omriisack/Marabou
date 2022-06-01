@@ -20,6 +20,7 @@
 #include "SnCDivideStrategy.h"
 #include "TableauStateStorageLevel.h"
 #include "List.h"
+#include "context/context.h"
 #include "Vector.h"
 
 #ifdef _WIN32
@@ -61,14 +62,15 @@ public:
     virtual void applySnCSplit( PiecewiseLinearCaseSplit split, String queryId ) = 0;
 
     /*
-      Hook invoked after context pop to update context independent data.
+      Hooks invoked before/after context push/pop to store/restore/update context independent data.
     */
+    virtual void preContextPushHook() = 0;
     virtual void postContextPopHook() = 0;
 
     /*
       Methods for storing and restoring the state of the engine.
     */
-    virtual void storeState( EngineState &state, TableauStateStorageLevel level ) = 0;
+    virtual void storeState( EngineState &state, TableauStateStorageLevel level ) const = 0;
     virtual void restoreState( const EngineState &state ) = 0;
     virtual void setNumPlConstraintsDisabledByValidSplits( unsigned numConstraints ) = 0;
 
@@ -125,6 +127,12 @@ public:
     virtual void applyAllBoundTightenings() = 0;
 
     virtual bool applyAllValidConstraintCaseSplits() = 0;
+    /*
+      Get Context reference
+     */
+    virtual CVC4::context::Context &getContext() = 0;
+
+    virtual bool consistentBounds() const = 0;
 	/*
  	* Return all ground bounds as a vector
  	*/

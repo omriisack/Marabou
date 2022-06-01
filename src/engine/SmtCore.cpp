@@ -30,6 +30,7 @@
 SmtCore::SmtCore( IEngine *engine )
     : _statistics( NULL )
     , _engine( engine )
+    , _context( _engine->getContext() )
     , _needToSplit( false )
     , _constraintForSplitting( NULL )
     , _stateId( 0 )
@@ -169,6 +170,8 @@ void SmtCore::performSplit()
     ++_stateId;
     _engine->storeState( *stateBeforeSplits,
                          TableauStateStorageLevel::STORE_BOUNDS_ONLY );
+    _engine->preContextPushHook();
+    _context.push();
 
 	UnsatCertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
     if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
@@ -187,6 +190,7 @@ void SmtCore::performSplit()
     // Perform the first split: add bounds and equations
     List<PiecewiseLinearCaseSplit>::iterator split = splits.begin();
     ASSERT( split->getEquations().size() == 0 );
+
 	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
 	{
         struct timespec proofProductionStart = TimeUtils::sampleMicro();
@@ -231,6 +235,7 @@ void SmtCore::performSplit()
 
 unsigned SmtCore::getStackDepth() const
 {
+    ASSERT( _stack.size() == static_cast<unsigned>( _context.getLevel() ) );
     return _stack.size();
 }
 
@@ -251,89 +256,105 @@ bool SmtCore::popSplit()
         _statistics->incUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES );
     }
 
-    // Remove any entries that have no alternatives
-    String error;
-	UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
-
-    while ( _stack.back()->_alternativeSplits.empty() )
+    bool inconsistent = true;
+    while ( inconsistent )
     {
+        // Remove any entries that have no alternatives
+        String error;
+        UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
+
+        while ( _stack.back()->_alternativeSplits.empty() )
+        {
+            if ( checkSkewFromDebuggingSolution() )
+            {
+                // Pops should not occur from a compliant stack!
+                printf( "Error! Popping from a compliant stack\n" );
+                throw MarabouError( MarabouError::DEBUGGING_ERROR );
+            }
+
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+		    {
+                struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+                ASSERT( currentCertificateNode );
+                currentCertificateNode = currentCertificateNode->getParent();
+
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
+		    }
+
+            delete _stack.back()->_engineState;
+            delete _stack.back();
+            _stack.popBack();
+            _context.pop();
+
+            if ( _stack.empty() )
+                return false;
+
+            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+            {
+                struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+                // In case that the current pointer is not the root
+                ASSERT( currentCertificateNode );
+                _engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+
+                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+            }
+        }
+
         if ( checkSkewFromDebuggingSolution() )
         {
             // Pops should not occur from a compliant stack!
             printf( "Error! Popping from a compliant stack\n" );
             throw MarabouError( MarabouError::DEBUGGING_ERROR );
         }
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-		{
+
+        SmtStackEntry *stackEntry = _stack.back();
+
+        _context.pop();
+        _engine->postContextPopHook();
+        // Restore the state of the engine
+        SMT_LOG( "\tRestoring engine state..." );
+        _engine->restoreState( *( stackEntry->_engineState ) );
+        SMT_LOG( "\tRestoring engine state - DONE" );
+
+        // Apply the new split and erase it from the list
+        auto split = stackEntry->_alternativeSplits.begin();
+
+        // Erase any valid splits that were learned using the split we just
+        // popped
+        stackEntry->_impliedValidSplits.clear();
+
+
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+        {
             struct timespec proofProductionStart = TimeUtils::sampleMicro();
 
-            ASSERT( currentCertificateNode );
-			currentCertificateNode = currentCertificateNode->getParent();
-
-            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
-		}
-        delete _stack.back()->_engineState;
-        delete _stack.back();
-        _stack.popBack();
-
-        if ( _stack.empty() )
-            return false;
-
-		if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-		{
-            struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-			// In case that the current pointer is not the root
-			ASSERT( currentCertificateNode );
-			_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
+            //Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
+            UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
+            ASSERT( certificateNode );
+            certificateNode = certificateNode->getParent();
+            ASSERT( certificateNode );
+            auto *splitChild = certificateNode->getChildBySplit( *split );
+            ASSERT(splitChild );
+            _engine->setUNSATCertificateCurrentPointer( splitChild );
+            ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
 
             _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-		}
+        }
+
+        SMT_LOG( "\tApplying new split..." );
+        ASSERT( split->getEquations().size() == 0 );
+        _engine->preContextPushHook();
+        _context.push();
+        _engine->applySplit( *split );
+        SMT_LOG( "\tApplying new split - DONE" );
+
+        stackEntry->_activeSplit = *split;
+        stackEntry->_alternativeSplits.erase( split );
+
+        inconsistent = !_engine->consistentBounds();
     }
-
-    if ( checkSkewFromDebuggingSolution() )
-    {
-        // Pops should not occur from a compliant stack!
-        printf( "Error! Popping from a compliant stack\n" );
-        throw MarabouError( MarabouError::DEBUGGING_ERROR );
-    }
-
-    SmtStackEntry *stackEntry = _stack.back();
-
-    // Restore the state of the engine
-    SMT_LOG( "\tRestoring engine state..." );
-    _engine->restoreState( *( stackEntry->_engineState ) );
-    SMT_LOG( "\tRestoring engine state - DONE" );
-
-    // Apply the new split and erase it from the list
-    auto split = stackEntry->_alternativeSplits.begin();
-
-    // Erase any valid splits that were learned using the split we just popped
-    stackEntry->_impliedValidSplits.clear();
-
-	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
-	{
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        //Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
-		UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
-		ASSERT( certificateNode );
-		certificateNode = certificateNode->getParent();
-		ASSERT( certificateNode );
-		auto *splitChild = certificateNode->getChildBySplit( *split );
-		ASSERT(splitChild );
-		_engine->setUNSATCertificateCurrentPointer( splitChild );
-		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
-
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-	}
-    SMT_LOG( "\tApplying new split..." );
-    ASSERT( split->getEquations().size() == 0 );
-    _engine->applySplit( *split );
-    SMT_LOG( "\tApplying new split - DONE" );
-
-    stackEntry->_activeSplit = *split;
-    stackEntry->_alternativeSplits.erase( split );
 
     if ( _statistics )
     {

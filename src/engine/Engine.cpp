@@ -39,7 +39,7 @@ Engine::Engine()
     , _boundManager( _context )
     , _tableau( _boundManager )
     , _preprocessedQuery( nullptr )
-    , _rowBoundTightener( *_tableau, *this )
+    , _rowBoundTightener( *_tableau )
     , _smtCore( this )
     , _numPlConstraintsDisabledByValidSplits( 0 )
     , _preprocessingEnabled( false )
@@ -50,7 +50,6 @@ Engine::Engine()
     , _costFunctionManager( _tableau )
     , _quitRequested( false )
     , _exitCode( Engine::NOT_DONE )
-    , _constraintBoundTightener( *_tableau, *this )
     , _numVisitedStatesAtPreviousRestoration( 0 )
     , _networkLevelReasoner( NULL )
     , _verbosity( Options::get()->getInt( Options::VERBOSITY ) )
@@ -79,7 +78,6 @@ Engine::Engine()
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
     _rowBoundTightener->setStatistics( &_statistics );
-    _constraintBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
     _precisionRestorer.setStatistics( &_statistics );
 
@@ -179,6 +177,10 @@ bool Engine::solve( unsigned timeoutInSeconds )
 {
     SignalHandler::getInstance()->initialize();
     SignalHandler::getInstance()->registerClient( this );
+
+    // Register the boundManager with all the PL constraints
+    for ( auto &plConstraint : _plConstraints )
+        plConstraint->registerBoundManager( &_boundManager );
 
     if ( _solveWithMILP )
         return solveWithMILPEncoding( timeoutInSeconds );
@@ -284,8 +286,10 @@ bool Engine::solve( unsigned timeoutInSeconds )
             }
 
             if ( !_tableau->allBoundsValid() )
-            // Some variable bounds are invalid, so the query is unsat
+            {
+                // Some variable bounds are invalid, so the query is unsat
                 throw InfeasibleQueryException();
+            }
 
             if ( allVarsWithinBounds() )
             {
@@ -1314,29 +1318,21 @@ void Engine::initializeTableau( const double *constraintMatrix, const List<unsig
 void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
                                                              numberOfVariables )
 {
-    _tableau->registerToWatchAllVariables( _constraintBoundTightener );
-    _tableau->registerResizeWatcher( _constraintBoundTightener );
-
-    _constraintBoundTightener->setDimensions();
-
-    // Register the constraint bound tightener to all the PL constraints
-    for ( auto &plConstraint : _preprocessedQuery->getPiecewiseLinearConstraints() )
-    {
-        plConstraint->registerConstraintBoundTightener( _constraintBoundTightener );
-        // Assuming aux var is use
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery->_lastAddendToAux.exists( plConstraint->getParticipatingVariables().back() ) )
-            plConstraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( plConstraint->getParticipatingVariables().back() ) );
-
-        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
-    }
+    _rowBoundTightener->setDimensions();
 
     _plConstraints = _preprocessedQuery->getPiecewiseLinearConstraints();
     for ( const auto &constraint : _plConstraints )
     {
         constraint->registerAsWatcher( _tableau );
         constraint->setStatistics( &_statistics );
+
+        // Assuming aux var is use
+        struct timespec proofProductionStart = TimeUtils::sampleMicro();
+
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery->_lastAddendToAux.exists( constraint->getParticipatingVariables().back() ) )
+             constraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( constraint->getParticipatingVariables().back() ) );
+
+        _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
     _tsConstraints = _preprocessedQuery->getTranscendentalConstraints();
@@ -1410,6 +1406,9 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             delete[] constraintMatrix;
             constraintMatrix = createConstraintMatrix();
 
+            unsigned n = _preprocessedQuery->getNumberOfVariables();
+            _boundManager.initialize( n );
+
             initializeTableau( constraintMatrix, initialBasis );
 
             delete[] constraintMatrix;
@@ -1439,8 +1438,10 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             _tableau->setGurobi( &( *_gurobi ) );
 
             unsigned n = _preprocessedQuery->getNumberOfVariables();
-            // Only use Tableau to store the bounds.
-            _tableau->setBoundDimension( n );
+            unsigned m = _preprocessedQuery->getEquations().size();
+            // Only use BoundManager to store the bounds.
+            _boundManager.initialize( n );
+            _tableau->setDimensions( m, n );
             initializeBoundsAndConstraintWatchersInTableau( n );
 
             for ( const auto &constraint : _plConstraints )
@@ -1749,7 +1750,6 @@ void Engine::restoreState( const EngineState &state )
     }
 
     _numPlConstraintsDisabledByValidSplits = state._numPlConstraintsDisabledByValidSplits;
-
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
         struct timespec proofProductionStart = TimeUtils::sampleMicro();
@@ -1763,15 +1763,11 @@ void Engine::restoreState( const EngineState &state )
         _statistics.incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
-    if ( _lpSolverType == LPSolverType::NATIVE )
-    {
-        // Make sure the data structures are initialized to the correct size
-        _rowBoundTightener->setDimensions();
-        _constraintBoundTightener->setDimensions();
-        adjustWorkMemorySize();
-        _activeEntryStrategy->resizeHook( _tableau );
-        _costFunctionManager->initialize();
-    }
+    // Make sure the data structures are initialized to the correct size
+    _rowBoundTightener->setDimensions();
+    adjustWorkMemorySize();
+    _activeEntryStrategy->resizeHook( _tableau );
+    _costFunctionManager->initialize();
 
     // Reset the violation counts in the SMT core
     _smtCore.resetSplitConditions();
@@ -1984,11 +1980,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     if ( _lpSolverType == LPSolverType::NATIVE )
     {
         adjustWorkMemorySize();
-
-        _rowBoundTightener->resetBounds();
     }
-
-    _constraintBoundTightener->resetBounds();
 
     for ( auto &bound : bounds )
     {
@@ -2041,12 +2033,12 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     ENGINE_LOG( "Done with split\n" );
 }
 
-void Engine::applyAllRowTightenings()
+void Engine::applyBoundTightenings()
 {
-    List<Tightening> rowTightenings;
-    _rowBoundTightener->getRowTightenings( rowTightenings );
+    List<Tightening> tightenings;
+    _boundManager.getTightenings( tightenings );
 
-    for ( const auto &tightening : rowTightenings )
+    for ( const auto &tightening : tightenings )
     {
         if ( tightening._type == Tightening::LB )
             _tableau->tightenLowerBound( tightening._variable, tightening._value );
@@ -2058,26 +2050,14 @@ void Engine::applyAllRowTightenings()
 //		for ( const auto &tightening : rowTightenings )
 //			validateBounds( tightening._variable, UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000, tightening._type == Tightening::UB );
 }
+void Engine::applyAllRowTightenings()
+{
+    applyBoundTightenings();
+}
 
 void Engine::applyAllConstraintTightenings()
 {
-    List<Tightening> entailedTightenings;
-
-    _constraintBoundTightener->getConstraintTightenings( entailedTightenings );
-
-    for ( const auto &tightening : entailedTightenings )
-    {
-        _statistics.incLongAttribute( Statistics::NUM_BOUNDS_PROPOSED_BY_PL_CONSTRAINTS );
-
-        if ( tightening._type == Tightening::LB )
-            _tableau->tightenLowerBound( tightening._variable, tightening._value );
-        else
-            _tableau->tightenUpperBound( tightening._variable, tightening._value );
-    }
-
-//    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-//		for ( const auto &tightening : entailedTightenings )
-//			validateBounds( tightening._variable, UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000, tightening._type == Tightening::UB );
+    applyBoundTightenings();
 }
 
 void Engine::applyAllBoundTightenings()
@@ -2224,8 +2204,6 @@ void Engine::performPrecisionRestoration( PrecisionRestorer::RestoreBasics resto
                                   TimeUtils::timePassed( start, end ) );
 
     _statistics.incUnsignedAttribute( Statistics::NUM_PRECISION_RESTORATIONS );
-    _rowBoundTightener->clear();
-    _constraintBoundTightener->resetBounds();
 
     // debug
     double after = _degradationChecker.computeDegradation( *_tableau );
@@ -2246,9 +2224,6 @@ void Engine::performPrecisionRestoration( PrecisionRestorer::RestoreBasics resto
         _statistics.incLongAttribute( Statistics::TOTAL_TIME_PRECISION_RESTORATION,
                                       TimeUtils::timePassed( start, end ) );
         _statistics.incUnsignedAttribute( Statistics::NUM_PRECISION_RESTORATIONS );
-
-        _rowBoundTightener->clear();
-        _constraintBoundTightener->resetBounds();
 
         // debug
         double afterSecond = _degradationChecker.computeDegradation( *_tableau );
@@ -2467,6 +2442,17 @@ bool Engine::shouldExitDueToTimeout( unsigned timeout ) const
     return _statistics.getTotalTimeInMicro() / MICROSECONDS_TO_SECONDS > timeout;
 }
 
+void Engine::preContextPushHook()
+{
+    _boundManager.storeLocalBounds();
+}
+
+void Engine::postContextPopHook()
+{
+    _boundManager.restoreLocalBounds();
+    _tableau->postContextPopHook();
+}
+
 void Engine::reset()
 {
     resetStatistics();
@@ -2483,7 +2469,6 @@ void Engine::resetStatistics()
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
     _rowBoundTightener->setStatistics( &_statistics );
-    _constraintBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
     _activeEntryStrategy->setStatistics( &_statistics );
     _precisionRestorer.setStatistics( &_statistics );
@@ -2510,10 +2495,6 @@ void Engine::resetExitCode()
 
 void Engine::resetBoundTighteners()
 {
-    _constraintBoundTightener->resetBounds();
-
-    if ( _lpSolverType == LPSolverType::NATIVE )
-        _rowBoundTightener->resetBounds();
 }
 
 void Engine::warmStart()
@@ -2945,30 +2926,6 @@ void Engine::extractSolutionFromGurobi( InputQuery &inputQuery )
     }
 }
 
-void Engine::printBoundExplanation( const unsigned var ) const
-{
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-        printf("In order to provide a proof certificate, set GlobalConfiguration::PROOF_CERTIFICATE to true.\n");
-        return;
-    }
-
-    printf( "The explanation of variable x%d\n", var );
-    unsigned m = _tableau->getM();
-    Vector<double> expl = _tableau->explainBound( var, true );
-
-    printf( "Upper bound explanation:\n[" );
-    for ( unsigned i = 0; i < m; ++i )
-        printf( "%.3lf ,", expl[i] );
-    printf( "]\n" );
-
-    expl = _tableau->explainBound( var, false );
-    printf( "Lower bound explanation:\n[" );
-    for ( unsigned i = 0; i < m; ++i )
-        printf( "%.3lf ,", expl[i] );
-    printf( "]\n" );
-}
-
 int Engine::explainFailureWithTableau()
 {
     // Failure of a simplex step implies infeasible bounds imposed by the row
@@ -3123,7 +3080,6 @@ bool Engine::performDeepSoILocalSearch()
                 }
                 else
                 {
-                    ASSERT( FloatUtils::isZero( costOfLastAcceptedPhasePattern ) );
                     ENGINE_LOG( "Performing local search - done" );
                     return true;
                 }
@@ -3348,6 +3304,11 @@ void Engine::checkGurobiBoundConsistency() const
     }
 }
 
+bool Engine::consistentBounds() const
+{
+    return _boundManager.consistentBounds();
+}
+
 void Engine::updateGroundUpperBound( const unsigned var, const double value, unsigned decisionLevel )
 {
     ASSERT( var < _tableau->getN() );
@@ -3547,23 +3508,6 @@ bool Engine::certifyUNSATCertificate()
         printf("Error certifying UNSAT certificate\n");
 
     return certificationSucceeded;
-}
-
-bool Engine::isBoundTightest( unsigned var, double value, bool isUpper ) const
-{
-    double realBound;
-    ASSERT( var < _tableau->getN() );
-
-    if ( isUpper )
-    {
-        realBound = std::min( _rowBoundTightener->getUpperBound( var ), _tableau->getUpperBound( var ) );
-        realBound = std::min( realBound, _constraintBoundTightener->getUpperBound( var ) );
-        return FloatUtils::lt( value, realBound );
-    }
-
-    realBound = std::max( _rowBoundTightener->getLowerBound( var ), _tableau->getLowerBound( var ) );
-    realBound = std::max( realBound, _constraintBoundTightener->getLowerBound( var ) );
-    return FloatUtils::gt( value, realBound );
 }
 
 void Engine::markLeafToDelegate()
