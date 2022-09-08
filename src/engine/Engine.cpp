@@ -1314,8 +1314,6 @@ void Engine::initializeTableau( const double *constraintMatrix, const List<unsig
 void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
                                                              numberOfVariables )
 {
-    _rowBoundTightener->setDimensions();
-
     _plConstraints = _preprocessedQuery->getPiecewiseLinearConstraints();
     for ( const auto &constraint : _plConstraints )
     {
@@ -1470,7 +1468,6 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             // Some variable bounds are invalid, so the query is unsat
             throw InfeasibleQueryException();
         }
-
     }
     catch ( const InfeasibleQueryException & )
     {
@@ -1747,11 +1744,14 @@ void Engine::restoreState( const EngineState &state )
         _lowerDecisionLevels = Vector<unsigned>( state._lowerDecisionLevels );
     }
 
-    // Make sure the data structures are initialized to the correct size
-    _rowBoundTightener->setDimensions();
-    adjustWorkMemorySize();
-    _activeEntryStrategy->resizeHook( _tableau );
-    _costFunctionManager->initialize();
+    if ( _lpSolverType == LPSolverType::NATIVE )
+    {
+        // Make sure the data structures are initialized to the correct size
+        _rowBoundTightener->setDimensions();
+        adjustWorkMemorySize();
+        _activeEntryStrategy->resizeHook( _tableau );
+        _costFunctionManager->initialize();
+    }
 
     // Reset the violation counts in the SMT core
     _smtCore.resetSplitConditions();

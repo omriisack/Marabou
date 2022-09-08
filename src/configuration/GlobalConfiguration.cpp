@@ -67,7 +67,9 @@ const bool GlobalConfiguration::USE_HARRIS_RATIO_TEST = true;
 
 const double GlobalConfiguration::SYMBOLIC_TIGHTENING_ROUNDING_CONSTANT = 0.00000005;
 
-const bool GlobalConfiguration::PREPROCESS_INPUT_QUERY = true; //TODO must enable for proof certificate since addPlAuxiliaryEquations()
+const double GlobalConfiguration::SIGMOID_CUTOFF_CONSTANT = 20;
+
+const bool GlobalConfiguration::PREPROCESS_INPUT_QUERY = true;
 const bool GlobalConfiguration::PREPROCESSOR_ELIMINATE_VARIABLES = true;
 const bool GlobalConfiguration::PL_CONSTRAINTS_ADD_AUX_EQUATIONS_AFTER_PREPROCESSING = true;
 const double GlobalConfiguration::PREPROCESSOR_ALMOST_FIXED_THRESHOLD = 0.00001;

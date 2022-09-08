@@ -1771,6 +1771,9 @@ bool Tableau::allBoundsValid() const
 
 void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, double value )
 {
+    if ( _lpSolverType == LPSolverType::GUROBI )
+      return;
+
     unsigned index = _variableToIndex[variable];
     if ( !_basicVariables.exists( variable ) )
     {
@@ -1790,6 +1793,9 @@ void Tableau::updateVariableToComplyWithLowerBoundUpdate( unsigned variable, dou
 
 void Tableau::updateVariableToComplyWithUpperBoundUpdate( unsigned variable, double value )
 {
+    if ( _lpSolverType == LPSolverType::GUROBI )
+      return;
+
     unsigned index = _variableToIndex[variable];
     if ( !_basicVariables.exists( variable ) )
     {
