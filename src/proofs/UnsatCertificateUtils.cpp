@@ -91,9 +91,10 @@ double UNSATCertificateUtils::computeCombinationUpperBound( const double *explan
                                                                const Vector<double> &groundLowerBounds)
 {
     ASSERT( explanation != NULL );
-    auto explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
     unsigned n = initialTableau[0].size();
     unsigned m = initialTableau.size();
+
+    auto explanationRowCombination = Vector<double>( n, 0 );
     for ( unsigned i = 0; i < m; ++i )
     {
         for ( unsigned j = 0; j < n; ++j )
