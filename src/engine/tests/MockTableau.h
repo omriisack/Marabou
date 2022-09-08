@@ -686,47 +686,6 @@ public:
     	return 0;
 	}
 
-    void updateExplanation( const TableauRow& /* row */, const bool /* isUpper */ ) const
-    {
-    }
-
-    void updateExplanation( const TableauRow& /* row */, const bool /* isUpper */, unsigned /* varIndex */ ) const
-    {
-    }
-
-    void updateExplanation(const SparseUnsortedList& /* row */, const bool /* isUpper */, unsigned /* varIndex */) const
-    {
-    }
-
-	virtual void resetExplanation ( const unsigned /* var */, const bool /* isUpper */ ) const
-	{
-	}
-
-
-	void setExplanation( const Vector<double>& /* expl */, unsigned /* var */,  bool /* isUpper */) const
-	{
-	}
-
-	Vector<double> _mockExpl = Vector<double>( 0 );
-	const Vector<double> &explainBound( const unsigned /* variable */, const bool /*isUpper*/ ) const
-	{
-		return _mockExpl;
-	}
-
-	bool checkCostFunctionSlack()
-	{
-		return true;
-	}
-
-	BoundExplainer* getAllBoundsExplanations() const
-	{
-		return NULL;
-	}
-
-	void setAllBoundsExplanations(BoundExplainer* /* boundsExplanations */ )
-	{
-	}
-
 	void tightenUpperBoundNaively( unsigned /* variable */, double /* value */ )
 	{
 	}

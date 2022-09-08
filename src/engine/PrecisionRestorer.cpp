@@ -44,7 +44,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     engine.storeState( targetEngineState,
                        TableauStateStorageLevel::STORE_NONE );
 
-	BoundExplainer tableauExplanations = BoundExplainer( targetN, targetM );
+	BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM );
 	Vector<double> upperGroundBoundsBackup;
 	Vector<double> lowerGroundBoundsBackup;
 
@@ -55,9 +55,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        tableauExplanations = *tableau.getAllBoundsExplanations();
+         boundExplainerBackup = *engine.getBoundExplainer();
 
 		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds(true ) );
 		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds(false ) );
@@ -66,8 +64,6 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
         lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
 
         PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations();
-
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
 	}
 
 
@@ -135,9 +131,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        tableau.setAllBoundsExplanations( &tableauExplanations );
+        engine.setBoundExplainer( &boundExplainerBackup );
 
         for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
         {
@@ -146,8 +140,6 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
         }
 
         engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup );
-
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart,  TimeUtils::sampleMicro() ) );
     }
 
     // Restore constraint status

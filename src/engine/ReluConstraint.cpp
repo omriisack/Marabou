@@ -27,6 +27,7 @@
 #include "Statistics.h"
 #include "TableauRow.h"
 #include "InfeasibleQueryException.h"
+#include "PlcExplanation.h"
 
 #ifdef _WIN32
 #define __attribute__(x)
@@ -170,22 +171,22 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
             {
                 // If we're in the active phase, aux should be 0
 			if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, UPPER, variable, LOWER, getType() );
+				_boundManager->addLemmaExplanation( _aux, 0, UPPER, variable, LOWER, getType() );
 			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
+				_boundManager->tightenUpperBound( _aux, 0 );
 
 			// After updating to active phase
 			unsigned partner = ( variable == _f ) ? _b : _f;
-			_constraintBoundTightener->registerTighterLowerBound( partner, bound, _tighteningRow );
+                _boundManager->tightenLowerBound( partner, bound, *_tighteningRow );
             }
 
             // If b is non-negative, we're in the active phase
             else if ( _auxVarInUse && variable == _b && FloatUtils::isZero( bound ) )
             {
                 if ( GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->externalExplanationUpdate( _aux, 0, UPPER, variable, LOWER, getType() );
+                    _boundManager->addLemmaExplanation( _aux, 0, UPPER, variable, LOWER, getType() );
 			else if ( !GlobalConfiguration::PROOF_CERTIFICATE && _auxVarInUse )
-				_constraintBoundTightener->registerTighterUpperBound( _aux, 0 );
+                    _boundManager->tightenUpperBound( _aux, 0 );
             }
 
             // A positive lower bound for aux means we're inactive: f is 0, b is
@@ -193,12 +194,12 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
             else if ( _auxVarInUse && variable == _aux && bound > 0 )
             {
                if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				    _constraintBoundTightener->externalExplanationUpdate( _f, 0, UPPER, variable, LOWER, getType() );
+                   _boundManager->addLemmaExplanation( _f, 0, UPPER, variable, LOWER, getType() );
 			    else
-				    _constraintBoundTightener->registerTighterUpperBound( _f, 0 );
+                   _boundManager->tightenUpperBound( _f, 0 );
 
 			    // After updating to inactive phase
-			    _constraintBoundTightener->registerTighterUpperBound( _b, -bound, _tighteningRow );
+                _boundManager->tightenUpperBound( _b, -bound, *_tighteningRow );
             }
 
             // A negative lower bound for b could tighten aux's upper bound
@@ -207,12 +208,12 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
                 if ( GlobalConfiguration :: PROOF_CERTIFICATE )
 			{
 				if ( _phaseStatus == RELU_PHASE_INACTIVE )
-					_constraintBoundTightener->registerTighterUpperBound( _aux, -bound, _tighteningRow );
+                    _boundManager->tightenUpperBound( _aux, -bound, *_tighteningRow );
 				else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, lower bound of b is already >= 0
-					_constraintBoundTightener->externalExplanationUpdate( _aux, -bound, UPPER, variable, LOWER, getType() );
+                    _boundManager->addLemmaExplanation( _aux, -bound, UPPER, variable, LOWER, getType() );
 			}
 			else
-				_constraintBoundTightener->registerTighterUpperBound( _aux, -bound );
+                    _boundManager->tightenUpperBound( _aux, -bound );
             }
 
             // Also, if for some reason we only know a negative lower bound for
@@ -220,9 +221,9 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
             else if ( bound < 0 && variable == _f )
             {
                 if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				_constraintBoundTightener->externalExplanationUpdate( _f, 0, LOWER, variable, LOWER, getType() );
+                    _boundManager->addLemmaExplanation( _f, 0, LOWER, variable, LOWER, getType() );
 			else
-				_constraintBoundTightener->registerTighterLowerBound( _f, 0 );
+                    _boundManager->tightenLowerBound( _f, 0 );
             }
         }
     }
@@ -257,18 +258,18 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
                 if ( GlobalConfiguration::PROOF_CERTIFICATE )
                 {
                     if ( _phaseStatus != RELU_PHASE_INACTIVE )
-                        _constraintBoundTightener->registerTighterUpperBound( _b, bound, _tighteningRow );
+                        _boundManager->tightenUpperBound( _b, bound, *_tighteningRow );
                     else
                     {
                         if ( FloatUtils::isZero( bound ) )
-                            _constraintBoundTightener->externalExplanationUpdate( _b, 0, UPPER, variable, UPPER, getType() );
+                            _boundManager->addLemmaExplanation( _b, 0, UPPER, variable, UPPER, getType() );
                         else if ( FloatUtils::isNegative( bound ) )
                             throw InfeasibleQueryException();
                         // Bound cannot be positive if ReLU is inactive
                     }
                 }
                 else
-                    _constraintBoundTightener->registerTighterUpperBound( _b, bound );
+                    _boundManager->tightenUpperBound( _b, bound );
 
             }
             else if ( variable == _b )
@@ -277,14 +278,14 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
                 {
                     // If b has a non-positive upper bound, f's upper bound is 0
                     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-                        _constraintBoundTightener->externalExplanationUpdate( _f, 0, UPPER, variable, UPPER, getType() );
+                        _boundManager->addLemmaExplanation( _f, 0, UPPER, variable, UPPER, getType() );
                     else
-                        _constraintBoundTightener->registerTighterUpperBound( _f, 0 );
+                        _boundManager->tightenUpperBound( _f, 0 );
 
                     // Aux's range is minus the range of b
                     // After updating to inactive phase
                     if ( _auxVarInUse )
-                        _constraintBoundTightener->registerTighterLowerBound( _aux, -bound, _tighteningRow );
+                        _boundManager->tightenLowerBound( _aux, -bound, *_tighteningRow );
 
                 }
                 else
@@ -293,12 +294,12 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
                     if ( GlobalConfiguration::PROOF_CERTIFICATE )
 				{
 					if ( _phaseStatus == RELU_PHASE_ACTIVE )
-						_constraintBoundTightener->registerTighterUpperBound( _f, bound, _tighteningRow );
+                        _boundManager->tightenUpperBound( _f, bound, *_tighteningRow );
 					else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, upper bound of f is already <= 0
-						_constraintBoundTightener->externalExplanationUpdate( _f, bound, UPPER, variable, UPPER, getType() );
+                        _boundManager->addLemmaExplanation( _f, bound, UPPER, variable, UPPER, getType() );
 				}
 				else
-					_constraintBoundTightener->registerTighterUpperBound( _f, bound );
+                        _boundManager->tightenUpperBound( _f, bound );
                 }
             }
             else if ( _auxVarInUse && variable == _aux )
@@ -306,18 +307,18 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
                if ( GlobalConfiguration::PROOF_CERTIFICATE )
 			{
 				if ( _phaseStatus != RELU_PHASE_ACTIVE )
-					_constraintBoundTightener->registerTighterLowerBound( _b, -bound, _tighteningRow );
+                    _boundManager->tightenLowerBound( _b, -bound, *_tighteningRow );
 				else
 				{
 					if ( FloatUtils::isZero( bound ) )
-						_constraintBoundTightener->externalExplanationUpdate( _b, 0, LOWER, variable, UPPER, getType() );
+                        _boundManager->addLemmaExplanation( _b, 0, LOWER, variable, UPPER, getType() );
 					else if ( FloatUtils::isNegative( bound ) )
 						throw InfeasibleQueryException();
 					// Bound cannot be positive if ReLU is active
 				}
 			}
 			else
-				_constraintBoundTightener->registerTighterLowerBound( _b, -bound );
+			    _boundManager->tightenLowerBound( _b, -bound );
             }
         }
     }

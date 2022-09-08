@@ -16,6 +16,7 @@
 #ifndef __IEngine_h__
 #define __IEngine_h__
 
+#include "BoundExplainer.h"
 #include "DivideStrategy.h"
 #include "SnCDivideStrategy.h"
 #include "TableauStateStorageLevel.h"
@@ -114,8 +115,8 @@ public:
     virtual PiecewiseLinearConstraint *pickSplitPLConstraintSnC( SnCDivideStrategy
                                                                  strategy ) = 0;
 	/*
- Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds
-*/
+ 	  Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+	*/
 	virtual double getExplainedBound( unsigned var,  bool isUpper ) const = 0;
 
 	/*
@@ -169,14 +170,24 @@ public:
 	virtual bool certifyUNSATCertificate() = 0;
 
 	/*
-  	 * Returns true iff the value can be the tightest bound of a variable
-   	*/
-	virtual bool isBoundTightest( unsigned var, double value, bool isUpper ) const = 0;
-
-	/*
 	* Computes the decision level of an explanations
 	*/
 	virtual unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const = 0;
+
+    /*
+      Finds the variable causing failure and updates its bounds explanations
+    */
+    virtual void explainSimplexFailure() = 0;
+
+	/*
+	  Get the boundExplainer
+   	*/
+	virtual BoundExplainer *getBoundExplainer() const = 0;
+
+	/*
+	  Set the boundExplainer
+   	*/
+	virtual void setBoundExplainer( BoundExplainer *boundExplainer ) = 0;
 };
 
 #endif // __IEngine_h__

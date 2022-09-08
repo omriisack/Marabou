@@ -86,7 +86,6 @@ Statistics::Statistics()
     _longAttributes[TOTAL_TIME_LOCAL_SEARCH_MICRO] = 0;
     _longAttributes[TOTAL_TIME_GETTING_SOI_PHASE_PATTERN_MICRO] = 0;
     _longAttributes[TIME_ADDING_CONSTRAINTS_TO_MILP_SOLVER_MICRO] = 0;
-    _longAttributes[TIME_PROOF_PRODUCTION] = 0;
     _longAttributes[TOTAL_CERTIFICATION_TIME] = 0;
 
     _doubleAttributes[CURRENT_DEGRADATION] = 0.0;
@@ -399,8 +398,6 @@ void Statistics::print()
     if (GlobalConfiguration::PROOF_CERTIFICATE )
     {
         printf( "\t--- Proof Certificate ---\n" );
-        printf( "\tTotal time of proof production: " );
-        printLongAttributeAsTime( getLongAttribute( Statistics::TIME_PROOF_PRODUCTION ) );
         printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
         printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
         printf( "\tAverage jump level: %.5lf\n", printAverage( getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ), getUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES ) ) );
@@ -459,5 +456,5 @@ void Statistics::printLongAttributeAsTime( unsigned long long longAsNumber )
 	unsigned int minutes = seconds / 60;
 	unsigned int hours = minutes / 60;
 	printf( "%llu milli (%02u:%02u:%02u)\n",
-            longAsNumber / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
+           longAsNumber / 1000, hours, minutes - ( hours * 60 ), seconds - ( minutes * 60 ) );
 }

@@ -110,7 +110,7 @@ public:
     /*
       Methods for storing and restoring the state of the engine.
     */
-    void storeState( EngineState &state, TableauStateStorageLevel level );
+    void storeState( EngineState &state, TableauStateStorageLevel level ) const;
     void restoreState( const EngineState &state );
     void setNumPlConstraintsDisabledByValidSplits( unsigned numConstraints );
 
@@ -272,14 +272,19 @@ public:
 	bool certifyUNSATCertificate();
 
 	/*
-	* Returns true iff the value can be the tightest bound of a variable
-	 */
-	bool isBoundTightest(unsigned var, double value, bool isUpper) const;
-
-	/*
 	* Computes the decision level of an explanations
 	*/
 	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
+
+    /*
+     Get the boundExplainer
+    */
+    BoundExplainer *getBoundExplainer() const;
+
+    /*
+      Set the boundExplainer
+    */
+    void setBoundExplainer( BoundExplainer *boundExplainer );
 
 private:
 
@@ -803,10 +808,6 @@ private:
 	UnsatCertificateNode* _UNSATCertificate;
 	UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 
-	/*
-	  Prints coefficients of Simplex equations that witness UNSAT
-    */
-	void printBoundExplanation( unsigned var ) const;
 
 	/*
 	  Updates bounds after deducing Simplex infeasibility

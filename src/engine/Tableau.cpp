@@ -65,7 +65,6 @@ Tableau::Tableau( IBoundManager &boundManager )
     , _rhsIsAllZeros( true )
     , _lpSolverType( Options::get()->getLPSolverType() )
     , _gurobi( nullptr )
-    , _boundExplainer( NULL )
 {
 }
 
@@ -201,12 +200,6 @@ void Tableau::freeMemoryIfNeeded()
         delete[] _workN;
         _workN = NULL;
     }
-
-    if ( _boundExplainer )
-    {
-        delete _boundExplainer;
-		_boundExplainer = NULL;
-    }
 }
 
 void Tableau::setDimensions( unsigned m, unsigned n )
@@ -309,21 +302,6 @@ void Tableau::setDimensions( unsigned m, unsigned n )
             _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
         }
     }
-
-    if( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        if( _boundExplainer )
-			delete _boundExplainer;
-
-		_boundExplainer = new BoundExplainer(_n, _m );  // Reset whenever new dimensions are set.
-		if ( !_boundExplainer )
-			throw MarabouError( MarabouError::ALLOCATION_FAILED, "Tableau::work" );
-
-        if ( _statistics )
-            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-	}
 }
 
 void Tableau::setConstraintMatrix( const double *A )
@@ -1644,15 +1622,10 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
     if ( level == TableauStateStorageLevel::STORE_BOUNDS_ONLY ||
          _lpSolverType != LPSolverType::NATIVE )
     {
-         // Store bounds explanations
-        if ( GlobalConfiguration::PROOF_CERTIFICATE  )
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
         {
-            struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-            *state._boundExplainer = *_boundExplainer;
-
-            if ( _statistics )
-                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+            state.initializeBoundExplainer( _n, _m );
+            *state._boundExplainer = *_boundManager.getBoundExplainer();
         }
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
@@ -1690,16 +1663,8 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
         // Store the merged variables
         state._mergedVariables = _mergedVariables;
 
-        // Store bounds explanations
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && state._boundExplainer )
-        {
-            struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-            *state._boundExplainer = *_boundExplainer;
-
-            if ( _statistics )
-                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-        }
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundManager.getBoundExplainer() )
+            *state._boundExplainer = *_boundManager.getBoundExplainer();
     }
     else
     {
@@ -1732,17 +1697,11 @@ void Tableau::restoreState( const TableauState &state,
     if ( level == TableauStateStorageLevel::STORE_BOUNDS_ONLY ||
          _lpSolverType != LPSolverType::NATIVE )
     {
-        // Restore bounds explanations
         if ( GlobalConfiguration::PROOF_CERTIFICATE )
         {
-            struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-            *_boundExplainer = *state._boundExplainer;
-            ASSERT( _boundExplainer->getNumberOfRows() == _m );
-            ASSERT( _boundExplainer->getNumberOfVariables() == _n );
-
-            if ( _statistics )
-                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+            _boundManager.setBoundExplainer( state._boundExplainer );
+            ASSERT(  _boundManager.getBoundExplainer()->getNumberOfRows() == _m );
+            ASSERT( _boundManager.getBoundExplainer()->getNumberOfVariables() == _n );
         }
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
@@ -1781,17 +1740,11 @@ void Tableau::restoreState( const TableauState &state,
         // Restore the merged variables
         _mergedVariables = state._mergedVariables;
 
-        // Restore bounds explanations
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundManager.getBoundExplainer() )
         {
-            struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-            *_boundExplainer = *state._boundExplainer;
-            ASSERT( _boundExplainer->getNumberOfRows() == _m );
-            ASSERT( _boundExplainer->getNumberOfVariables() == _n );
-
-            if ( _statistics )
-                _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
+            _boundManager.setBoundExplainer( state._boundExplainer );
+            ASSERT(  _boundManager.getBoundExplainer()->getNumberOfRows() == _m );
+            ASSERT( _boundManager.getBoundExplainer()->getNumberOfVariables() == _n );
         }
 
         computeAssignment();
@@ -2167,16 +2120,6 @@ void Tableau::addRow()
         _statistics->incLongAttribute( Statistics::NUM_ADDED_ROWS );
         _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_M, _m );
         _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
-    }
-
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-        struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-        _boundExplainer->addVariable();
-
-        if ( _statistics )
-            _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
     }
 
 }
@@ -2695,96 +2638,30 @@ ITableau::BasicStatus Tableau::getInfeasibleRow( TableauRow& row )
 	for ( unsigned i = 0; i < _m; ++i )
 	{
 		basicVar = _basicIndexToVariable[i];
-		if ( FloatUtils::lt( _basicAssignment[i], _lowerBounds[basicVar] )  )
+		if ( FloatUtils::lt( _basicAssignment[i], _boundManager.getLowerBound( basicVar ) )  )
 		{
 			Tableau::getTableauRow( i, &row );
-			if ( computeRowBound( row, true ) < _lowerBounds[basicVar]  )
+			if ( FloatUtils::lt( computeRowBound( row, true ), _boundManager.getLowerBound( basicVar ) ) )
 				return Tableau::BELOW_LB;
 		}
-		else if ( FloatUtils::gt( _basicAssignment[i], _upperBounds[basicVar] ) )
+		else if ( FloatUtils::gt( _basicAssignment[i], _boundManager.getUpperBound( basicVar )  ) )
 		{
 			Tableau::getTableauRow( i, &row );
-			if ( computeRowBound( row, false ) > _upperBounds[basicVar] )
+			if ( FloatUtils::gt( computeRowBound( row, false ), _boundManager.getUpperBound( basicVar )  ) )
 				return Tableau::ABOVE_UB;
 		}
 	}
 	return Tableau::BETWEEN;
 }
 
-bool Tableau::checkCostFunctionSlack()
-{
-	const double *_costFunction = _costFunctionManager->getCostFunction();
-	for ( unsigned i = 0; i < _n - _m; ++i )
-	{
-		double coefficient = _costFunction[i];
-		if ( FloatUtils::isZero( coefficient ) )
-			continue;
-		unsigned var = nonBasicIndexToVariable( i );
-		// As far as I understand cost function always above ub.
-		if  ( FloatUtils::isPositive( coefficient ) &&  !( FloatUtils::areEqual( getValue( var ), _lowerBounds[var] ) ) )
-			printf("var %d is coefficient is %.10lf, value %.10lf ub %.10lf lb %.10lf\n", var, coefficient, getValue(var), _upperBounds[var], _lowerBounds[var]);
-
-
-		// Cases slack vas should be pressed against upper bounds
-		if ( FloatUtils::isNegative( coefficient ) && !( FloatUtils::areEqual( getValue( var ), _upperBounds[var] ) ) )
-			printf("var %d is coefficient is %.10lf, value %.10lf ub %.10lf lb %.10lf\n", var, coefficient, getValue(var), _upperBounds[var], _lowerBounds[var]);
-	}
-	return true;
-}
-
 int Tableau::getInfeasibleVar() const
 {
 	for ( unsigned i = 0; i < _n; ++i )
-		if ( _lowerBounds[i] > _upperBounds[i] )
+		if ( _boundManager.getUpperBound( i ) < _boundManager.getLowerBound( i ) )
 			return ( int ) i;
 	return -1;
 }
-
-const Vector<double>& Tableau::explainBound( const unsigned variable, const bool isUpper ) const
-{
-	ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _n );
-	return _boundExplainer->getExplanation( variable, isUpper );
-}
-
-void Tableau::updateExplanation( const TableauRow& row, const bool isUpper ) const
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-        return;
-
-    struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-    _boundExplainer->updateBoundExplanation( row, isUpper );
-
-    if ( _statistics )
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-}
-
-void Tableau::updateExplanation( const TableauRow& row, const bool isUpper, const unsigned var ) const
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-	    return;
-
-    struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-    _boundExplainer->updateBoundExplanation( row, isUpper, var );
-
-    if ( _statistics )
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-}
-
-void Tableau::updateExplanation( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-	    return;
-
-    struct timespec proofProductionStart = TimeUtils::sampleMicro();
-
-    _boundExplainer->updateBoundExplanationSparse( row, isUpper, var );
-
-    if ( _statistics )
-        _statistics->incLongAttribute( Statistics::TIME_PROOF_PRODUCTION, TimeUtils::timePassed( proofProductionStart, TimeUtils::sampleMicro() ) );
-}
-
+//TODO move to bound manager
 double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
 {
 	double bound = 0, multiplier;
@@ -2795,7 +2672,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 		if ( FloatUtils::isZero( row[i] ) )
 			continue;
 
-		multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
+		multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _boundManager.getUpperBound( var ) : _boundManager.getLowerBound( var );
 		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
 		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
 	}
@@ -2803,7 +2680,7 @@ double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) con
 	bound += row._scalar;
 	return bound;
 }
-
+//TODO move to boundManager
 double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
 	ASSERT( !row.empty() && var < _n );
@@ -2831,33 +2708,12 @@ double Tableau::computeSparseRowBound( const SparseUnsortedList& row, const bool
 		if ( FloatUtils::isZero( realCoefficient ) )
 			continue;
 
-		multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ? _upperBounds[curVar] : _lowerBounds[curVar];
+		multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ? _boundManager.getUpperBound( curVar ) : _boundManager.getLowerBound( curVar);
 		multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
 		bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
 	}
 
 	return bound;
-}
-
-void Tableau::resetExplanation( const unsigned var, const bool isUpper ) const
-{
-	_boundExplainer->resetExplanation( var, isUpper );
-}
-
-void Tableau::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
-{
-	ASSERT( explanation.size() == _m || explanation.empty() );
-	_boundExplainer->setExplanation( explanation, var, isUpper );
-}
-
-BoundExplainer *Tableau::getAllBoundsExplanations() const
-{
-	return _boundExplainer;
-}
-
-void Tableau::setAllBoundsExplanations( BoundExplainer *boundsExplanations )
-{
-	*_boundExplainer = *boundsExplanations;
 }
 
 
@@ -2868,8 +2724,7 @@ void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
 	if ( _statistics )
 		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
 
-	_upperBounds[variable] = value;
-	checkBoundsValid( variable );
+    _boundManager.setUpperBound( variable, value );
 
 	updateVariableToComplyWithUpperBoundUpdate( variable, value );
 }
@@ -2881,8 +2736,7 @@ void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
 	if ( _statistics )
 		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
 
-	_lowerBounds[variable] = value;
-	checkBoundsValid( variable );
+    _boundManager.setLowerBound( variable, value );
 
 	updateVariableToComplyWithLowerBoundUpdate( variable, value );
 }

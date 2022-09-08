@@ -16,13 +16,8 @@
 #define __PlcExplanation_h__
 
 #include "PiecewiseLinearConstraint.h"
+#include "PiecewiseLinearFunctionType.h"
 #include "Vector.h"
-
-enum BoundType : unsigned
-{
-    UPPER = 1,
-    LOWER = 0,
-};
 
 /*
   Contains all necessary info of a ground bound update during a run (i.e from ReLU phase-fixing)

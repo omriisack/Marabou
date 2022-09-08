@@ -30,10 +30,12 @@ BoundManager::BoundManager( Context &context )
     , _allocated( 0 )
     , _tableau( nullptr )
     , _rowBoundTightener( nullptr )
+    , _engine( nullptr )
     , _consistentBounds( &_context )
     , _firstInconsistentTightening( 0, 0.0, Tightening::LB )
     , _lowerBounds( nullptr )
     , _upperBounds( nullptr )
+    , _boundExplainer( nullptr )
 {
     _consistentBounds = true;
 };
@@ -58,6 +60,12 @@ BoundManager::~BoundManager()
         _storedUpperBounds[i]->deleteSelf();
         _tightenedLower[i]->deleteSelf();
         _tightenedUpper[i]->deleteSelf();
+    }
+
+    if ( _boundExplainer )
+    {
+        delete _boundExplainer;
+        _boundExplainer = NULL;
     }
 };
 
@@ -295,4 +303,124 @@ void BoundManager::registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTig
 {
     ASSERT( _rowBoundTightener == nullptr );
     _rowBoundTightener = ptrRowBoundTightener;
+}
+
+void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const
+{
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _size );
+    explanation = _boundExplainer->getExplanation( variable, isUpper );
+}
+
+bool BoundManager::tightenLowerBound( unsigned variable, double value, const TableauRow &row )
+{
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
+
+    bool tightened = setLowerBound( variable, value );
+    if ( tightened )
+    {
+        _boundExplainer->updateBoundExplanation( row, false, variable );
+
+        if ( _tableau != nullptr )
+            _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
+    }
+    return tightened;
+}
+
+bool BoundManager::tightenUpperBound( unsigned variable, double value, const TableauRow &row )
+{
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
+
+    bool tightened = setUpperBound( variable, value );
+    if ( tightened )
+    {
+        _boundExplainer->updateBoundExplanation( row, true, variable );
+        if ( _tableau != nullptr )
+            _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
+    }
+    return tightened;
+}
+
+bool BoundManager::tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &row )
+{
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
+
+    bool tightened = setLowerBound( variable, value );
+    if ( tightened )
+    {
+        _boundExplainer->updateBoundExplanationSparse( row, false, variable );
+
+        if ( _tableau != nullptr )
+            _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
+    }
+    return tightened;
+}
+
+bool BoundManager::tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row )
+{
+    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
+
+    bool tightened = setUpperBound( variable, value );
+    if ( tightened )
+    {
+        _boundExplainer->updateBoundExplanationSparse( row, true, variable );
+
+        if ( _tableau != nullptr )
+            _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
+    }
+
+    return tightened;
+}
+
+void BoundManager::resetExplanation( const unsigned var, const bool isUpper ) const
+{
+    _boundExplainer->resetExplanation( var, isUpper );
+}
+
+void BoundManager::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
+{
+    ASSERT( explanation.size() == _tableau->getM() || explanation.empty() );
+    _boundExplainer->setExplanation( explanation, var, isUpper );
+}
+
+BoundExplainer *BoundManager::getBoundExplainer() const
+{
+    return _boundExplainer;
+}
+
+void BoundManager::setBoundExplainer( BoundExplainer* boundsExplainer )
+{
+        *_boundExplainer = *boundsExplainer;
+}
+
+void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+                                        unsigned causingVar, BoundType causingVarBound,
+                                        PiecewiseLinearFunctionType constraintType )
+{
+    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+        return;
+
+    ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
+
+    // Register new ground bound, update certificate, and reset explanation
+    unsigned decisionLevel = _engine->computeExplanationDecisionLevel( causingVar, causingVarBound );
+    auto explanation = Vector<double>( 0,0 );
+    explainBound( causingVar, causingVarBound, explanation );
+
+    auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
+    _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+
+    affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value, decisionLevel ) : _engine->updateGroundLowerBound( var, value, decisionLevel );
+    resetExplanation( var, affectedVarBound );
+    affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
+}
+
+void BoundManager::setEngine( IEngine *engine)
+{
+    _engine = engine;
+}
+
+void BoundManager::initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows )
+{
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows );
 }

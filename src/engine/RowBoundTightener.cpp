@@ -296,8 +296,8 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
         }
     }
 
-    result += registerTighterLowerBound( y, lowerBound );
-    result += registerTighterUpperBound( y, upperBound );
+    result += registerTighterLowerBound( y, lowerBound, row );
+    result += registerTighterUpperBound( y, upperBound, row );
 
     if ( FloatUtils::gt( getLowerBound( y ), getUpperBound( y ) ) )
     {
@@ -374,8 +374,8 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
 
         // If a tighter bound is found, store it
         xi = row._row[i]._var;
-        result += registerTighterLowerBound( xi, lowerBound );
-        result += registerTighterUpperBound( xi, upperBound );
+        result += registerTighterLowerBound( xi, lowerBound, row );
+        result += registerTighterUpperBound( xi, upperBound, row );
         if ( FloatUtils::gt( getLowerBound( xi ), getUpperBound( xi ) ) )
         {
             ASSERT( FloatUtils::gt( _boundManager.getLowerBound( xi ), _boundManager.getUpperBound( xi ) ) );
@@ -525,7 +525,7 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
 
         // Now divide everything by ci, switching signs if needed.
         ci = entry._value;
-		if ( abs( ci ) < 0.001)
+		if ( abs( ci ) < 0.001 )
 			continue;
 
         lowerBound = lowerBound / ci;
@@ -539,8 +539,8 @@ unsigned RowBoundTightener::tightenOnSingleConstraintRow( unsigned row )
         }
 
         // If a tighter bound is found, store it
-        result += registerTighterLowerBound( index, lowerBound );
-        result += registerTighterUpperBound( index, upperBound );
+        result += registerTighterLowerBound( index, lowerBound, *sparseRow );
+        result += registerTighterUpperBound( index, upperBound, *sparseRow );
 
         if ( FloatUtils::gt( getLowerBound( index ), getUpperBound( index ) ) )
             throw InfeasibleQueryException();

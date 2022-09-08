@@ -46,7 +46,7 @@ public:
     /*
       Just create the bounds array.
     */
-    void initializeBounds( unsigned n );
+    void initializeBoundExplainer( unsigned numberOfVariables , unsigned numberOfRows );
 
     /*
       The dimensions of matrix A

@@ -218,25 +218,17 @@ void TableauState::setDimensions( unsigned m, unsigned n, const IBasisFactorizat
 	{
 		_boundExplainer = new BoundExplainer( n, m );
 		if ( !_boundExplainer )
-			throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::basisFactorization" );
+			throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::boundExplainer" );
 	}
 }
 
-void TableauState::initializeBounds( unsigned n )
+void TableauState::initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows )
 {
-    _lowerBounds = new double[n];
-    if ( !_lowerBounds )
-        throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::lowerBounds" );
-
-    _upperBounds = new double[n];
-    if ( !_upperBounds )
-        throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::upperBounds" );
-
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
-        _boundExplainer = new BoundExplainer( n, _m );
+        _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows );
         if ( !_boundExplainer )
-            throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::basisFactorization" );
+            throw MarabouError( MarabouError::ALLOCATION_FAILED, "TableauState::boundExplainer" );
     }
 }
 

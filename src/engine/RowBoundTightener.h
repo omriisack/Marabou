@@ -54,14 +54,50 @@ public:
     /*
      * Register a new tighter bound
      */
-    inline unsigned registerTighterLowerBound( unsigned variable, double newLowerBound)
+    inline unsigned registerTighterLowerBound( unsigned variable, double newLowerBound )
     {
         return _boundManager.tightenLowerBound( variable, newLowerBound ) ? 1u : 0u;
     }
 
-    inline unsigned registerTighterUpperBound( unsigned variable, double newLowerBound)
+    inline unsigned registerTighterUpperBound( unsigned variable, double newUpperBound )
     {
-        return _boundManager.tightenUpperBound( variable, newLowerBound ) ? 1u : 0u;
+        return _boundManager.tightenUpperBound( variable, newUpperBound ) ? 1u : 0u;
+    }
+
+    /*
+      Register a new tighter bound with explanation
+    */
+    inline unsigned registerTighterLowerBound( unsigned variable, double newLowerBound, const TableauRow &row )
+    {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            return _boundManager.tightenLowerBound( variable, newLowerBound, row ) ? 1u : 0u;
+        return _boundManager.tightenLowerBound( variable, newLowerBound ) ? 1u : 0u;
+
+    }
+
+    inline unsigned registerTighterUpperBound( unsigned variable, double newUpperBound, const TableauRow &row )
+    {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            return _boundManager.tightenUpperBound( variable, newUpperBound, row ) ? 1u : 0u;
+        return _boundManager.tightenUpperBound( variable, newUpperBound ) ? 1u : 0u;
+    }
+
+    /*
+        Register a new tighter bound with explanation
+    */
+    inline unsigned registerTighterLowerBound( unsigned variable, double newLowerBound, const SparseUnsortedList &row )
+    {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            return _boundManager.tightenLowerBound( variable, newLowerBound, row ) ? 1u : 0u;
+        return _boundManager.tightenLowerBound( variable, newLowerBound ) ? 1u : 0u;
+
+    }
+
+    inline unsigned registerTighterUpperBound( unsigned variable, double newUpperBound, const SparseUnsortedList &row )
+    {
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            return _boundManager.tightenUpperBound( variable, newUpperBound, row ) ? 1u : 0u;
+        return _boundManager.tightenUpperBound( variable, newUpperBound ) ? 1u : 0u;
     }
 
     /*

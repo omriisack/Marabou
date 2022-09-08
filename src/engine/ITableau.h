@@ -21,7 +21,6 @@
 #include "List.h"
 #include "Set.h"
 #include "TableauStateStorageLevel.h"
-#include "BoundExplainer.h"
 
 class EntrySelectionStrategy;
 class Equation;
@@ -196,22 +195,14 @@ public:
     {
         _optimizing = optimizing;
     }
+
 	virtual BasicStatus getInfeasibleRow( TableauRow& row ) = 0;
 	virtual int getInfeasibleVar() const = 0;
 	virtual double computeRowBound( const TableauRow &row, bool isUpper ) const = 0;
 	virtual double computeSparseRowBound( const SparseUnsortedList &row,  bool isUpper,  unsigned var ) const = 0;
-	virtual const Vector<double> &explainBound( unsigned variable, bool isUpper ) const = 0;
-	virtual void updateExplanation( const TableauRow &row, bool isUpper ) const = 0;
-	virtual void updateExplanation( const TableauRow &row, bool isUpper, unsigned var ) const = 0;
-	virtual void updateExplanation( const SparseUnsortedList &row, bool isUpper, unsigned var ) const = 0;
-	virtual void resetExplanation ( unsigned var, bool isUpper ) const = 0;
-	virtual void setExplanation( const Vector<double> &explanations, unsigned var,  bool isUpper ) const = 0;
-	virtual bool checkCostFunctionSlack() = 0;
-	virtual BoundExplainer *getAllBoundsExplanations() const = 0;
-	virtual void setAllBoundsExplanations( BoundExplainer* boundsExplanations ) = 0;
-	virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
-	virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
-
+	//TODO delete?
+    virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
+    virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
 protected:
     bool _optimizing = false;
 };

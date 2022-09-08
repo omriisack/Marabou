@@ -96,7 +96,7 @@ public:
     void preContextPushHook() {};
 
     mutable EngineState *lastStoredState;
-    void storeState( EngineState &state, TableauStateStorageLevel /*level*/ )
+    void storeState( EngineState &state, TableauStateStorageLevel /*level*/ ) const
     {
         lastStoredState = &state;
     }
@@ -268,6 +268,19 @@ public:
 	{
 		return 0;
 	}
+
+    void explainSimplexFailure()
+    {
+    }
+
+    BoundExplainer *getBoundExplainer() const
+    {
+	    return NULL;
+    }
+
+    void setBoundExplainer( BoundExplainer *boundExplainer )
+    {
+    }
 };
 
 #endif // __MockEngine_h__

@@ -42,13 +42,17 @@
 #include "IBoundManager.h"
 #include "IRowBoundTightener.h"
 #include "ITableau.h"
+#include "IEngine.h"
 #include "List.h"
 #include "Tightening.h"
 #include "Vector.h"
 #include "context/cdo.h"
 #include "context/context.h"
+#include "PlcExplanation.h"
+#include "UnsatCertificateNode.h"
 
 class ITableau;
+class IEngine;
 class BoundManager : public IBoundManager
 {
 public:
@@ -139,12 +143,48 @@ public:
      */
     void registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTightener );
 
+    /*
+      Returns the content of the object containing all explanations for variable bounds in the tableau.
+    */
+    BoundExplainer *getBoundExplainer() const;
+
+    /*
+      Deep-Copies the BoundExplainer object content
+     */
+    void setBoundExplainer( BoundExplainer *boundExplainer );
+
+    /*
+      Initializes the boundExplainer
+     */
+    void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows );
+
+    /*
+      Resets a bound explanation
+    */
+    void resetExplanation ( unsigned var, bool isUpper ) const;
+
+    /*
+      Returns the bounds explanation of a variable in the tableau
+    */
+    void explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const;
+
+    /*
+      Artificially updates an explanation, without using the recursive rule
+    */
+    void setExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
+
+    /*
+      Sets the engine of the BoundManager
+     */
+    void setEngine( IEngine *engine);
+
 private:
     CVC4::context::Context &_context;
     unsigned _size;
     unsigned _allocated;
     ITableau *_tableau; // Used only by callbacks
     IRowBoundTightener *_rowBoundTightener; // Used only by callbacks
+    IEngine *_engine;
 
     CVC4::context::CDO<bool> _consistentBounds;
     Tightening _firstInconsistentTightening;
@@ -164,6 +204,28 @@ private:
     void recordInconsistentBound( unsigned variable, double value, Tightening::BoundType type );
 
     void allocateLocalBounds( unsigned size );
+
+    /*
+      Tighten bounds and update their explanations according to some object representing the row
+     */
+    bool tightenLowerBound( unsigned variable, double value, const TableauRow &row );
+    bool tightenUpperBound( unsigned variable, double value, const TableauRow &row );
+
+    bool tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &row );
+    bool tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row );
+
+    /*
+      Adds a lemma to the UNSATCertificateNode object
+     */
+    void addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+                              unsigned causingVar, BoundType causingVarBound,
+                              PiecewiseLinearFunctionType constraintType );
+
+    /*
+     * Explainer of all bounds
+    */
+    BoundExplainer * _boundExplainer;
+
 };
 
 #endif // __BoundManager_h__

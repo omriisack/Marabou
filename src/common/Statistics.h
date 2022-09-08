@@ -202,9 +202,6 @@ public:
      // Total time adding constraints to (MI)LP solver.
      TIME_ADDING_CONSTRAINTS_TO_MILP_SOLVER_MICRO,
 
-    // Total time for producing UNSAT proof
-    TIME_PROOF_PRODUCTION,
-
 	// Total Certification Time
 	TOTAL_CERTIFICATION_TIME,
     };

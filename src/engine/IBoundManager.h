@@ -27,6 +27,15 @@
 #define __IBoundManager_h__
 
 #include "List.h"
+#include "Vector.h"
+#include "BoundExplainer.h"
+#include "PiecewiseLinearFunctionType.h"
+
+enum BoundType : unsigned
+{
+    UPPER = 1,
+    LOWER = 0,
+};
 
 class Tightening;
 class ITableau;
@@ -103,7 +112,36 @@ public:
      */
     virtual void registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTightener ) = 0;
 
+    /*
+       Tighten bounds and update their explanations according to some object representing the row
+    */
+    virtual bool tightenLowerBound( unsigned variable, double value, const TableauRow &row ) = 0;
+    virtual bool tightenUpperBound( unsigned variable, double value, const TableauRow &row ) = 0;
 
+    virtual bool tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &row ) = 0;
+    virtual bool tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row ) = 0;
+
+    /*
+      Adds a lemma to the UNSATCertificateNode object
+    */
+    virtual void addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+                                      unsigned causingVar, BoundType causingVarBound,
+                                      PiecewiseLinearFunctionType constraintType ) = 0;
+
+    /*
+      Returns the content of the object containing all explanations for variable bounds in the tableau.
+    */
+    virtual BoundExplainer *getBoundExplainer() const = 0;
+
+    /*
+      Deep-Copies the BoundExplainer object content
+     */
+    virtual void setBoundExplainer( BoundExplainer* boundExplainer ) = 0;
+
+    /*
+      Initializes the boundExplainer
+     */
+    virtual void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows ) = 0;
 };
 
 #endif // __IBoundManager_h__

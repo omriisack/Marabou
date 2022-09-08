@@ -471,13 +471,6 @@ public:
     void postContextPopHook();
 
 	/*
-	 * Returns the content of the object containing all explanations for variable bounds in the tableau.
-	 */
-	BoundExplainer *getAllBoundsExplanations() const;
-
-	void setAllBoundsExplanations( BoundExplainer *boundsExplanations );
-
-	/*
 	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
 	 */
 	void tightenUpperBoundNaively( unsigned variable, double value );
@@ -698,12 +691,6 @@ private:
 	int getInfeasibleVar() const;
 
 	/*
- 	* Checks that the slack of a given row lhs is empty
-	* TODO delete function when completing
- 	*/
-	bool checkCostFunctionSlack();
-
-	/*
 	* Computes the bound imposed by row rhs
 	*/
 	double computeRowBound( const TableauRow &row, bool isUpper ) const;
@@ -713,40 +700,6 @@ private:
 	*/
 	double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
-	/*
-	  Returns the bounds explanation of a variable in the tableau
-	*/
-	const Vector<double> &explainBound( unsigned variable, bool isUpper ) const;
-
-	/*
-	 Update a bound explanation according to a row in the Tableau
-	*/
-	void updateExplanation( const TableauRow &row, bool isUpper ) const;
-
-	/*
-	Update a bound explanation of a specific var in a row
-   */
-	void updateExplanation( const TableauRow &row, bool isUpper, unsigned var ) const;
-
-	/*
-	 Update a bound explanation of a specific var in a row, when it is given as a SparseUnsortedList.
-	*/
-	void updateExplanation( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
-
-	/*
-	 * Resets a bound explanation
-	 */
-	void resetExplanation ( unsigned var, bool isUpper ) const;
-
-	/*
- 	* Artificially updates an explanation, without using the recursive rule
- 	*/
-	void setExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
-
-	/*
-     * Explainer of all bounds
-    */
-	BoundExplainer *_boundExplainer;
 };
 
 #endif // __Tableau_h__
