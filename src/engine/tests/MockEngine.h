@@ -278,7 +278,7 @@ public:
 	    return NULL;
     }
 
-    void setBoundExplainer( BoundExplainer *boundExplainer )
+    void setBoundExplainer( BoundExplainer * /*boundExplainer */ )
     {
     }
 };

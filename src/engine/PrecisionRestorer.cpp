@@ -55,13 +55,13 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
-         boundExplainerBackup = *engine.getBoundExplainer();
+	    boundExplainerBackup = *engine.getBoundExplainer();
 
-		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds(true ) );
-		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds(false ) );
+		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds( true ) );
+		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds( false ) );
 
-        upperDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(true ) );
-        lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels(false ) );
+        upperDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( true ) );
+        lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( false ) );
 
         PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations();
 	}

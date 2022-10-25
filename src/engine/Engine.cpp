@@ -87,6 +87,7 @@ Engine::Engine()
     _statistics.stampStartingTime();
     setRandomSeed( Options::get()->getInt( Options::SEED ) );
 
+    _boundManager.setEngine( this );
     _statisticsPrintingFrequency =
         ( _lpSolverType == LPSolverType::NATIVE ) ?
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY :
@@ -3330,8 +3331,8 @@ void Engine::explainSimplexFailure()
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
         return;
 
-//    checkGroundBounds();  // TODO keep commented when running on Cluster
-//    validateAllBounds( UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000000 );
+    checkGroundBounds();  // TODO keep commented when running on Cluster
+    validateAllBounds( UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000000 );
 
     int infeasibleVar = _tableau->getInfeasibleVar();
 
