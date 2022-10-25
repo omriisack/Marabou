@@ -79,8 +79,6 @@ Engine::Engine()
     _tableau->setStatistics( &_statistics );
     _rowBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
-    _precisionRestorer.setStatistics( &_statistics );
-
 
     _activeEntryStrategy = _projectedSteepestEdgeRule;
     _activeEntryStrategy->setStatistics( &_statistics );
@@ -2415,13 +2413,22 @@ bool Engine::shouldExitDueToTimeout( unsigned timeout ) const
 
 void Engine::preContextPushHook()
 {
+    struct timespec start = TimeUtils::sampleMicro();
     _boundManager.storeLocalBounds();
+    struct timespec end = TimeUtils::sampleMicro();
+
+    _statistics.incLongAttribute( Statistics::TIME_CONTEXT_PUSH_HOOK, TimeUtils::timePassed( start, end ) );
 }
 
 void Engine::postContextPopHook()
 {
+    struct timespec start = TimeUtils::sampleMicro();
+
     _boundManager.restoreLocalBounds();
     _tableau->postContextPopHook();
+
+    struct timespec end = TimeUtils::sampleMicro();
+    _statistics.incLongAttribute( Statistics::TIME_CONTEXT_POP_HOOK, TimeUtils::timePassed( start, end ) );
 }
 
 void Engine::reset()
@@ -2442,7 +2449,6 @@ void Engine::resetStatistics()
     _rowBoundTightener->setStatistics( &_statistics );
     _preprocessor.setStatistics( &_statistics );
     _activeEntryStrategy->setStatistics( &_statistics );
-    _precisionRestorer.setStatistics( &_statistics );
 
     _statistics.stampStartingTime();
 }
@@ -3286,6 +3292,14 @@ bool Engine::consistentBounds() const
     return _boundManager.consistentBounds();
 }
 
+InputQuery Engine::buildQueryFromCurrentState() const {
+    InputQuery query = *_preprocessedQuery;
+    for ( unsigned i = 0; i < query.getNumberOfVariables(); ++i ) {
+        query.setLowerBound( i, _tableau->getLowerBound( i ) );
+        query.setUpperBound( i, _tableau->getUpperBound( i ) );
+    }
+    return query;
+}
 void Engine::updateGroundUpperBound( const unsigned var, const double value, unsigned decisionLevel )
 {
     ASSERT( var < _tableau->getN() );

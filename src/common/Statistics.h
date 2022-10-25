@@ -10,6 +10,7 @@
  ** directory for licensing information.\endverbatim
  **
  ** [[ Add lengthier description here ]]
+
  **/
 
 #ifndef __Statistics_h__
@@ -45,6 +46,10 @@ public:
 
      // Total number of pops so far
      NUM_POPS,
+
+     // Number of calls to context push and pop
+     NUM_CONTEXT_PUSHES,
+     NUM_CONTEXT_POPS,
 
      // Total number of states in the search tree visited so far
      NUM_VISITED_TREE_STATES,
@@ -201,6 +206,12 @@ public:
 
      // Total time adding constraints to (MI)LP solver.
      TIME_ADDING_CONSTRAINTS_TO_MILP_SOLVER_MICRO,
+
+     // Total time spent in context-switching
+     TIME_CONTEXT_PUSH,
+     TIME_CONTEXT_POP,
+     TIME_CONTEXT_PUSH_HOOK,
+     TIME_CONTEXT_POP_HOOK
 
 	// Total Certification Time
 	TOTAL_CERTIFICATION_TIME,
