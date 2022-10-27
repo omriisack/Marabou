@@ -51,7 +51,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 	Vector<unsigned> upperDecisionLevelsBackup;
 	Vector<unsigned> lowerDecisionLevelsBackup;
 
-	List<std::shared_ptr<PLCExplanation>> PLCExplListBackup;
+//	List<std::shared_ptr<PLCExplanation>> PLCExplListBackup; // TODO delete
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
@@ -63,7 +63,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
         upperDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( true ) );
         lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( false ) );
 
-        PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations();
+//        PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations(); // TODO delete
 	}
 
 
@@ -139,7 +139,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
             engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i], lowerDecisionLevelsBackup[i] );
         }
 
-        engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup );
+//        engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup ); // TODO delete
     }
 
     // Restore constraint status

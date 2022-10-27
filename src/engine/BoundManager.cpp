@@ -319,7 +319,6 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Tab
     if ( tightened )
     {
         _boundExplainer->updateBoundExplanation( row, false, variable );
-
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
     }
@@ -348,7 +347,6 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Spa
     if ( tightened )
     {
         _boundExplainer->updateBoundExplanationSparse( row, false, variable );
-
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
     }
@@ -363,7 +361,6 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Spa
     if ( tightened )
     {
         _boundExplainer->updateBoundExplanationSparse( row, true, variable );
-
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
     }
@@ -404,14 +401,18 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
     // Register new ground bound, update certificate, and reset explanation
     unsigned decisionLevel = _engine->computeExplanationDecisionLevel( causingVar, causingVarBound );
     auto explanation = Vector<double>( 0,0 );
+    bool tightened;
     explainBound( causingVar, causingVarBound, explanation );
 
-    auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
-    _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+    tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 
-    affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value, decisionLevel ) : _engine->updateGroundLowerBound( var, value, decisionLevel );
-    resetExplanation( var, affectedVarBound );
-    affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
+    if( tightened )
+    {
+        auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
+        _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+        affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value, decisionLevel ) : _engine->updateGroundLowerBound( var, value, decisionLevel );
+        resetExplanation( var, affectedVarBound );
+    }
 }
 
 void BoundManager::setEngine( IEngine *engine)
@@ -423,4 +424,11 @@ void BoundManager::initializeBoundExplainer( unsigned numberOfVariables, unsigne
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
         _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows );
+}
+
+int BoundManager::getInconsistentVariable() const
+{
+    if ( _consistentBounds )
+        return -1;
+    return _firstInconsistentTightening._variable;
 }

@@ -672,10 +672,6 @@ public:
     	return BasicStatus::BETWEEN;
     }
 
-    int getInfeasibleVar() const
-    {
-		return 0;
-    }
     double computeRowBound( const TableauRow& /* row */, const bool /* isUpper */ ) const
     {
     	return 0;

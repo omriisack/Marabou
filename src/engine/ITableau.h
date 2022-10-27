@@ -197,7 +197,6 @@ public:
     }
 
 	virtual BasicStatus getInfeasibleRow( TableauRow& row ) = 0;
-	virtual int getInfeasibleVar() const = 0;
 	virtual double computeRowBound( const TableauRow &row, bool isUpper ) const = 0;
 	virtual double computeSparseRowBound( const SparseUnsortedList &row,  bool isUpper,  unsigned var ) const = 0;
 	//TODO delete?

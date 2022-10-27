@@ -178,6 +178,11 @@ public:
      */
     void setEngine( IEngine *engine);
 
+    /*
+     * Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
+     */
+    int getInconsistentVariable() const;
+
 private:
     CVC4::context::Context &_context;
     unsigned _size;

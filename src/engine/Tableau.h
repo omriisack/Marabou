@@ -685,12 +685,6 @@ private:
 	BasicStatus getInfeasibleRow( TableauRow &row );
 
 	/*
-	 Returns a variable with infeasible bounds, if exists
-	 Otherwise returns -1
-   */
-	int getInfeasibleVar() const;
-
-	/*
 	* Computes the bound imposed by row rhs
 	*/
 	double computeRowBound( const TableauRow &row, bool isUpper ) const;

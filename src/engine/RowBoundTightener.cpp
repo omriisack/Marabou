@@ -342,7 +342,7 @@ unsigned RowBoundTightener::tightenOnSingleInvertedBasisRow( const TableauRow &r
     for ( unsigned i = 0; i < n - m; ++i )
     {
         // If ci = 0, nothing to do.
-        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.001 )
+        if ( _ciSign[i] == ZERO || abs( row[i] ) < 0.05 )
             continue;
 
         lowerBound = auxLb;

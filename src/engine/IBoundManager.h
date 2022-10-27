@@ -142,6 +142,11 @@ public:
       Initializes the boundExplainer
      */
     virtual void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows ) = 0;
+
+    /*
+     *  Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
+     */
+    virtual int getInconsistentVariable() const = 0;
 };
 
 #endif // __IBoundManager_h__

@@ -2660,13 +2660,6 @@ ITableau::BasicStatus Tableau::getInfeasibleRow( TableauRow& row )
 	return Tableau::BETWEEN;
 }
 
-int Tableau::getInfeasibleVar() const
-{
-	for ( unsigned i = 0; i < _n; ++i )
-		if ( _boundManager.getUpperBound( i ) < _boundManager.getLowerBound( i ) )
-			return ( int ) i;
-	return -1;
-}
 //TODO move to bound manager
 double Tableau::computeRowBound( const TableauRow& row, const bool isUpper ) const
 {

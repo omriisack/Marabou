@@ -206,13 +206,13 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
             else if ( _auxVarInUse && variable == _b && bound < 0 )
             {
                 if ( GlobalConfiguration :: PROOF_CERTIFICATE )
-			{
-				if ( _phaseStatus == RELU_PHASE_INACTIVE )
-                    _boundManager->tightenUpperBound( _aux, -bound, *_tighteningRow );
-				else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, lower bound of b is already >= 0
-                    _boundManager->addLemmaExplanation( _aux, -bound, UPPER, variable, LOWER, getType() );
-			}
-			else
+                {
+                    if ( _phaseStatus == RELU_PHASE_INACTIVE )
+                        _boundManager->tightenUpperBound( _aux, -bound, *_tighteningRow );
+                    else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, lower bound of b is already >= 0
+                        _boundManager->addLemmaExplanation( _aux, -bound, UPPER, variable, LOWER, getType() );
+                }
+                else
                     _boundManager->tightenUpperBound( _aux, -bound );
             }
 
@@ -222,7 +222,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
             {
                 if ( GlobalConfiguration::PROOF_CERTIFICATE )
                     _boundManager->addLemmaExplanation( _f, 0, LOWER, variable, LOWER, getType() );
-			else
+			    else
                     _boundManager->tightenLowerBound( _f, 0 );
             }
         }
@@ -292,33 +292,33 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
                 {
                     // b has a positive upper bound, propagate to f
                     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-				{
-					if ( _phaseStatus == RELU_PHASE_ACTIVE )
-                        _boundManager->tightenUpperBound( _f, bound, *_tighteningRow );
-					else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, upper bound of f is already <= 0
-                        _boundManager->addLemmaExplanation( _f, bound, UPPER, variable, UPPER, getType() );
-				}
-				else
-                        _boundManager->tightenUpperBound( _f, bound );
+                    {
+                        if ( _phaseStatus == RELU_PHASE_ACTIVE )
+                            _boundManager->tightenUpperBound( _f, bound, *_tighteningRow );
+                        else if ( _phaseStatus == PHASE_NOT_FIXED ) // On third case, upper bound of f is already <= 0
+                            _boundManager->addLemmaExplanation( _f, bound, UPPER, variable, UPPER, getType() );
+                    }
+                    else
+                            _boundManager->tightenUpperBound( _f, bound );
                 }
             }
             else if ( _auxVarInUse && variable == _aux )
             {
                if ( GlobalConfiguration::PROOF_CERTIFICATE )
-			{
-				if ( _phaseStatus != RELU_PHASE_ACTIVE )
-                    _boundManager->tightenLowerBound( _b, -bound, *_tighteningRow );
-				else
-				{
-					if ( FloatUtils::isZero( bound ) )
-                        _boundManager->addLemmaExplanation( _b, 0, LOWER, variable, UPPER, getType() );
-					else if ( FloatUtils::isNegative( bound ) )
-						throw InfeasibleQueryException();
-					// Bound cannot be positive if ReLU is active
-				}
-			}
-			else
-			    _boundManager->tightenLowerBound( _b, -bound );
+               {
+                    if ( _phaseStatus != RELU_PHASE_ACTIVE )
+                        _boundManager->tightenLowerBound( _b, -bound, *_tighteningRow );
+                    else
+                    {
+                        if ( FloatUtils::isZero( bound ) )
+                            _boundManager->addLemmaExplanation( _b, 0, LOWER, variable, UPPER, getType() );
+                        else if ( FloatUtils::isNegative( bound ) )
+                            throw InfeasibleQueryException();
+                        // Bound cannot be positive if ReLU is active
+                    }
+               }
+               else
+                    _boundManager->tightenLowerBound( _b, -bound );
             }
         }
     }

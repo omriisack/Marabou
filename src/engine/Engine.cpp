@@ -321,7 +321,12 @@ bool Engine::solve( unsigned timeoutInSeconds )
 
             // We have out-of-bounds variables.
             if ( _lpSolverType == LPSolverType::NATIVE )
+            {
+                applyBoundTightenings();
                 performSimplexStep();
+                _boundManager.propagateTightenings();
+                checkGroundBounds();
+            }
             else
             {
                 ENGINE_LOG( "Checking LP feasibility with Gurobi..." );
@@ -2953,7 +2958,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
     explained = getExplainedBound( var, isUpper );
     if ( isUpper )
     {
-        real = _tableau->getUpperBound( var );
+        real = _boundManager.getUpperBound( var );
         if ( explained - real > epsilon || explained - real < -M  || FloatUtils::abs( explained ) > M )
         {
             printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
@@ -2962,7 +2967,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
     }
     else
     {
-        real = _tableau->getLowerBound( var );
+        real = _boundManager.getLowerBound( var );
         if ( explained - real  < -epsilon || explained - real > M || FloatUtils::abs( explained ) > M )
         {
             printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
@@ -3344,11 +3349,12 @@ void Engine::explainSimplexFailure()
 {
     if ( !GlobalConfiguration::PROOF_CERTIFICATE )
         return;
+    applyAllBoundTightenings();
 
-    checkGroundBounds();  // TODO keep commented when running on Cluster
-    validateAllBounds( UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000000 );
+//    checkGroundBounds();  // TODO keep commented when running on Cluster
+//    validateAllBounds( UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000000 );
 
-    int infeasibleVar = _tableau->getInfeasibleVar();
+    int infeasibleVar = _boundManager.getInconsistentVariable();
 
     if ( infeasibleVar < 0 || !certifyInfeasibility( infeasibleVar ) )
         infeasibleVar = explainFailureWithTableau();
@@ -3371,8 +3377,7 @@ void Engine::explainSimplexFailure()
 
     writeContradictionToCertificate( infeasibleVar );
 
-    if ( !_UNSATCertificateCurrentPointer->getChildren().empty() )
-        _UNSATCertificateCurrentPointer->makeLeaf();
+    _UNSATCertificateCurrentPointer->makeLeaf();
 }
 
 void Engine::checkGroundBounds() const
