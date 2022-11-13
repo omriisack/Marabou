@@ -344,7 +344,7 @@ bool SmtCore::popSplit()
             certificateNode = certificateNode->getParent();
             ASSERT( certificateNode );
             auto *splitChild = certificateNode->getChildBySplit( *split );
-            ASSERT(splitChild );
+            ASSERT( splitChild );
             _engine->setUNSATCertificateCurrentPointer( splitChild );
             ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
         }
@@ -608,35 +608,4 @@ bool SmtCore::pickSplitPLConstraint()
             ( _branchingHeuristic );
     }
     return _constraintForSplitting != NULL;
-}
-
-bool SmtCore::backjump( unsigned backjumpLevel )
-{
-	if ( !GlobalConfiguration::PROOF_CERTIFICATE || !backjumpLevel )
-		return true;
-
-	UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
-	// Remove any entries that have no alternatives
-
-	for ( unsigned  i = 0; i < backjumpLevel; ++i)
-	{
-		if ( _engine->getUNSATCertificateRoot() )
-		{
-			ASSERT( currentCertificateNode );
-			currentCertificateNode = currentCertificateNode->getParent();
-		}
-
-		delete _stack.back()->_engineState;
-		delete _stack.back();
-		_stack.popBack();
-	}
-
-	if ( _engine->getUNSATCertificateRoot() )
-	{
-		// In case that the current pointer is not the root
-		ASSERT( currentCertificateNode );
-		_engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
-	}
-
-	return true;
 }

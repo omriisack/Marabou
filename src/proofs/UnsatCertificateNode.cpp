@@ -151,11 +151,6 @@ void UnsatCertificateNode::makeLeaf()
     _children.clear();
 }
 
-void UnsatCertificateNode::removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel )
-{
-    _PLCExplanations.removeIf( [decisionLevel] ( std::shared_ptr<PLCExplanation> &explanation ){ return explanation->getDecisionLevel() <= decisionLevel; } );
-}
-
 bool UnsatCertificateNode::isValidLeaf() const
 {
     return _contradiction && _children.empty();

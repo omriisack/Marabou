@@ -21,9 +21,6 @@
 class UNSATCertificateUtils
 {
 public:
-    constexpr static const double CERTIFICATION_TOLERANCE = 0.0025;
-    constexpr static const bool PERFORM_JUMP = false;
-
     /*
       Use explanation to compute a bound (aka explained bound)
       Given a variable, an explanation, initial tableau and ground bounds.

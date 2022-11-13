@@ -125,11 +125,6 @@ public:
     void makeLeaf();
 
     /*
-      Removes all PLCExplanations above a certain decision level WITHOUT deleting them
-    */
-    void removePLCExplanationsBelowDecisionLevel( unsigned decisionLevel );
-
-    /*
      Checks if the node is a valid leaf
     */
     bool isValidLeaf() const;

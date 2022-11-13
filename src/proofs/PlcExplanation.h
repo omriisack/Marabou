@@ -31,8 +31,7 @@ public:
                     BoundType causingVarBound,
                     BoundType affectedVarBound,
                     const Vector<double> &explanation,
-                    PiecewiseLinearFunctionType constraintType,
-                    unsigned decisionLevel );
+                    PiecewiseLinearFunctionType constraintType );
 
     ~PLCExplanation();
 

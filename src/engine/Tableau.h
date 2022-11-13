@@ -676,24 +676,6 @@ private:
     void verifyInvariants();
 
     static String basicStatusToString( unsigned status );
-
-	/*
-	  Finds a row with its basic variable either too high or too low,
-	  puts it in  the input parameter, and returns the corresponding basic status
-	  If none found return TABLEAU::BETWEEN
-	*/
-	BasicStatus getInfeasibleRow( TableauRow &row );
-
-	/*
-	* Computes the bound imposed by row rhs
-	*/
-	double computeRowBound( const TableauRow &row, bool isUpper ) const;
-
-	/*
-	* Computes the bound imposed by row on a variable
-	*/
-	double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
-
 };
 
 #endif // __Tableau_h__

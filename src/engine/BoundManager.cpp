@@ -399,7 +399,6 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
     ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
 
     // Register new ground bound, update certificate, and reset explanation
-    unsigned decisionLevel = _engine->computeExplanationDecisionLevel( causingVar, causingVarBound );
     auto explanation = Vector<double>( 0,0 );
     bool tightened;
     explainBound( causingVar, causingVarBound, explanation );
@@ -408,9 +407,9 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
 
     if( tightened )
     {
-        auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType, decisionLevel );
+        auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
         _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
-        affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value, decisionLevel ) : _engine->updateGroundLowerBound( var, value, decisionLevel );
+        affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );
     }
 }
@@ -430,5 +429,59 @@ int BoundManager::getInconsistentVariable() const
 {
     if ( _consistentBounds )
         return -1;
-    return _firstInconsistentTightening._variable;
+    return ( int ) _firstInconsistentTightening._variable;
+}
+
+double BoundManager::computeRowBound( const TableauRow& row, const bool isUpper ) const
+{
+    double bound = 0, multiplier;
+    unsigned var;
+    for ( unsigned i = 0; i < row._size; ++i )
+    {
+        var = row._row[i]._var;
+        if ( FloatUtils::isZero( row[i] ) )
+            continue;
+
+        multiplier = ( isUpper && FloatUtils::isPositive( row[i] ) ) || ( !isUpper && FloatUtils::isNegative( row[i] ) ) ? _upperBounds[var] : _lowerBounds[var];
+        multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * row[i];
+        bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
+    }
+
+    bound += row._scalar;
+    return bound;
+}
+
+double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
+{
+    ASSERT( !row.empty() && var < _size );
+    unsigned curVar;
+    double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
+    for ( const auto& entry : row )
+        if ( entry._index == var )
+        {
+            ci = entry._value;
+            break;
+        }
+
+    ASSERT( !FloatUtils::isZero( ci ) );
+
+    for ( const auto& entry : row )
+    {
+        curVar = entry._index;
+        curVal = entry._value;
+
+        if ( FloatUtils::isZero( curVal ) || curVar == var )
+            continue;
+
+        realCoefficient = curVal / -ci;
+
+        if ( FloatUtils::isZero( realCoefficient ) )
+            continue;
+
+        multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ?_upperBounds[curVar] : _lowerBounds[curVar];
+        multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
+        bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
+    }
+
+    return bound;
 }

@@ -122,8 +122,8 @@ public:
 	/*
 	 * Update the ground bounds
 	 */
-	virtual void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel ) = 0;
-	virtual void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel ) = 0;
+	virtual void updateGroundUpperBound( unsigned var, double value ) = 0;
+	virtual void updateGroundLowerBound( unsigned var, double value ) = 0;
 
     virtual void applyAllBoundTightenings() = 0;
 
@@ -138,16 +138,6 @@ public:
  	* Return all ground bounds as a vector
  	*/
 	virtual const Vector<double> &getGroundBounds( bool isUpper ) const = 0;
-
-	/*
- 	* Return all decision levels of the ground bounds as a vector
- 	*/
-	virtual const Vector<unsigned> &getGroundBoundsDecisionLevels( bool isUpper ) const = 0;
-
-	/*
- 	* Sets all decision levels of the ground bounds as a vector
- 	*/
-	virtual void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper ) = 0;
 
 	/*
 	 * Get the current pointer in the UNSAT certificate
@@ -169,10 +159,6 @@ public:
 	 */
 	virtual bool certifyUNSATCertificate() = 0;
 
-	/*
-	* Computes the decision level of an explanations
-	*/
-	virtual unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const = 0;
 
     /*
       Finds the variable causing failure and updates its bounds explanations

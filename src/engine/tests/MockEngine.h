@@ -215,30 +215,20 @@ public:
 		return 0.0;
 	}
 
-	void updateGroundUpperBound(unsigned /* var */, double /* value */, unsigned /*decision level*/ )
+	void updateGroundUpperBound(unsigned /* var */, double /* value */ )
 	{
 	}
 
-	void updateGroundLowerBound(unsigned /*var*/, double /*value*/, unsigned /*decision level*/ )
+	void updateGroundLowerBound(unsigned /*var*/, double /*value*/ )
 	{
 	}
 
 	Vector<double> _mockDoubleVec;
-	Vector<unsigned> _mockUnsignedVec;
+
 	const Vector<double> &getGroundBounds( bool /* isUpper */ ) const
 	{
 		return _mockDoubleVec;
 	}
-
-	const Vector<unsigned> &getGroundBoundsDecisionLevels( bool /* isUpper */ ) const
-	{
-		return _mockUnsignedVec;
-	}
-
-	void setGroundBoundsDecisionLevels( const Vector<unsigned>& /* decisionLevels */, bool /* isUpper */ )
-	{
-	}
-
 
     UnsatCertificateNode *getUNSATCertificateCurrentPointer() const
 	{
@@ -257,16 +247,6 @@ public:
 	bool certifyUNSATCertificate()
 	{
 		return true;
-	}
-
-	bool isBoundTightest(unsigned /* var */, double /* value */, bool /* isUpper */ ) const
-	{
-		return 0;
-	}
-
-	unsigned computeExplanationDecisionLevel( unsigned /* var */, bool /* isUpper */ ) const
-	{
-		return 0;
 	}
 
     void explainSimplexFailure()

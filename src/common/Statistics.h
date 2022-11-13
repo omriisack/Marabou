@@ -71,8 +71,6 @@ public:
 	//Count number of delegated and certified leaves in the search tree
 	NUM_CERTIFIED_LEAVES,
 	NUM_DELEGATED_LEAVES,
-	// Average jump level
-	TOTAL_JUMP_LEVEL,
     };
 
     enum StatisticsLongAttribute

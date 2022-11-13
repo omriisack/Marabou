@@ -181,11 +181,6 @@ public:
     bool checkSkewFromDebuggingSolution();
     bool splitAllowsStoredSolution( const PiecewiseLinearCaseSplit &split, String &error ) const;
 
-	/*
-	 * Performs a backjump by popping from stack and updating UNSAT certificate accordingly
-	 */
-	bool backjump( unsigned backjumpLevel );
-
 private:
     /*
       Valid splits that were implied by level 0 of the stack.

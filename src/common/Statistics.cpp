@@ -41,7 +41,6 @@ Statistics::Statistics()
     _unsignedAttributes[TOTAL_NUMBER_OF_VALID_CASE_SPLITS] = 0;
     _unsignedAttributes[NUM_CERTIFIED_LEAVES] = 0;
     _unsignedAttributes[NUM_DELEGATED_LEAVES] = 0;
-    _unsignedAttributes[TOTAL_JUMP_LEVEL] = 0;
 
     _longAttributes[NUM_MAIN_LOOP_ITERATIONS] = 0;
     _longAttributes[NUM_SIMPLEX_STEPS] = 0;
@@ -452,7 +451,6 @@ void Statistics::print()
         printf( "\t--- Proof Certificate ---\n" );
         printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
         printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
-        printf( "\tAverage jump level: %.5lf\n", printAverage( getUnsignedAttribute( Statistics::TOTAL_JUMP_LEVEL ), getUnsignedAttribute( Statistics::NUM_VISITED_TREE_STATES ) ) );
     }
 
 }

@@ -183,6 +183,16 @@ public:
      */
     int getInconsistentVariable() const;
 
+    /*
+    * Computes the bound imposed by a row's rhs on its lhs
+    */
+    double computeRowBound( const TableauRow &row, bool isUpper ) const;
+
+    /*
+    * Computes the bound imposed by a row on a variable
+    */
+    double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
+
 private:
     CVC4::context::Context &_context;
     unsigned _size;

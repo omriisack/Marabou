@@ -667,21 +667,6 @@ public:
     {
     }
 
-	BasicStatus getInfeasibleRow( TableauRow& /* row */ )
-    {
-    	return BasicStatus::BETWEEN;
-    }
-
-    double computeRowBound( const TableauRow& /* row */, const bool /* isUpper */ ) const
-    {
-    	return 0;
-    }
-
-	double computeSparseRowBound( const SparseUnsortedList& /* row */,  bool /* isUpper */,  unsigned /* var */ ) const
-	{
-    	return 0;
-	}
-
 	void tightenUpperBoundNaively( unsigned /* variable */, double /* value */ )
 	{
 	}

@@ -48,8 +48,8 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 	Vector<double> upperGroundBoundsBackup;
 	Vector<double> lowerGroundBoundsBackup;
 
-	Vector<unsigned> upperDecisionLevelsBackup;
-	Vector<unsigned> lowerDecisionLevelsBackup;
+    Vector<double> upperBoundsBackup = Vector<double>( targetN, 0 );
+    Vector<double> lowerBoundsBackup = Vector<double>( targetN, 0 );
 
 //	List<std::shared_ptr<PLCExplanation>> PLCExplListBackup; // TODO delete
 
@@ -60,8 +60,11 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds( true ) );
 		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds( false ) );
 
-        upperDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( true ) );
-        lowerDecisionLevelsBackup = Vector<unsigned>( engine.getGroundBoundsDecisionLevels( false ) );
+       for ( unsigned i = 0; i < targetN; ++i)
+       {
+           lowerBoundsBackup[i] = tableau.getLowerBound( i );
+           upperBoundsBackup[i] = tableau.getUpperBound( i );
+       }
 
 //        PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations(); // TODO delete
 	}
@@ -135,10 +138,15 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
         for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
         {
-            engine.updateGroundUpperBound( i, upperGroundBoundsBackup[i], upperDecisionLevelsBackup[i] );
-            engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i], lowerDecisionLevelsBackup[i] );
+            tableau.tightenLowerBoundNaively( i, lowerBoundsBackup[i] );
+            tableau.tightenUpperBoundNaively( i, upperBoundsBackup[i] );
         }
 
+        for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
+        {
+            engine.updateGroundUpperBound( i, upperGroundBoundsBackup[i] );
+            engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i] );
+        }
 //        engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup ); // TODO delete
     }
 

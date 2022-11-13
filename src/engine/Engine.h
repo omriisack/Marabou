@@ -235,23 +235,13 @@ public:
 	/*
 	 * Update the ground bounds
 	 */
-	void updateGroundUpperBound( unsigned var, double value, unsigned decisionLevel );
-	void updateGroundLowerBound( unsigned var, double value, unsigned decisionLevel );
+	void updateGroundUpperBound( unsigned var, double value );
+	void updateGroundLowerBound( unsigned var, double value );
 
 	/*
  	* Return all ground bounds as a vector
  	*/
 	const Vector<double> &getGroundBounds( bool isUpper ) const;
-
-	/*
- 	* Return all decision levels of the ground bounds as a vector
- 	*/
-	const Vector<unsigned> &getGroundBoundsDecisionLevels( bool isUpper ) const;
-
-	/*
- 	* Sets all decision levels of the ground bounds as a vector
- 	*/
-	void setGroundBoundsDecisionLevels( const Vector<unsigned>& decisionLevels, bool isUpper );
 
 	/*
 	 * Get the current pointer of the UNSAT certificate
@@ -272,11 +262,6 @@ public:
 	 * Certify the UNSAT certificate
 	 */
 	bool certifyUNSATCertificate();
-
-	/*
-	* Computes the decision level of an explanations
-	*/
-	unsigned computeExplanationDecisionLevel( unsigned var, bool isUpper ) const;
 
     /*
      Get the boundExplainer
@@ -805,8 +790,6 @@ private:
 	Vector<double> _groundLowerBounds;
     Vector<double> _initialGroundUpperBounds; //TODO check if actually needed
     Vector<double> _initialGroundLowerBounds;
-	Vector<unsigned> _upperDecisionLevels;
-	Vector<unsigned> _lowerDecisionLevels;
 	UnsatCertificateNode* _UNSATCertificate;
 	UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 
@@ -884,22 +867,6 @@ private:
 	  Writes the details of a contradiction to the UNSAT certificate
  	*/
 	void writeContradictionToCertificate( unsigned infeasibleVar );
-
-	/*
- 	  Computes jump level based on decision levels of UNSAT certificate for the leaf
- 	*/
-	unsigned computeJumpLevel( unsigned infeasibleVar );
-
-	/*
- 	  Erases all UNSAT certificate info between current leaf and jump level.
-	  Moves pointer to correct place and sets the relevant contradiction
- 	*/
-	void performJumpForUNSATCertificate( unsigned jumpSize );
-
-	/*
-	  Applies all bound tightenings without further notifying
-	*/
-	void naivelyApplyAllTightenings();
 };
 
 #endif // __Engine_h__

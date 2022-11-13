@@ -269,6 +269,11 @@ private:
     {
 
     }
+
+    int getInconsistentVariable() const
+    {
+        return 0;
+    }
 };
 
 #endif // __MockBoundManager_h__
