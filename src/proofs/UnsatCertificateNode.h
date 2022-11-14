@@ -70,11 +70,6 @@ public:
     const List<std::shared_ptr<PLCExplanation>> &getPLCExplanations() const;
 
     /*
-      Sets  the list of PLC explanations of the node
-    */
-    void setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations );
-
-    /*
       Adds an PLC explanation to the list
     */
     void addPLCExplanation( std::shared_ptr<PLCExplanation> &explanation );

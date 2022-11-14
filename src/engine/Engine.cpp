@@ -2018,11 +2018,8 @@ void Engine::applyBoundTightenings()
         else
             _tableau->tightenUpperBound( tightening._variable, tightening._value );
     }
-
-//	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-//		for ( const auto &tightening : tightenings )
-//			validateBounds( tightening._variable, UNSATCertificateUtils::CERTIFICATION_TOLERANCE, 1000000, tightening._type == Tightening::UB );
 }
+
 void Engine::applyAllRowTightenings()
 {
     applyBoundTightenings();
@@ -3317,9 +3314,12 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
 
 double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 {
-    auto explanationVec = Vector<double>( 0,0 );
-    _boundManager.explainBound( var, isUpper, explanationVec );
-    const double *explanation = explanationVec.empty() ? NULL : explanationVec.data();
+    auto explanationVec = Vector<double>( 0 );
+
+    if  ( !_boundManager.isExplanationTrivial( var, isUpper ) )
+        _boundManager.explainBound( var, isUpper, explanationVec );
+
+    const double *explanation =  explanationVec.empty() ? NULL : explanationVec.data();
     return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
 }
 
@@ -3357,7 +3357,7 @@ bool Engine::validateAllBounds( const double epsilon, const double M ) const
         return true;
 
     bool res = true;
-    //Assuming all tightening were applied
+
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
         if ( !validateBounds( var, epsilon, M, true ) || !validateBounds( var, epsilon, M, false ) )
             res = false;
@@ -3370,8 +3370,8 @@ void Engine::checkGroundBounds() const
     unsigned n = _tableau->getN();
     for ( unsigned i = 0; i < n; ++i )
     {
-        ASSERT( FloatUtils::lte( _groundLowerBounds[i], _tableau->getLowerBound( i ) ) );
-        ASSERT( FloatUtils::gte( _groundUpperBounds[i], _tableau->getUpperBound( i ) ) );
+        ASSERT( FloatUtils::lte( _groundLowerBounds[i], _boundManager.getLowerBound( i ) ) );
+        ASSERT( FloatUtils::gte( _groundUpperBounds[i], _boundManager.getUpperBound( i ) ) );
     }
 }
 
@@ -3478,7 +3478,7 @@ bool Engine::certifyUNSATCertificate()
     struct timespec certificationStart = TimeUtils::sampleMicro();
 
     Checker unsatCertificateChecker( _UNSATCertificate, _initialTableau, _initialGroundUpperBounds, _initialGroundLowerBounds, _plConstraints );
-    bool certificationSucceeded = unsatCertificateChecker.check();  //TODO call only in case of UNSAT when done
+    bool certificationSucceeded = unsatCertificateChecker.check();
 
     _statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, TimeUtils::timePassed( certificationStart, TimeUtils::sampleMicro() ) );
     printf( "Total certification time: " );
@@ -3510,16 +3510,20 @@ void Engine::markLeafToDelegate()
 const Vector<double> Engine::computeContradictionVec( unsigned infeasibleVar ) const
 {
     unsigned m = _tableau->getM();
-    auto upperBoundExplanation = Vector<double>( 0, 0 );
-    auto lowerBoundExplanation = Vector<double>( 0, 0 );
+    auto upperBoundExplanation = Vector<double>( 0 );
+    auto lowerBoundExplanation = Vector<double>( 0 );
 
-    _boundManager.explainBound( infeasibleVar, true, upperBoundExplanation );
-    _boundManager.explainBound( infeasibleVar, false, lowerBoundExplanation );
+    if ( !_boundManager.isExplanationTrivial( infeasibleVar, true ) )
+        _boundManager.explainBound( infeasibleVar, true, upperBoundExplanation );
+
+    if( !_boundManager.isExplanationTrivial( infeasibleVar, false ) )
+        _boundManager.explainBound( infeasibleVar, false, lowerBoundExplanation );
 
     if ( upperBoundExplanation.empty() && lowerBoundExplanation.empty() )
         return Vector<double>( 0 );
 
     auto contradictionVec = upperBoundExplanation.empty() ? Vector<double>( m, 0 )  : Vector<double>( upperBoundExplanation );
+
     if ( !lowerBoundExplanation.empty() )
         for ( unsigned i = 0; i < m; ++i )
             contradictionVec[i] -= lowerBoundExplanation[i];
@@ -3534,17 +3538,11 @@ void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
     _UNSATCertificateCurrentPointer->setContradiction( leafContradiction );
 }
 
-/*
-  Get the boundExplainer
-*/
 BoundExplainer *Engine::getBoundExplainer() const
 {
     return _boundManager.getBoundExplainer();
 }
 
-/*
-  Set the boundExplainer
-*/
 void Engine::setBoundExplainer( BoundExplainer *boundExplainer )
 {
     _boundManager.setBoundExplainer( boundExplainer );

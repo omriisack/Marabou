@@ -44,14 +44,12 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     engine.storeState( targetEngineState,
                        TableauStateStorageLevel::STORE_NONE );
 
-	BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM );
+	BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM, engine.getContext() );
 	Vector<double> upperGroundBoundsBackup;
 	Vector<double> lowerGroundBoundsBackup;
 
     Vector<double> upperBoundsBackup = Vector<double>( targetN, 0 );
     Vector<double> lowerBoundsBackup = Vector<double>( targetN, 0 );
-
-//	List<std::shared_ptr<PLCExplanation>> PLCExplListBackup; // TODO delete
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
@@ -66,7 +64,6 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
            upperBoundsBackup[i] = tableau.getUpperBound( i );
        }
 
-//        PLCExplListBackup = engine.getUNSATCertificateCurrentPointer()->getPLCExplanations(); // TODO delete
 	}
 
 
@@ -136,18 +133,14 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     {
         engine.setBoundExplainer( &boundExplainerBackup );
 
-        for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
+        for ( unsigned i = 0; i < targetN; ++i )
         {
-            tableau.tightenLowerBoundNaively( i, lowerBoundsBackup[i] );
-            tableau.tightenUpperBoundNaively( i, upperBoundsBackup[i] );
-        }
+            tableau.tightenLowerBound( i, lowerBoundsBackup[i] );
+            tableau.tightenUpperBound( i, upperBoundsBackup[i] );
 
-        for ( unsigned i = 0; i < targetN; ++i ) // If for some reason, a tighter ground bound was found, it will be kept
-        {
             engine.updateGroundUpperBound( i, upperGroundBoundsBackup[i] );
             engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i] );
         }
-//        engine.getUNSATCertificateCurrentPointer()->setPLCExplanations( PLCExplListBackup ); // TODO delete
     }
 
     // Restore constraint status

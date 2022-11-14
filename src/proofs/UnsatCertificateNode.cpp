@@ -85,11 +85,6 @@ void UnsatCertificateNode::addPLCExplanation( std::shared_ptr<PLCExplanation> &e
     _PLCExplanations.append( explanation );
 }
 
-void UnsatCertificateNode::setPLCExplanations( const List<std::shared_ptr<PLCExplanation>> &explanations )
-{
-    _PLCExplanations.clear();
-    _PLCExplanations = explanations;
-}
 
 UnsatCertificateNode *UnsatCertificateNode::getChildBySplit( const PiecewiseLinearCaseSplit &split ) const
 {

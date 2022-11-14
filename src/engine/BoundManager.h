@@ -193,6 +193,8 @@ public:
     */
     double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
+    bool isExplanationTrivial( unsigned var, bool isUpper ) const;
+
 private:
     CVC4::context::Context &_context;
     unsigned _size;

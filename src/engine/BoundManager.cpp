@@ -308,7 +308,10 @@ void BoundManager::registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTig
 void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const
 {
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _size );
-    explanation = _boundExplainer->getExplanation( variable, isUpper );
+    auto temp = _boundExplainer->getExplanation( variable, isUpper );
+    explanation = Vector<double>( temp.size() );
+    for ( unsigned i =0; i < temp.size(); ++i)
+        explanation[i] = *temp[i];
 }
 
 bool BoundManager::tightenLowerBound( unsigned variable, double value, const TableauRow &row )
@@ -386,7 +389,7 @@ BoundExplainer *BoundManager::getBoundExplainer() const
 
 void BoundManager::setBoundExplainer( BoundExplainer* boundsExplainer )
 {
-        *_boundExplainer = *boundsExplainer;
+    *_boundExplainer = *boundsExplainer;
 }
 
 void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
@@ -422,7 +425,7 @@ void BoundManager::setEngine( IEngine *engine)
 void BoundManager::initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows )
 {
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows );
+        _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows, _context );
 }
 
 int BoundManager::getInconsistentVariable() const
@@ -484,4 +487,9 @@ double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const
     }
 
     return bound;
+}
+
+bool BoundManager::isExplanationTrivial( unsigned var, bool isUpper ) const
+{
+    return _boundExplainer->isExplanationTrivial( var, isUpper );
 }

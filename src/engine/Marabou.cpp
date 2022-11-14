@@ -199,7 +199,7 @@ void Marabou::solveQuery()
     if ( _engine.processInputQuery( _inputQuery ) )
         _engine.solve( Options::get()->getInt( Options::TIMEOUT ) );
 
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine.getExitCode() == Engine::UNSAT)
         _engine.certifyUNSATCertificate();
 
     if ( _engine.getExitCode() == Engine::SAT )

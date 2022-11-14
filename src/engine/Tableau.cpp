@@ -1622,11 +1622,6 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
     if ( level == TableauStateStorageLevel::STORE_BOUNDS_ONLY ||
          _lpSolverType != LPSolverType::NATIVE )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        {
-            state.initializeBoundExplainer( _n, _m );
-            *state._boundExplainer = *_boundManager.getBoundExplainer();
-        }
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
     {
@@ -1662,9 +1657,6 @@ void Tableau::storeState( TableauState &state, TableauStateStorageLevel level ) 
 
         // Store the merged variables
         state._mergedVariables = _mergedVariables;
-
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundManager.getBoundExplainer() )
-            *state._boundExplainer = *_boundManager.getBoundExplainer();
     }
     else
     {
@@ -1697,12 +1689,6 @@ void Tableau::restoreState( const TableauState &state,
     if ( level == TableauStateStorageLevel::STORE_BOUNDS_ONLY ||
          _lpSolverType != LPSolverType::NATIVE )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
-        {
-            _boundManager.setBoundExplainer( state._boundExplainer );
-            ASSERT(  _boundManager.getBoundExplainer()->getNumberOfRows() == _m );
-            ASSERT( _boundManager.getBoundExplainer()->getNumberOfVariables() == _n );
-        }
     }
     else if ( level == TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE )
     {
@@ -1739,13 +1725,6 @@ void Tableau::restoreState( const TableauState &state,
 
         // Restore the merged variables
         _mergedVariables = state._mergedVariables;
-
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && _boundManager.getBoundExplainer() )
-        {
-            _boundManager.setBoundExplainer( state._boundExplainer );
-            ASSERT(  _boundManager.getBoundExplainer()->getNumberOfRows() == _m );
-            ASSERT( _boundManager.getBoundExplainer()->getNumberOfVariables() == _n );
-        }
 
         computeAssignment();
         _costFunctionManager->initialize();
@@ -2636,28 +2615,4 @@ void Tableau::setBoundsPointers( const double *lower, const double *upper )
 {
     _lowerBounds = lower;
     _upperBounds = upper;
-}
-
-void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
-{
-	ASSERT( variable < _n );
-
-	if ( _statistics )
-		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
-
-    _boundManager.setUpperBound( variable, value );
-
-	updateVariableToComplyWithUpperBoundUpdate( variable, value );
-}
-
-void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
-{
-	ASSERT( variable < _n );
-
-	if ( _statistics )
-		_statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
-
-    _boundManager.setLowerBound( variable, value );
-
-	updateVariableToComplyWithLowerBoundUpdate( variable, value );
 }

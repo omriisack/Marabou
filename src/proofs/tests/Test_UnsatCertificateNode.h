@@ -94,10 +94,5 @@ public:
 
         root.deletePLCExplanations();
         TS_ASSERT( root.getPLCExplanations().empty() );
-
-        List<std::shared_ptr<PLCExplanation>> list = { explanation1 };
-        root.setPLCExplanations( list );
-        TS_ASSERT_EQUALS( root.getPLCExplanations().size(), 1U );
-        TS_ASSERT_EQUALS( root.getPLCExplanations().front(), explanation1 );
     }
 };

@@ -470,16 +470,6 @@ public:
      */
     void postContextPopHook();
 
-	/*
-	 * Tighten an upper bound without checking it is indeed tightening, and without notifying watchers
-	 */
-	void tightenUpperBoundNaively( unsigned variable, double value );
-
-	/*
-	 * Tighten a lower bound without checking it is indeed tightening, and without notifying watchers
-	 */
-	void tightenLowerBoundNaively( unsigned variable, double value );
-
 private:
     /*
       Variable watchers
