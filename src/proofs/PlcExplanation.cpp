@@ -80,8 +80,3 @@ PiecewiseLinearFunctionType PLCExplanation::getConstraintType() const
 {
     return _constraintType;
 }
-
-unsigned PLCExplanation::getDecisionLevel() const
-{
-    return _decisionLevel;
-}

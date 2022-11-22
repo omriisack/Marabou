@@ -136,50 +136,49 @@ public:
     virtual bool consistentBounds() const = 0;
 
     /*
- 	* Return all ground bounds as a vector
- 	*/
-	virtual double getGroundBound( unsigned var, bool isUpper ) const = 0;
+      Get the ground bound of the variable
+    */
+    virtual double getGroundBound( unsigned var, bool isUpper ) const = 0;
 
-	/*
-	 * Get the current pointer in the UNSAT certificate
-	 */
-	virtual UnsatCertificateNode* getUNSATCertificateCurrentPointer() const = 0;
+    /*
+      Get the current pointer in the UNSAT certificate
+    */
+    virtual UnsatCertificateNode* getUNSATCertificateCurrentPointer() const = 0;
 
-	/*
-	 * Set the current pointer in the UNSAT certificate
-	 */
-	virtual void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node ) = 0;
+    /*
+      Set the current pointer in the UNSAT certificate
+    */
+    virtual void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node ) = 0;
 
-	/*
-	 * Get the root of the UNSAT certificate
-	 */
-	virtual UnsatCertificateNode* getUNSATCertificateRoot() const = 0;
+    /*
+      Get the root of the UNSAT certificate
+    */
+    virtual UnsatCertificateNode* getUNSATCertificateRoot() const = 0;
 
-	/*
-	 * Certify the UNSAT certificate
-	 */
-	virtual bool certifyUNSATCertificate() = 0;
-
+    /*
+      Certify the UNSAT certificate
+    */
+    virtual bool certifyUNSATCertificate() = 0;
 
     /*
       Finds the variable causing failure and updates its bounds explanations
     */
     virtual void explainSimplexFailure() = 0;
 
-	/*
-	  Get the boundExplainer
-   	*/
-	virtual BoundExplainer *getBoundExplainer() const = 0;
+    /*
+      Get the boundExplainer
+    */
+    virtual BoundExplainer *getBoundExplainer() const = 0;
 
-	/*
-	  Set the boundExplainer
-   	*/
-	virtual void setBoundExplainer( BoundExplainer *boundExplainer ) = 0;
+    /*
+      Set the boundExplainer
+    */
+    virtual void setBoundExplainer( BoundExplainer *boundExplainer ) = 0;
 
-	/*
-	  Propagate bound tightenings stored in the BoundManager
-	*/
-	virtual void propagateBoundManagerTightenings() = 0;
+    /*
+      Propagate bound tightenings stored in the BoundManager
+    */
+    virtual void propagateBoundManagerTightenings() = 0;
 };
 
 #endif // __IEngine_h__

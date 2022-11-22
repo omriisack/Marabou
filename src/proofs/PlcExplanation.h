@@ -46,7 +46,6 @@ public:
     BoundType getAffectedVarBound() const;
     const double *getExplanation() const;
     PiecewiseLinearFunctionType getConstraintType() const;
-    unsigned getDecisionLevel() const;
 
 private:
     unsigned _causingVar;
@@ -56,7 +55,6 @@ private:
     BoundType _affectedVarBound;
     double *_explanation;
     PiecewiseLinearFunctionType _constraintType;
-    unsigned _decisionLevel;
 };
 
 #endif //__PlcExplanation_h__

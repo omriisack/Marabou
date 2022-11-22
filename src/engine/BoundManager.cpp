@@ -316,12 +316,13 @@ void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double>
 
 bool BoundManager::tightenLowerBound( unsigned variable, double value, const TableauRow &row )
 {
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
-
     bool tightened = setLowerBound( variable, value );
+
     if ( tightened )
     {
-        _boundExplainer->updateBoundExplanation( row, false, variable );
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            _boundExplainer->updateBoundExplanation( row, false, variable );
+
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
     }
@@ -330,12 +331,13 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Tab
 
 bool BoundManager::tightenUpperBound( unsigned variable, double value, const TableauRow &row )
 {
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
-
     bool tightened = setUpperBound( variable, value );
+
     if ( tightened )
     {
-        _boundExplainer->updateBoundExplanation( row, true, variable );
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            _boundExplainer->updateBoundExplanation( row, true, variable );
+
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
     }
@@ -344,12 +346,13 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Tab
 
 bool BoundManager::tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &row )
 {
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
-
     bool tightened = setLowerBound( variable, value );
+
     if ( tightened )
     {
-        _boundExplainer->updateBoundExplanationSparse( row, false, variable );
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            _boundExplainer->updateBoundExplanationSparse( row, false, variable );
+
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
     }
@@ -358,12 +361,13 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Spa
 
 bool BoundManager::tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row )
 {
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE );
-
     bool tightened = setUpperBound( variable, value );
+
     if ( tightened )
     {
-        _boundExplainer->updateBoundExplanationSparse( row, true, variable );
+        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            _boundExplainer->updateBoundExplanationSparse( row, true, variable );
+
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
     }
@@ -387,7 +391,7 @@ BoundExplainer *BoundManager::getBoundExplainer() const
     return _boundExplainer;
 }
 
-void BoundManager::setBoundExplainer( BoundExplainer* boundsExplainer )
+void BoundManager::setBoundExplainer( BoundExplainer *boundsExplainer )
 {
     *_boundExplainer = *boundsExplainer;
 }
@@ -407,7 +411,7 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
 
     bool tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 
-    if( tightened )
+    if ( tightened )
     {
         auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
         _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
@@ -434,7 +438,7 @@ int BoundManager::getInconsistentVariable() const
     return ( int ) _firstInconsistentTightening._variable;
 }
 
-double BoundManager::computeRowBound( const TableauRow& row, const bool isUpper ) const
+double BoundManager::computeRowBound( const TableauRow &row, const bool isUpper ) const
 {
     double bound = 0;
     double multiplier;
@@ -455,7 +459,7 @@ double BoundManager::computeRowBound( const TableauRow& row, const bool isUpper 
     return bound;
 }
 
-double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
+double BoundManager::computeSparseRowBound( const SparseUnsortedList &row, const bool isUpper, const unsigned var ) const
 {
     ASSERT( !row.empty() && var < _size );
 
@@ -466,16 +470,18 @@ double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const
     double curVal;
     double multiplier;
 
-    for ( const auto& entry : row )
+    for ( const auto &entry : row )
+    {
         if ( entry._index == var )
         {
             ci = entry._value;
             break;
         }
+    }
 
     ASSERT( !FloatUtils::isZero( ci ) );
 
-    for ( const auto& entry : row )
+    for ( const auto &entry : row )
     {
         curVar = entry._index;
         curVal = entry._value;

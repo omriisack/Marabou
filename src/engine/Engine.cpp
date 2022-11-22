@@ -1006,11 +1006,6 @@ double *Engine::createConstraintMatrix()
         ++equationIndex;
     }
 
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-
-    }
-
     return constraintMatrix;
 }
 
@@ -1390,7 +1385,6 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
                 _UNSATCertificate->setVisited();
                 _groundBoundManager.initialize( n );
-
 
                 for ( unsigned i = 0; i < n; ++i )
                 {
@@ -3308,7 +3302,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
         real = _boundManager.getUpperBound( var );
         if ( explained - real > epsilon || explained - real < -M  || FloatUtils::abs( explained ) > M )
         {
-            printf( "Var %d. Computed Upper %.5lf, real %.5lf\n", var, explained, real );
+            printf( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }
@@ -3317,7 +3311,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
         real = _boundManager.getLowerBound( var );
         if ( explained - real  < -epsilon || explained - real > M || FloatUtils::abs( explained ) > M )
         {
-            printf( "Var %d. Computed Lower  %.5lf, real %.5lf\n", var, explained, real );
+            printf( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }

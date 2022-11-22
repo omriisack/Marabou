@@ -49,16 +49,16 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     engine.storeState( targetEngineState,
                        TableauStateStorageLevel::STORE_NONE );
 
-	BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM, engine.getContext() );
-	auto groundUpperBoundsBackup = Vector<double>(targetN, 0 );
-	auto groundLowerBoundsBackup = Vector<double>(targetN, 0 );
+    BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM, engine.getContext() );
+    auto groundUpperBoundsBackup = Vector<double>(targetN, 0 );
+    auto groundLowerBoundsBackup = Vector<double>(targetN, 0 );
 
     auto upperBoundsBackup = Vector<double>( targetN, 0 );
     auto lowerBoundsBackup = Vector<double>( targetN, 0 );
 
-	if ( GlobalConfiguration::PROOF_CERTIFICATE )
-	{
-	    boundExplainerBackup = *engine.getBoundExplainer();
+    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    {
+        boundExplainerBackup = *engine.getBoundExplainer();
 
         for ( unsigned i = 0; i < targetN; ++i )
         {
@@ -68,7 +68,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
             groundUpperBoundsBackup[i] = engine.getGroundBound( i, true );
             groundLowerBoundsBackup[i] = engine.getGroundBound( i, false );
         }
-	}
+    }
 
 
     // Store the case splits performed so far

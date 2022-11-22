@@ -101,7 +101,7 @@ const unsigned GlobalConfiguration::DNC_DEPTH_THRESHOLD = 5;
 
 bool GlobalConfiguration::PROOF_CERTIFICATE = true;
 const double GlobalConfiguration::MINIMAL_COEFFICIENT_FOR_TIGHTENING = 0.01;
-const double GlobalConfiguration::LEMMAS_CERTIFICATION_TOLERANCE = 0.0025;
+const double GlobalConfiguration::LEMMAS_CERTIFICATION_TOLERANCE = 0.00001;
 
 #ifdef ENABLE_GUROBI
 const unsigned GlobalConfiguration::GUROBI_NUMBER_OF_THREADS = 1;

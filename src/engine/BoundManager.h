@@ -171,31 +171,31 @@ public:
     /*
       Artificially updates an explanation, without using the recursive rule
     */
-    void setExplanation( const Vector<double>& explanation, unsigned var,  bool isUpper ) const;
+    void setExplanation( const Vector<double> &explanation, unsigned var,  bool isUpper ) const;
 
     /*
       Sets the engine of the BoundManager
-     */
+    */
     void setEngine( IEngine *engine);
 
     /*
-     * Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
-     */
+      Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
+    */
     int getInconsistentVariable() const;
 
     /*
-    * Computes the bound imposed by a row's rhs on its lhs
+      Computes the bound imposed by a row's rhs on its lhs
     */
     double computeRowBound( const TableauRow &row, bool isUpper ) const;
 
     /*
-    * Computes the bound imposed by a row on a variable
+      Computes the bound imposed by a row on a variable
     */
     double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
     /*
-     * Returns true iff an explanation is trivial (i.e. the zero vector)
-     */
+      Returns true iff an explanation is trivial (i.e. the zero vector)
+    */
     bool isExplanationTrivial( unsigned var, bool isUpper ) const;
 
 private:
@@ -242,7 +242,7 @@ private:
                               PiecewiseLinearFunctionType constraintType );
 
     /*
-     * Explainer of all bounds
+      Explainer of all bounds
     */
     BoundExplainer * _boundExplainer;
 

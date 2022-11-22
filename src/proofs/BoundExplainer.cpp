@@ -22,12 +22,12 @@ BoundExplainer::BoundExplainer( unsigned numberOfVariables, unsigned numberOfRow
     , _numberOfRows( numberOfRows )
     , _upperBoundExplanations( _numberOfVariables, Vector<CVC4::context::CDO<double> *>( 0 ) )
     , _lowerBoundExplanations( _numberOfVariables, Vector<CVC4::context::CDO<double> *>( 0 ) )
-    , _trivialUpperBoundExplanation(0 )
-    , _trivialLowerBoundExplanation(0 )
+    , _trivialUpperBoundExplanation( 0 )
+    , _trivialLowerBoundExplanation( 0 )
 {
      for ( unsigned i = 0; i < _numberOfVariables; ++i )
      {
-         for( unsigned j = 0; j < _numberOfRows; ++j )
+         for ( unsigned j = 0; j < _numberOfRows; ++j )
          {
             _upperBoundExplanations[i].append( new ( true ) CDO<double>( &ctx, 0 ) );
             _lowerBoundExplanations[i].append(new ( true ) CDO<double>( &ctx, 0 ) );
@@ -63,13 +63,13 @@ BoundExplainer &BoundExplainer::operator=( const BoundExplainer &other)
 
     for ( unsigned i = 0; i < _numberOfVariables; ++i )
     {
-        for( unsigned j = 0; j < _numberOfRows; ++j )
+        for ( unsigned j = 0; j < _numberOfRows; ++j )
         {
             _upperBoundExplanations[i][j]->set( other._upperBoundExplanations[i][j]->get() );
             _lowerBoundExplanations[i][j]->set( other._lowerBoundExplanations[i][j]->get() );
         }
-        _trivialUpperBoundExplanation[i]->set(other._trivialUpperBoundExplanation[i]->get() );
-        _trivialLowerBoundExplanation[i]->set(other._trivialLowerBoundExplanation[i]->get() );
+        _trivialUpperBoundExplanation[i]->set( other._trivialUpperBoundExplanation[i]->get() );
+        _trivialLowerBoundExplanation[i]->set( other._trivialLowerBoundExplanation[i]->get() );
     }
 
     return *this;

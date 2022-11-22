@@ -232,39 +232,39 @@ public:
 
     void setRandomSeed( unsigned seed );
 
-	/*
-	 * Update the ground bounds
-	 */
-	void updateGroundUpperBound( unsigned var, double value );
-	void updateGroundLowerBound( unsigned var, double value );
-
-	/*
- 	* Return all ground bounds as a vector
- 	*/
-    double getGroundBound( unsigned var, bool isUpper ) const;
-
-	/*
-	 * Get the current pointer of the UNSAT certificate
-	 */
-	UnsatCertificateNode* getUNSATCertificateCurrentPointer() const;
-
-	/*
-	  * Set the current pointer of the UNSAT certificate
-	  */
-	void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node );
-
-	/*
-     * Get the pointer to the root of the UNSAT certificate
-     */
-	UnsatCertificateNode* getUNSATCertificateRoot() const;
-
-	/*
-	 * Certify the UNSAT certificate
-	 */
-	bool certifyUNSATCertificate();
+    /*
+      Update the ground bounds
+    */
+    void updateGroundUpperBound( unsigned var, double value );
+    void updateGroundLowerBound( unsigned var, double value );
 
     /*
-     Get the boundExplainer
+	  Return all ground bounds as a vector
+    */
+    double getGroundBound( unsigned var, bool isUpper ) const;
+
+    /*
+      Get the current pointer of the UNSAT certificate
+    */
+    UnsatCertificateNode* getUNSATCertificateCurrentPointer() const;
+
+    /*
+     Set the current pointer of the UNSAT certificate
+    */
+	void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node );
+
+    /*
+      Get the pointer to the root of the UNSAT certificate
+    */
+    UnsatCertificateNode* getUNSATCertificateRoot() const;
+
+    /*
+	  Certify the UNSAT certificate
+	*/
+    bool certifyUNSATCertificate();
+
+    /*
+      Get the boundExplainer
     */
     BoundExplainer *getBoundExplainer() const;
 
@@ -274,9 +274,9 @@ public:
     void setBoundExplainer( BoundExplainer *boundExplainer );
 
     /*
-       Propagate bound tightenings stored in the BoundManager
+      Propagate bound tightenings stored in the BoundManager
     */
-     void propagateBoundManagerTightenings();
+    void propagateBoundManagerTightenings();
 private:
 
     enum BasisRestorationRequired {
@@ -790,83 +790,83 @@ private:
     void checkGurobiBoundConsistency() const;
 
     BoundManager _groundBoundManager;
-	UnsatCertificateNode* _UNSATCertificate;
-	UnsatCertificateNode* _UNSATCertificateCurrentPointer;
+    UnsatCertificateNode* _UNSATCertificate;
+    UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 
 
-	/*
-	  Updates bounds after deducing Simplex infeasibility
-	*/
-	int explainFailureWithTableau();
+    /*
+      Updates bounds after deducing Simplex infeasibility
+    */
+    int explainFailureWithTableau();
 
-	/*
-	  Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
-	  Asserts the computed bound is epsilon close to the real one.
-	*/
-	bool certifyInfeasibility( const unsigned var ) const;
+    /*
+      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
+      Asserts the computed bound is epsilon close to the real one.
+    */
+    bool certifyInfeasibility( const unsigned var ) const;
 
-	/*
-	  Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
-	*/
-	double getExplainedBound( unsigned var,  bool isUpper ) const;
+    /*
+      Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+    */
+    double getExplainedBound( unsigned var,  bool isUpper ) const;
 
-	/*
-	 Validates that explanations epsilon close to real bounds of a given var
-	 Separately for tightenings and actual bounds
-	 Returns true iff both bounds are epsilon close to their explanations
-	*/
-	bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
+    /*
+     Validates that explanations epsilon close to real bounds of a given var
+     Separately for tightenings and actual bounds
+     Returns true iff both bounds are epsilon close to their explanations
+    */
+    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
 
-	/*
+    /*
      Validates that all explanations epsilon close to real bounds
      Separately for tightenings and actual bounds
      Returns true iff all bounds are epsilon-close to their explanations
     */
-	bool validateAllBounds( double epsilon, double M ) const;
+    bool validateAllBounds( double epsilon, double M ) const;
 
-	/*
-	  Finds the variable causing failure and updates its bounds explanations
-	*/
-	void explainSimplexFailure();
+    /*
+      Finds the variable causing failure and updates its bounds explanations
+    */
+    void explainSimplexFailure();
 
-	/*
-	  Sanity check for ground bounds
-	*/
-	void checkGroundBounds() const;
+    /*
+      Sanity check for ground bounds
+    */
+    void checkGroundBounds() const;
 
-	/*
-	  Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
-	*/
-	int explainFailureWithCostFunction();
+    /*
+      Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
+    */
+    int explainFailureWithCostFunction();
 
-	/*
- 	  Updates explanations of the first infeasible basic var by cost function;
- 	*/
-	int updateFirstInfeasibleBasic();
+    /*
+      Updates explanations of the first infeasible basic var by cost function;
+    */
+    int updateFirstInfeasibleBasic();
 
-	/*
-	  Updates an explanation of a bound according to a row, and checks for an explained contradiction.
-	  If found, return true.
-	  If not, revert and return false
-	*/
-	bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
-	bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
+    /*
+      Updates an explanation of a bound according to a row, and checks for an explained contradiction.
+      If found, return true.
+      If not, revert and return false
+    */
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
 
-	/*
-	  Delegates leaves with certification error to SMTLIB format
-	*/
-	void markLeafToDelegate();
+    /*
+      Delegates leaves with certification error to SMTLIB format
+    */
+    void markLeafToDelegate();
 
-	/*
-	  Return the vector given by upper bound explanation - lower bound explanation
-	  Assuming infeasibleVar is indeed infeasible, then the result it a contradiction vector
-	 */
+    /*
+      Return the vector given by upper bound explanation - lower bound explanation
+      Assuming infeasibleVar is indeed infeasible, then the result it a contradiction vector
+     */
     const Vector<double> computeContradictionVec( unsigned infeasibleVar ) const;
 
     /*
-	  Writes the details of a contradiction to the UNSAT certificate
- 	*/
-	void writeContradictionToCertificate( unsigned infeasibleVar );
+      Writes the details of a contradiction to the UNSAT certificate
+    */
+    void writeContradictionToCertificate( unsigned infeasibleVar );
 };
 
 #endif // __Engine_h__
