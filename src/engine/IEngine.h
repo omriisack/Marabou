@@ -134,10 +134,11 @@ public:
     virtual CVC4::context::Context &getContext() = 0;
 
     virtual bool consistentBounds() const = 0;
-	/*
+
+    /*
  	* Return all ground bounds as a vector
  	*/
-	virtual const Vector<double> &getGroundBounds( bool isUpper ) const = 0;
+	virtual double getGroundBound( unsigned var, bool isUpper ) const = 0;
 
 	/*
 	 * Get the current pointer in the UNSAT certificate
@@ -174,6 +175,11 @@ public:
 	  Set the boundExplainer
    	*/
 	virtual void setBoundExplainer( BoundExplainer *boundExplainer ) = 0;
+
+	/*
+	  Propagate bound tightenings stored in the BoundManager
+	*/
+	virtual void propagateBoundManagerTightenings() = 0;
 };
 
 #endif // __IEngine_h__

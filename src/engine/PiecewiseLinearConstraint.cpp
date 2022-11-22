@@ -197,6 +197,7 @@ bool PiecewiseLinearConstraint::isCaseInfeasible( PhaseStatus phase ) const
     ASSERT( _cdInfeasibleCases );
     return std::find( _cdInfeasibleCases->begin(), _cdInfeasibleCases->end(), phase ) != _cdInfeasibleCases->end();
 }
+
 void PiecewiseLinearConstraint::setStatistics( Statistics *statistics )
 {
     _statistics = statistics;

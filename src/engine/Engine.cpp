@@ -67,9 +67,7 @@ Engine::Engine()
     , _milpSolverBoundTighteningType( Options::get()->getMILPSolverBoundTighteningType() )
     , _sncMode( false )
     , _queryId( "" )
-    , _initialTableau {}
-    , _groundUpperBounds {}
-    , _groundLowerBounds {}
+    , _groundBoundManager( _context )
     , _UNSATCertificate( NULL )
     , _UNSATCertificateCurrentPointer( NULL )
 {
@@ -84,6 +82,7 @@ Engine::Engine()
     setRandomSeed( Options::get()->getInt( Options::SEED ) );
 
     _boundManager.setEngine( this );
+    _groundBoundManager.setEngine( this );
     _statisticsPrintingFrequency =
         ( _lpSolverType == LPSolverType::NATIVE ) ?
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY :
@@ -1009,33 +1008,7 @@ double *Engine::createConstraintMatrix()
 
     if ( GlobalConfiguration::PROOF_CERTIFICATE )
     {
-        unsigned count = 0;
 
-        _groundUpperBounds = Vector<double>( n );
-        _groundLowerBounds = Vector<double>( n );
-
-        for ( unsigned i = 0; i < n; ++i )
-        {
-            _groundUpperBounds[i] = _preprocessedQuery->getUpperBound( i );
-            _groundLowerBounds[i] = _preprocessedQuery->getLowerBound( i );
-        }
-
-        _initialGroundUpperBounds = Vector<double>( _groundUpperBounds );
-        _initialGroundLowerBounds = Vector<double>( _groundLowerBounds );
-
-        // Set vector of initial rows
-        _initialTableau = Vector<Vector<double>>( m );
-        // Keep m vectors of n numbers
-        for ( const auto& equation : equations )
-        {
-            _initialTableau[count] = Vector<double>( n, 0 );
-
-            for ( const auto& addend : equation._addends )
-                _initialTableau[count][addend._variable] = addend._coefficient;
-
-            // After Preprocessing, all scalars should be zero
-            ++count;
-        }
     }
 
     return constraintMatrix;
@@ -1412,10 +1385,18 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             delete[] constraintMatrix;
 
             if ( GlobalConfiguration::PROOF_CERTIFICATE )
-            { //TODO maybe assign to another function
+            {
                 _UNSATCertificate = new UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
                 _UNSATCertificate->setVisited();
+                _groundBoundManager.initialize( n );
+
+
+                for ( unsigned i = 0; i < n; ++i )
+                {
+                   _groundBoundManager.setUpperBound( i, _preprocessedQuery->getUpperBound( i ) );
+                   _groundBoundManager.setLowerBound( i, _preprocessedQuery->getLowerBound( i ) );
+                }
             }
         }
         else
@@ -1712,12 +1693,6 @@ void Engine::storeState( EngineState &state, TableauStateStorageLevel level ) co
         state._plConstraintToState[constraint] = constraint->duplicateConstraint();
 
     state._numPlConstraintsDisabledByValidSplits = _numPlConstraintsDisabledByValidSplits;
-
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-        state._groundUpperBounds = Vector<double>( _groundUpperBounds );
-        state._groundLowerBounds = Vector<double>( _groundLowerBounds );
-    }
 }
 
 void Engine::restoreState( const EngineState &state )
@@ -1741,11 +1716,6 @@ void Engine::restoreState( const EngineState &state )
     }
 
     _numPlConstraintsDisabledByValidSplits = state._numPlConstraintsDisabledByValidSplits;
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-        _groundUpperBounds = Vector<double>( state._groundUpperBounds );
-        _groundLowerBounds = Vector<double>( state._groundLowerBounds );
-    }
 
     if ( _lpSolverType == LPSolverType::NATIVE )
     {
@@ -2416,6 +2386,7 @@ void Engine::preContextPushHook()
 {
     struct timespec start = TimeUtils::sampleMicro();
     _boundManager.storeLocalBounds();
+    _groundBoundManager.storeLocalBounds();
     struct timespec end = TimeUtils::sampleMicro();
 
     _statistics.incLongAttribute( Statistics::TIME_CONTEXT_PUSH_HOOK, TimeUtils::timePassed( start, end ) );
@@ -2426,6 +2397,7 @@ void Engine::postContextPopHook()
     struct timespec start = TimeUtils::sampleMicro();
 
     _boundManager.restoreLocalBounds();
+    _groundBoundManager.restoreLocalBounds();
     _tableau->postContextPopHook();
 
     struct timespec end = TimeUtils::sampleMicro();
@@ -3219,23 +3191,24 @@ InputQuery Engine::buildQueryFromCurrentState() const {
     }
     return query;
 }
+
 void Engine::updateGroundUpperBound( const unsigned var, const double value )
 {
     ASSERT( var < _tableau->getN() );
-    if ( FloatUtils::lt( value, _groundUpperBounds[var] ) )
-        _groundUpperBounds[var] = value;
+    if ( FloatUtils::lt( value, _groundBoundManager.getUpperBound( var ) ) )
+       _groundBoundManager.setUpperBound( var, value );
 }
 
 void Engine::updateGroundLowerBound( const unsigned var, const double value )
 {
     ASSERT( var < _tableau->getN() );
-    if ( FloatUtils::gt( value, _groundLowerBounds[var] ) )
-        _groundLowerBounds[var] = value;
+    if ( FloatUtils::gt( value, _groundBoundManager.getLowerBound( var ) ) )
+      _groundBoundManager.setLowerBound( var, value );
 }
 
-const Vector<double> &Engine::getGroundBounds( bool isUpper ) const
+double Engine::getGroundBound( unsigned var, bool isUpper ) const
 {
-    return isUpper ? _groundUpperBounds : _groundLowerBounds;
+    return isUpper ? _groundBoundManager.getUpperBound( var ) : _groundBoundManager.getLowerBound( var );
 }
 
 void Engine::explainSimplexFailure()
@@ -3244,7 +3217,7 @@ void Engine::explainSimplexFailure()
         return;
 
 //    checkGroundBounds();  // TODO keep commented when running on Cluster
-//    validateAllBounds(GlobalConfiguration::LEMMAS_CERTIFICATION_TOLERANCE, 1000000000 );
+//    validateAllBounds( GlobalConfiguration::LEMMAS_CERTIFICATION_TOLERANCE, 1000000000 );
 
     int infeasibleVar = _boundManager.getInconsistentVariable();
 
@@ -3306,9 +3279,9 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
     auto contradictionVec = computeContradictionVec( var );
 
     if ( contradictionVec.empty() )
-        return FloatUtils::isNegative( _groundUpperBounds[var] - _groundLowerBounds[var] );
+        return FloatUtils::isNegative( _boundManager.getUpperBound( var ) - _groundBoundManager.getLowerBound( var ) );
 
-    double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( contradictionVec.data(), _initialTableau, _groundUpperBounds, _groundLowerBounds );
+    double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( contradictionVec.data(), _tableau->getSparseA(), _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getM(), _tableau->getN() );
     return FloatUtils::isNegative( derivedBound );
 }
 
@@ -3320,7 +3293,7 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
         _boundManager.explainBound( var, isUpper, explanationVec );
 
     const double *explanation =  explanationVec.empty() ? NULL : explanationVec.data();
-    return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _initialTableau, _groundUpperBounds, _groundLowerBounds );
+    return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _tableau->getSparseA(), _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getM(), _tableau->getN() );
 }
 
 bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
@@ -3370,8 +3343,8 @@ void Engine::checkGroundBounds() const
     unsigned n = _tableau->getN();
     for ( unsigned i = 0; i < n; ++i )
     {
-        ASSERT( FloatUtils::lte( _groundLowerBounds[i], _boundManager.getLowerBound( i ) ) );
-        ASSERT( FloatUtils::gte( _groundUpperBounds[i], _boundManager.getUpperBound( i ) ) );
+        ASSERT( FloatUtils::lte( _groundBoundManager.getLowerBound( i ), _boundManager.getLowerBound( i ) ) );
+        ASSERT( FloatUtils::gte( _groundBoundManager.getUpperBound( i ), _boundManager.getUpperBound( i ) ) );
     }
 }
 
@@ -3463,7 +3436,7 @@ UnsatCertificateNode* Engine::getUNSATCertificateRoot() const
 
 bool Engine::certifyUNSATCertificate()
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_UNSATCertificate )
+    if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_UNSATCertificate  )
         return false;
 
     for ( auto &constraint : _plConstraints )
@@ -3475,13 +3448,25 @@ bool Engine::certifyUNSATCertificate()
         }
     }
 
-    struct timespec certificationStart = TimeUtils::sampleMicro();
+    ASSERT( !_smtCore.getStackDepth() );
 
-    Checker unsatCertificateChecker( _UNSATCertificate, _initialTableau, _initialGroundUpperBounds, _initialGroundLowerBounds, _plConstraints );
+    struct timespec certificationStart = TimeUtils::sampleMicro();
+    _precisionRestorer.restoreInitialEngineState( *this );
+
+    Vector<double> groundUpperBounds( _tableau->getN(), 0 );
+    Vector<double> groundLowerBounds( _tableau->getN(), 0 );
+
+    for ( unsigned i = 0; i < _tableau->getN(); ++i )
+    {
+        groundUpperBounds[i] = _groundBoundManager.getUpperBound( i );
+        groundLowerBounds[i] = _groundBoundManager.getLowerBound( i );
+    }
+
+    Checker unsatCertificateChecker( _UNSATCertificate, _tableau->getM(),  _tableau->getSparseA(), groundUpperBounds, groundLowerBounds, _plConstraints );
     bool certificationSucceeded = unsatCertificateChecker.check();
 
     _statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, TimeUtils::timePassed( certificationStart, TimeUtils::sampleMicro() ) );
-    printf( "Total certification time: " );
+    printf( "Certification time: " );
     _statistics.printLongAttributeAsTime( _statistics.getLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME ) );
 
     if ( certificationSucceeded )
@@ -3546,4 +3531,9 @@ BoundExplainer *Engine::getBoundExplainer() const
 void Engine::setBoundExplainer( BoundExplainer *boundExplainer )
 {
     _boundManager.setBoundExplainer( boundExplainer );
+}
+
+void Engine::propagateBoundManagerTightenings()
+{
+    _boundManager.propagateTightenings();
 }

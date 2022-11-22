@@ -17,28 +17,26 @@
 double UNSATCertificateUtils::computeBound( unsigned var,
                                             bool isUpper,
                                             const double *explanation,
-                                            const Vector<Vector<double>> &initialTableau,
-                                            const Vector<double> &groundUpperBounds,
-                                            const Vector<double> &groundLowerBounds )
+                                            const SparseMatrix *initialTableau,
+                                            const double *groundUpperBounds,
+                                            const double *groundLowerBounds,
+                                            unsigned numberOfRows,
+                                            unsigned numberOfVariables )
 {
-    ASSERT( groundLowerBounds.size() == groundUpperBounds.size() );
-    ASSERT( groundLowerBounds.size() == initialTableau[0].size() );
-    ASSERT( groundLowerBounds.size() == initialTableau[initialTableau.size() - 1 ].size() );
-    ASSERT( var < groundUpperBounds.size() );
+    ASSERT( var < numberOfVariables );
 
     double derivedBound = 0;
     double temp;
-    unsigned n = groundUpperBounds.size();
 
     if ( !explanation )
         return isUpper ? groundUpperBounds[var]  : groundLowerBounds[var];
 
+    Vector<double> explanationRowCombination( numberOfVariables, 0 );
     // Create linear combination of original rows implied from explanation
-    Vector<double> explanationRowCombination;
-    UNSATCertificateUtils::getExplanationRowCombination( var, explanationRowCombination, explanation, initialTableau );
+    UNSATCertificateUtils::getExplanationRowCombination( var, explanation, explanationRowCombination, initialTableau, numberOfRows, numberOfVariables );
 
     // Set the bound derived from the linear combination, using original bounds.
-    for ( unsigned i = 0; i < n; ++i )
+    for ( unsigned i = 0; i < numberOfVariables; ++i )
     {
         temp = explanationRowCombination[i];
         if ( !FloatUtils::isZero( temp ) )
@@ -57,24 +55,31 @@ double UNSATCertificateUtils::computeBound( unsigned var,
 }
 
 void UNSATCertificateUtils::getExplanationRowCombination( unsigned var,
-                                                          Vector<double> &explanationRowCombination,
                                                           const double *explanation,
-                                                          const Vector<Vector<double>> &initialTableau )
+                                                          Vector<double> &explanationRowCombination,
+                                                          const SparseMatrix *initialTableau,
+                                                          unsigned numberOfRows,
+                                                          unsigned numberOfVariables )
 {
     ASSERT( explanation != NULL );
-    explanationRowCombination = Vector<double>( initialTableau[0].size(), 0 );
-    unsigned n = initialTableau[0].size();
-    unsigned m = initialTableau.size();
-    for ( unsigned i = 0; i < m; ++i )
+
+    SparseUnsortedList tableauRow( numberOfVariables );
+    explanationRowCombination = Vector<double> ( numberOfVariables, 0 );
+
+    for ( unsigned i = 0; i < numberOfRows; ++i )
     {
-        for ( unsigned j = 0; j < n; ++j )
+         if ( FloatUtils::isZero( explanation[i] ) )
+             continue;
+
+        initialTableau->getRow( i, &tableauRow );
+        for ( auto entry : tableauRow )
         {
-            if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( explanation[i] ) )
-                explanationRowCombination[j] += initialTableau[i][j] * explanation[i];
+            if ( !FloatUtils::isZero( entry._value ) )
+                explanationRowCombination[entry._index] += entry._value * explanation[i];
         }
     }
 
-    for ( unsigned i = 0; i < n; ++i )
+    for ( unsigned i = 0; i < numberOfVariables; ++i )
     {
         if ( FloatUtils::isZero( explanationRowCombination[i] ) )
             explanationRowCombination[i] = 0;
@@ -86,21 +91,27 @@ void UNSATCertificateUtils::getExplanationRowCombination( unsigned var,
 }
 
 double UNSATCertificateUtils::computeCombinationUpperBound( const double *explanation,
-                                                               const Vector<Vector<double>> &initialTableau,
-                                                               const Vector<double> &groundUpperBounds,
-                                                               const Vector<double> &groundLowerBounds)
+                                                               const SparseMatrix *initialTableau,
+                                                               const double *groundUpperBounds,
+                                                               const double *groundLowerBounds,
+                                                               unsigned numberOfRows,
+                                                               unsigned numberOfVariables )
 {
     ASSERT( explanation != NULL );
-    unsigned n = initialTableau[0].size();
-    unsigned m = initialTableau.size();
 
-    auto explanationRowCombination = Vector<double>( n, 0 );
-    for ( unsigned i = 0; i < m; ++i )
+    SparseUnsortedList tableauRow( numberOfVariables );
+    Vector<double> explanationRowCombination( numberOfVariables, 0 );
+
+    for ( unsigned row = 0; row < numberOfRows; ++row )
     {
-        for ( unsigned j = 0; j < n; ++j )
+        if ( FloatUtils::isZero( explanation[row] ) )
+            continue;
+
+        initialTableau->getRow( row, &tableauRow );
+        for ( auto entry : tableauRow )
         {
-            if ( !FloatUtils::isZero( initialTableau[i][j] ) && !FloatUtils::isZero( explanation[i] ) )
-                explanationRowCombination[j] += initialTableau[i][j] * explanation[i];
+            if ( !FloatUtils::isZero( entry._value ) )
+                explanationRowCombination[entry._index] += entry._value * explanation[row];
         }
     }
 
@@ -108,7 +119,7 @@ double UNSATCertificateUtils::computeCombinationUpperBound( const double *explan
     double temp;
 
     // Set the bound derived from the linear combination, using original bounds.
-    for ( unsigned i = 0; i < n; ++i )
+    for ( unsigned i = 0; i < numberOfVariables; ++i )
     {
         temp = explanationRowCombination[i];
         if ( !FloatUtils::isZero( temp ) )

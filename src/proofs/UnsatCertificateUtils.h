@@ -16,6 +16,8 @@
 #define __UnsatCertificateUtils_h__
 
 #include "FloatUtils.h"
+#include "SparseMatrix.h"
+#include "SparseUnsortedList.h"
 #include "Vector.h"
 
 class UNSATCertificateUtils
@@ -28,22 +30,28 @@ public:
     static double computeBound( unsigned var,
                                 bool isUpper,
                                 const double *explanation,
-                                const Vector<Vector<double>> &initialTableau,
-                                const Vector<double> &groundUpperBounds,
-                                const Vector<double> &groundLowerBounds );
+                                const SparseMatrix *initialTableau,
+                                const double *groundUpperBounds,
+                                const double *groundLowerBounds,
+                                unsigned numberOfRows,
+                                unsigned numberOfVariables );
 
     /*
       Given a var, a tableau and a column vector, create a linear combination used to explain a bound
     */
     static void getExplanationRowCombination( unsigned var,
-                                              Vector<double> &explanationRowCombination,
                                               const double *explanation,
-                                              const Vector<Vector<double>> &initialTableau );
+                                              Vector<double> &explanationRowCombination,
+                                              const SparseMatrix *initialTableau,
+                                              unsigned numberOfVariables,
+                                              unsigned numberOfRows );
 
     static double computeCombinationUpperBound( const double *explanation,
-                                              const Vector<Vector<double>> &initialTableau,
-                                              const Vector<double> &groundUpperBounds,
-                                              const Vector<double> &groundLowerBounds);
+                                                const SparseMatrix *initialTableau,
+                                                const double *groundUpperBounds,
+                                                const double *groundLowerBounds,
+                                                unsigned numberOfRows,
+                                                unsigned numberOfVariables );
 };
 
 #endif //__UnsatCertificateUtils_h__

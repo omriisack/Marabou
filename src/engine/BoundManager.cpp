@@ -310,7 +310,7 @@ void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double>
     ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _size );
     auto temp = _boundExplainer->getExplanation( variable, isUpper );
     explanation = Vector<double>( temp.size() );
-    for ( unsigned i =0; i < temp.size(); ++i)
+    for ( unsigned i = 0; i < temp.size(); ++i )
         explanation[i] = *temp[i];
 }
 
@@ -402,11 +402,10 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
     ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
 
     // Register new ground bound, update certificate, and reset explanation
-    auto explanation = Vector<double>( 0,0 );
-    bool tightened;
+    auto explanation = Vector<double>( 0 );
     explainBound( causingVar, causingVarBound, explanation );
 
-    tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
+    bool tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 
     if( tightened )
     {
@@ -437,8 +436,10 @@ int BoundManager::getInconsistentVariable() const
 
 double BoundManager::computeRowBound( const TableauRow& row, const bool isUpper ) const
 {
-    double bound = 0, multiplier;
+    double bound = 0;
+    double multiplier;
     unsigned var;
+
     for ( unsigned i = 0; i < row._size; ++i )
     {
         var = row._row[i]._var;
@@ -450,15 +451,21 @@ double BoundManager::computeRowBound( const TableauRow& row, const bool isUpper 
         bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
     }
 
-    bound += row._scalar;
+    bound += FloatUtils::isZero( row._scalar ) ? 0 : row._scalar;
     return bound;
 }
 
 double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const bool isUpper, const unsigned var ) const
 {
     ASSERT( !row.empty() && var < _size );
+
     unsigned curVar;
-    double ci = 0.0 , realCoefficient, bound = 0.0, curVal, multiplier;
+    double ci = 0;
+    double bound = 0;
+    double realCoefficient;
+    double curVal;
+    double multiplier;
+
     for ( const auto& entry : row )
         if ( entry._index == var )
         {
@@ -481,7 +488,7 @@ double BoundManager::computeSparseRowBound( const SparseUnsortedList& row, const
         if ( FloatUtils::isZero( realCoefficient ) )
             continue;
 
-        multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ?_upperBounds[curVar] : _lowerBounds[curVar];
+        multiplier = ( isUpper && realCoefficient  > 0 ) || ( !isUpper &&  realCoefficient < 0 ) ? _upperBounds[curVar] : _lowerBounds[curVar];
         multiplier = FloatUtils::isZero( multiplier ) ? 0 : multiplier * realCoefficient;
         bound += FloatUtils::isZero( multiplier ) ? 0 : multiplier;
     }

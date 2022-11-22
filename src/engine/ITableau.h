@@ -196,6 +196,10 @@ public:
         _optimizing = optimizing;
     }
 
+    virtual void tightenUpperBoundNaively( unsigned variable, double value ) = 0;
+    virtual void tightenLowerBoundNaively( unsigned variable, double value ) = 0;
+
+
 protected:
     bool _optimizing = false;
 };

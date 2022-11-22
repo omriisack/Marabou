@@ -241,7 +241,7 @@ public:
 	/*
  	* Return all ground bounds as a vector
  	*/
-	const Vector<double> &getGroundBounds( bool isUpper ) const;
+    double getGroundBound( unsigned var, bool isUpper ) const;
 
 	/*
 	 * Get the current pointer of the UNSAT certificate
@@ -273,6 +273,10 @@ public:
     */
     void setBoundExplainer( BoundExplainer *boundExplainer );
 
+    /*
+       Propagate bound tightenings stored in the BoundManager
+    */
+     void propagateBoundManagerTightenings();
 private:
 
     enum BasisRestorationRequired {
@@ -785,11 +789,7 @@ private:
     */
     void checkGurobiBoundConsistency() const;
 
-	Vector<Vector<double>> _initialTableau;
-	Vector<double> _groundUpperBounds;
-	Vector<double> _groundLowerBounds;
-    Vector<double> _initialGroundUpperBounds; //TODO check if actually needed
-    Vector<double> _initialGroundLowerBounds;
+    BoundManager _groundBoundManager;
 	UnsatCertificateNode* _UNSATCertificate;
 	UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 

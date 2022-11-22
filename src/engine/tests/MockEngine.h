@@ -223,11 +223,9 @@ public:
 	{
 	}
 
-	Vector<double> _mockDoubleVec;
-
-	const Vector<double> &getGroundBounds( bool /* isUpper */ ) const
-	{
-		return _mockDoubleVec;
+    double getGroundBound( unsigned /*var*/, bool /*isUpper*/ ) const
+    {
+		return 0;
 	}
 
     UnsatCertificateNode *getUNSATCertificateCurrentPointer() const
@@ -259,6 +257,10 @@ public:
     }
 
     void setBoundExplainer( BoundExplainer * /*boundExplainer */ )
+    {
+    }
+
+    void propagateBoundManagerTightenings()
     {
     }
 };

@@ -193,6 +193,9 @@ public:
     */
     double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
+    /*
+     * Returns true iff an explanation is trivial (i.e. the zero vector)
+     */
     bool isExplanationTrivial( unsigned var, bool isUpper ) const;
 
 private:

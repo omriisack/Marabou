@@ -26,10 +26,11 @@ public:
     /*
       Tests the whole functionality of the SmtLibWriter module
     */
-    void testSmtLibWritting()
+    void testSmtLibWriting()
     {
         file = new MockFile();
         Vector<double> row = { 1, 1 };
+        SparseUnsortedList sparseRow( row.data(), 2 );
         Vector<Vector<double>> initialTableau = { row };
         Vector<double> groundUpperBounds = { 1, 1 };
         Vector<double> groundLowerBounds = { 1 , -1 };
@@ -38,7 +39,7 @@ public:
         SmtLibWriter::addHeader( 2, instance );
         SmtLibWriter::addGroundUpperBounds( groundUpperBounds, instance );
         SmtLibWriter::addGroundLowerBounds( groundLowerBounds, instance );
-        SmtLibWriter::addTableauRow( initialTableau[0], instance );
+        SmtLibWriter::addTableauRow( sparseRow, instance );
         SmtLibWriter::addReLUConstraint( 0, 1, PHASE_NOT_FIXED, instance );
         SmtLibWriter::addFooter( instance );
 

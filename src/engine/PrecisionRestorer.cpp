@@ -28,6 +28,11 @@ void PrecisionRestorer::storeInitialEngineState( IEngine &engine )
                        TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE );
 }
 
+void PrecisionRestorer::restoreInitialEngineState( IEngine &engine )
+{
+    engine.restoreState( _initialEngineState );
+}
+
 void PrecisionRestorer::restorePrecision( IEngine &engine,
                                           ITableau &tableau,
                                           SmtCore &smtCore,
@@ -45,25 +50,24 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
                        TableauStateStorageLevel::STORE_NONE );
 
 	BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM, engine.getContext() );
-	Vector<double> upperGroundBoundsBackup;
-	Vector<double> lowerGroundBoundsBackup;
+	auto groundUpperBoundsBackup = Vector<double>(targetN, 0 );
+	auto groundLowerBoundsBackup = Vector<double>(targetN, 0 );
 
-    Vector<double> upperBoundsBackup = Vector<double>( targetN, 0 );
-    Vector<double> lowerBoundsBackup = Vector<double>( targetN, 0 );
+    auto upperBoundsBackup = Vector<double>( targetN, 0 );
+    auto lowerBoundsBackup = Vector<double>( targetN, 0 );
 
 	if ( GlobalConfiguration::PROOF_CERTIFICATE )
 	{
 	    boundExplainerBackup = *engine.getBoundExplainer();
 
-		upperGroundBoundsBackup = Vector<double>( engine.getGroundBounds( true ) );
-		lowerGroundBoundsBackup = Vector<double>( engine.getGroundBounds( false ) );
+        for ( unsigned i = 0; i < targetN; ++i )
+        {
+            lowerBoundsBackup[i] = tableau.getLowerBound( i );
+            upperBoundsBackup[i] = tableau.getUpperBound( i );
 
-       for ( unsigned i = 0; i < targetN; ++i)
-       {
-           lowerBoundsBackup[i] = tableau.getLowerBound( i );
-           upperBoundsBackup[i] = tableau.getUpperBound( i );
-       }
-
+            groundUpperBoundsBackup[i] = engine.getGroundBound( i, true );
+            groundLowerBoundsBackup[i] = engine.getGroundBound( i, false );
+        }
 	}
 
 
@@ -135,12 +139,17 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
         for ( unsigned i = 0; i < targetN; ++i )
         {
-            tableau.tightenLowerBound( i, lowerBoundsBackup[i] );
-            tableau.tightenUpperBound( i, upperBoundsBackup[i] );
-
-            engine.updateGroundUpperBound( i, upperGroundBoundsBackup[i] );
-            engine.updateGroundLowerBound( i, lowerGroundBoundsBackup[i] );
+            engine.updateGroundUpperBound( i, groundUpperBoundsBackup[i] );
+            engine.updateGroundLowerBound( i, groundLowerBoundsBackup[i] );
         }
+
+        for ( unsigned i = 0; i < targetN; ++i )
+        {
+            tableau.tightenUpperBoundNaively( i, upperBoundsBackup[i] );
+            tableau.tightenLowerBoundNaively( i, lowerBoundsBackup[i] );
+        }
+
+        engine.propagateBoundManagerTightenings();
     }
 
     // Restore constraint status

@@ -2616,3 +2616,29 @@ void Tableau::setBoundsPointers( const double *lower, const double *upper )
     _lowerBounds = lower;
     _upperBounds = upper;
 }
+
+void Tableau::tightenUpperBoundNaively( unsigned variable, double value )
+{
+    ASSERT( variable < _n );
+
+    if ( _statistics )
+        _statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
+
+    _boundManager.setUpperBound( variable, value );
+
+    if ( _lpSolverType == LPSolverType::NATIVE )
+        updateVariableToComplyWithUpperBoundUpdate( variable, value );
+}
+
+void Tableau::tightenLowerBoundNaively( unsigned variable, double value )
+{
+    ASSERT( variable < _n );
+
+    if ( _statistics )
+        _statistics->incLongAttribute( Statistics::NUM_TIGHTENED_BOUNDS );
+
+    _boundManager.setLowerBound( variable, value );
+
+    if ( _lpSolverType == LPSolverType::NATIVE )
+        updateVariableToComplyWithLowerBoundUpdate( variable, value );
+}
