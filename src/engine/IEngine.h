@@ -136,6 +136,11 @@ public:
     virtual bool consistentBounds() const = 0;
 
     /*
+      Returns true iff the engine is in proof production mode
+    */
+    virtual bool shouldProduceProofs() const = 0;
+
+    /*
       Get the ground bound of the variable
     */
     virtual double getGroundBound( unsigned var, bool isUpper ) const = 0;

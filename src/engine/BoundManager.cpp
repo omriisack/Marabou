@@ -307,7 +307,7 @@ void BoundManager::registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTig
 
 void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const
 {
-    ASSERT( GlobalConfiguration::PROOF_CERTIFICATE && variable < _size );
+    ASSERT( _engine->shouldProduceProofs() && variable < _size );
     auto temp = _boundExplainer->getExplanation( variable, isUpper );
     explanation = Vector<double>( temp.size() );
     for ( unsigned i = 0; i < temp.size(); ++i )
@@ -320,7 +320,7 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Tab
 
     if ( tightened )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( _engine->shouldProduceProofs() )
             _boundExplainer->updateBoundExplanation( row, false, variable );
 
         if ( _tableau != nullptr )
@@ -335,7 +335,7 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Tab
 
     if ( tightened )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( _engine->shouldProduceProofs() )
             _boundExplainer->updateBoundExplanation( row, true, variable );
 
         if ( _tableau != nullptr )
@@ -350,7 +350,7 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Spa
 
     if ( tightened )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( _engine->shouldProduceProofs() )
             _boundExplainer->updateBoundExplanationSparse( row, false, variable );
 
         if ( _tableau != nullptr )
@@ -365,7 +365,7 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Spa
 
     if ( tightened )
     {
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( _engine->shouldProduceProofs() )
             _boundExplainer->updateBoundExplanationSparse( row, true, variable );
 
         if ( _tableau != nullptr )
@@ -396,12 +396,12 @@ void BoundManager::setBoundExplainer( BoundExplainer *boundsExplainer )
     *_boundExplainer = *boundsExplainer;
 }
 
-void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
-                                        unsigned causingVar, BoundType causingVarBound,
-                                        PiecewiseLinearFunctionType constraintType )
+bool BoundManager::addLemmaExplanation(unsigned var, double value, BoundType affectedVarBound,
+                                       unsigned causingVar, BoundType causingVarBound,
+                                       PiecewiseLinearFunctionType constraintType )
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
-        return;
+    if ( !_engine->shouldProduceProofs() )
+        return false;
 
     ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
 
@@ -418,6 +418,7 @@ void BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );
     }
+    return true;
 }
 
 void BoundManager::setEngine( IEngine *engine)
@@ -427,7 +428,7 @@ void BoundManager::setEngine( IEngine *engine)
 
 void BoundManager::initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows )
 {
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( _engine->shouldProduceProofs() )
         _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows, _context );
 }
 

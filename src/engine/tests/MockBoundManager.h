@@ -259,10 +259,11 @@ private:
     /*
       Replaces the indicating row by equation which is added to the Tableau
     */
-    void addLemmaExplanation( unsigned /* var */, double /* value */, BoundType /* affectedVarBound */,
+    bool addLemmaExplanation( unsigned /* var */, double /* value */, BoundType /* affectedVarBound */,
                               unsigned /* causingVar */, BoundType /* causingVarBound */,
                               PiecewiseLinearFunctionType /* constraintType */ )
     {
+        return false;
     }
 
     void initializeBoundExplainer( unsigned /* numberOfVariables */, unsigned /* numberOfRows */ )

@@ -56,7 +56,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     auto upperBoundsBackup = Vector<double>( targetN, 0 );
     auto lowerBoundsBackup = Vector<double>( targetN, 0 );
 
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( engine.shouldProduceProofs() )
     {
         boundExplainerBackup = *engine.getBoundExplainer();
 
@@ -133,7 +133,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
         }
     }
 
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( engine.shouldProduceProofs() )
     {
         engine.setBoundExplainer( &boundExplainerBackup );
 

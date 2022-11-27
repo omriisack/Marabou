@@ -263,6 +263,11 @@ public:
     void propagateBoundManagerTightenings()
     {
     }
+
+    bool shouldProduceProofs() const
+    {
+        return false;
+    }
 };
 
 #endif // __MockEngine_h__

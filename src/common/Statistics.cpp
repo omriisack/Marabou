@@ -445,13 +445,9 @@ void Statistics::print()
             , totalContextTime / 1000
             );
 
-
-    if (GlobalConfiguration::PROOF_CERTIFICATE )
-    {
-        printf( "\t--- Proof Certificate ---\n" );
-        printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
-        printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
-    }
+    printf( "\t--- Proof Certificate ---\n" );
+    printf( "\tNumber of certified leaves: %u\n", getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES ) );
+    printf( "\tNumber of leaves to delegate: %u\n", getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) );
 
 }
 

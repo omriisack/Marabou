@@ -123,10 +123,11 @@ public:
 
     /*
       Adds a lemma to the UNSATCertificateNode object
+      Returns true iff adding the lemma has succeeded
     */
-    virtual void addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
-                                      unsigned causingVar, BoundType causingVarBound,
-                                      PiecewiseLinearFunctionType constraintType ) = 0;
+    virtual bool addLemmaExplanation(unsigned var, double value, BoundType affectedVarBound,
+                                     unsigned causingVar, BoundType causingVarBound,
+                                     PiecewiseLinearFunctionType constraintType ) = 0;
 
     /*
       Returns the content of the object containing all explanations for variable bounds in the tableau.

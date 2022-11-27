@@ -233,6 +233,10 @@ public:
     void setRandomSeed( unsigned seed );
 
     /*
+      Returns true iff the engine is in proof production mode
+    */
+    bool shouldProduceProofs() const;
+    /*
       Update the ground bounds
     */
     void updateGroundUpperBound( unsigned var, double value );
@@ -789,6 +793,11 @@ private:
     */
     void checkGurobiBoundConsistency() const;
 
+    /*
+      Proof Production
+     */
+
+    bool _produceUNSATProofs;
     BoundManager _groundBoundManager;
     UnsatCertificateNode* _UNSATCertificate;
     UnsatCertificateNode* _UNSATCertificateCurrentPointer;

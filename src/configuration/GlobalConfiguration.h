@@ -232,11 +232,6 @@ public:
     */
     static const unsigned DNC_DEPTH_THRESHOLD;
 
-
-    /* Provide proof certificate
-    */
-    static bool PROOF_CERTIFICATE;
-
     /* Minimal coefficient of a variable in a Tableau row, that is used for bound tightening
      */
     static const double MINIMAL_COEFFICIENT_FOR_TIGHTENING;

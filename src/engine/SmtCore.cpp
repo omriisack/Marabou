@@ -174,7 +174,7 @@ void SmtCore::performSplit()
     pushContext();
 
 	UnsatCertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+    if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
 	{
         // Create children for UNSATCertificate current node, and assign a split to each of them
 		ASSERT( certificateNode );
@@ -187,7 +187,7 @@ void SmtCore::performSplit()
     List<PiecewiseLinearCaseSplit>::iterator split = splits.begin();
     ASSERT( split->getEquations().size() == 0 );
 
-	if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+	if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
 	{
         //Set the current node of the UNSAT certificate to be the child corresponding to the first split
 		auto *firstSplitChild = certificateNode->getChildBySplit( *split );
@@ -289,7 +289,7 @@ bool SmtCore::popSplit()
                 throw MarabouError( MarabouError::DEBUGGING_ERROR );
             }
 
-            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+            if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
 		    {
                 ASSERT( currentCertificateNode );
                 currentCertificateNode = currentCertificateNode->getParent();
@@ -304,7 +304,7 @@ bool SmtCore::popSplit()
             if ( _stack.empty() )
                 return false;
 
-            if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+            if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
             {
                 // In case that the current pointer is not the root
                 ASSERT( currentCertificateNode );
@@ -336,7 +336,7 @@ bool SmtCore::popSplit()
         stackEntry->_impliedValidSplits.clear();
 
 
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && _engine->getUNSATCertificateRoot() )
+        if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
         {
             //Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
             UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();

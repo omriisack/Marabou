@@ -237,7 +237,7 @@ private:
     /*
       Adds a lemma to the UNSATCertificateNode object
      */
-    void addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+    bool addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
                               unsigned causingVar, BoundType causingVarBound,
                               PiecewiseLinearFunctionType constraintType );
 
@@ -245,7 +245,6 @@ private:
       Explainer of all bounds
     */
     BoundExplainer * _boundExplainer;
-
 };
 
 #endif // __BoundManager_h__

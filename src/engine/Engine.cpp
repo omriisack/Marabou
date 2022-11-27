@@ -67,6 +67,7 @@ Engine::Engine()
     , _milpSolverBoundTighteningType( Options::get()->getMILPSolverBoundTighteningType() )
     , _sncMode( false )
     , _queryId( "" )
+    , _produceUNSATProofs( Options::get()->getBool( Options::PRODUCE_PROOFS ) )
     , _groundBoundManager( _context )
     , _UNSATCertificate( NULL )
     , _UNSATCertificateCurrentPointer( NULL )
@@ -304,7 +305,7 @@ bool Engine::solve( unsigned timeoutInSeconds )
                         _statistics.print();
                     }
 
-                    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+                    if ( _produceUNSATProofs )
 					{
                     	ASSERT( _UNSATCertificateCurrentPointer );
                         _UNSATCertificateCurrentPointer->setSATSolutionFlag();
@@ -1285,7 +1286,7 @@ void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
         constraint->setStatistics( &_statistics );
 
         // Assuming aux var is use
-        if ( GlobalConfiguration::PROOF_CERTIFICATE && _preprocessedQuery->_lastAddendToAux.exists( constraint->getParticipatingVariables().back() ) )
+        if ( _produceUNSATProofs && _preprocessedQuery->_lastAddendToAux.exists( constraint->getParticipatingVariables().back() ) )
              constraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( constraint->getParticipatingVariables().back() ) );
     }
 
@@ -1339,14 +1340,16 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
                 plConstraint->addAuxiliaryEquationsAfterPreprocessing
                     ( *_preprocessedQuery );
 
-        if ( GlobalConfiguration::PROOF_CERTIFICATE )
+        if ( _produceUNSATProofs )
         {
             for ( auto &plConstraint : _preprocessedQuery->getPiecewiseLinearConstraints() )
             {
                 if ( plConstraint->getType() != RELU )
                 {
-                    GlobalConfiguration::PROOF_CERTIFICATE = false;
-                    GlobalConfiguration::USE_DEEPSOI_LOCAL_SEARCH = true;
+                    ENGINE_LOG( "Turning off proof production since activations not yet supported\n" );
+                    printf( "Turning off proof production since activations not yet supported\n" );
+                    _produceUNSATProofs = false;
+                    Options::get()->setBool( Options::PRODUCE_PROOFS, false );
                 }
             }
         }
@@ -1379,7 +1382,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             _boundManager.initializeBoundExplainer( n, _tableau->getM() );
             delete[] constraintMatrix;
 
-            if ( GlobalConfiguration::PROOF_CERTIFICATE )
+            if ( _produceUNSATProofs )
             {
                 _UNSATCertificate = new UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
                 _UNSATCertificateCurrentPointer = _UNSATCertificate;
@@ -1480,7 +1483,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
 void Engine::performMILPSolverBoundedTightening( InputQuery *inputQuery )
 {
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( _produceUNSATProofs )
         return;
 
     if ( _networkLevelReasoner && Options::get()->gurobiEnabled() )
@@ -1553,7 +1556,7 @@ void Engine::performMILPSolverBoundedTightening( InputQuery *inputQuery )
 
 void Engine::performMILPSolverBoundedTighteningForSingleLayer( unsigned targetIndex )
 {
-    if ( GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( _produceUNSATProofs )
         return;
 
     if ( _networkLevelReasoner && _isGurobyEnabled && !_performLpTighteningAfterSplit
@@ -1940,30 +1943,30 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
         if ( bound._type == Tightening::LB )
         {
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
-            if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::gt( bound._value, _boundManager.getLowerBound( bound._variable ) ) )
+            if ( _produceUNSATProofs && FloatUtils::gt( bound._value, _boundManager.getLowerBound( bound._variable ) ) )
             {
                 _boundManager.resetExplanation( variable, false );
                 updateGroundLowerBound( variable, bound._value );
                 _boundManager.tightenLowerBound( variable, bound._value );
             }
-            else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+            else if ( !_produceUNSATProofs )
                 _boundManager.tightenLowerBound( variable, bound._value );
         }
         else
         {
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
-            if ( GlobalConfiguration::PROOF_CERTIFICATE && FloatUtils::lt( bound._value, _boundManager.getUpperBound( bound._variable ) ) )
+            if ( _produceUNSATProofs && FloatUtils::lt( bound._value, _boundManager.getUpperBound( bound._variable ) ) )
             {
                 _boundManager.resetExplanation( variable, true );
                 updateGroundUpperBound( variable, bound._value );
                 _boundManager.tightenUpperBound( variable, bound._value );
             }
-            else if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+            else if ( !_produceUNSATProofs )
                 _boundManager.tightenUpperBound( variable, bound._value );
         }
     }
 
-    if ( GlobalConfiguration::PROOF_CERTIFICATE && _UNSATCertificateCurrentPointer )
+    if ( _produceUNSATProofs && _UNSATCertificateCurrentPointer )
         _UNSATCertificateCurrentPointer->setVisited();
 
 	DEBUG( _tableau->verifyInvariants() );
@@ -2254,7 +2257,7 @@ List<unsigned> Engine::getInputVariables() const
 void Engine::performSimulation()
 {
     if ( _simulationSize == 0 || !_networkLevelReasoner ||
-         _milpSolverBoundTighteningType == MILPSolverBoundTighteningType::NONE || GlobalConfiguration::PROOF_CERTIFICATE)
+         _milpSolverBoundTighteningType == MILPSolverBoundTighteningType::NONE || _produceUNSATProofs )
     {
         ENGINE_LOG( Stringf( "Skip simulation...").ascii() );
         return;
@@ -2282,7 +2285,7 @@ void Engine::performSimulation()
 void Engine::performSymbolicBoundTightening( InputQuery *inputQuery )
 {
     if ( _symbolicBoundTighteningType == SymbolicBoundTighteningType::NONE ||
-         ( !_networkLevelReasoner ) || GlobalConfiguration::PROOF_CERTIFICATE )
+         ( !_networkLevelReasoner ) || _produceUNSATProofs )
         return;
 
     struct timespec start = TimeUtils::sampleMicro();
@@ -3205,9 +3208,14 @@ double Engine::getGroundBound( unsigned var, bool isUpper ) const
     return isUpper ? _groundBoundManager.getUpperBound( var ) : _groundBoundManager.getLowerBound( var );
 }
 
+bool Engine::shouldProduceProofs() const
+{
+    return _produceUNSATProofs;
+}
+
 void Engine::explainSimplexFailure()
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( !_produceUNSATProofs )
         return;
 
 //    checkGroundBounds();  // TODO keep commented when running on Cluster
@@ -3267,7 +3275,7 @@ int Engine::explainFailureWithTableau()
 
 bool Engine::certifyInfeasibility( const unsigned var ) const
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( !_produceUNSATProofs )
         return false;
 
     auto contradictionVec = computeContradictionVec( var );
@@ -3292,7 +3300,7 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
 
 bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( !_produceUNSATProofs )
         return true;
 
     double explained, real;
@@ -3320,7 +3328,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
 
 bool Engine::validateAllBounds( const double epsilon, const double M ) const
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( !_produceUNSATProofs )
         return true;
 
     bool res = true;
@@ -3430,7 +3438,7 @@ UnsatCertificateNode* Engine::getUNSATCertificateRoot() const
 
 bool Engine::certifyUNSATCertificate()
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE || !_UNSATCertificate  )
+    if ( !_produceUNSATProofs || !_UNSATCertificate  )
         return false;
 
     for ( auto &constraint : _plConstraints )
@@ -3473,12 +3481,12 @@ bool Engine::certifyUNSATCertificate()
 
 void Engine::markLeafToDelegate()
 {
-    if ( !GlobalConfiguration::PROOF_CERTIFICATE )
+    if ( !_produceUNSATProofs )
         return;
 
     // Mark leaf with toDelegate Flag
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
+    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_SAVE );
     _UNSATCertificateCurrentPointer->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 
