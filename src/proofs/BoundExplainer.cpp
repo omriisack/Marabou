@@ -75,7 +75,6 @@ BoundExplainer &BoundExplainer::operator=( const BoundExplainer &other )
     return *this;
 }
 
-
 unsigned BoundExplainer::getNumberOfRows() const
 {
     return _numberOfRows;
@@ -148,7 +147,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         // If we're currently explaining a lower bound, we use upper bound explanation iff variable's coefficient is negative
         tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
 
-        if ( ( tempUpper && *_trivialUpperBoundExplanation[curVar] ) || (!tempUpper && *_trivialLowerBoundExplanation[curVar] ) )
+        if ( ( tempUpper && *_trivialUpperBoundExplanation[curVar] ) || ( !tempUpper && *_trivialLowerBoundExplanation[curVar] ) )
             continue;
 
         tempBound = tempUpper ? _upperBoundExplanations[curVar] : _lowerBoundExplanations[curVar];
@@ -231,7 +230,7 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
     setExplanation( sum, var, isUpper );
 }
 
-void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<CDO<double> *> &input,  double scalar ) const
+void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<CVC4::context::CDO<double> *> &input,  double scalar ) const
 {
     if ( input.empty() || FloatUtils::isZero( scalar ) )
         return;

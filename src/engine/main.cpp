@@ -80,19 +80,19 @@ int main( int argc, char **argv )
         {
             GlobalConfiguration::USE_DEEPSOI_LOCAL_SEARCH = false;
             options->setBool( Options::NO_PARALLEL_DEEPSOI, true );
-            printf("Proof production is not yet supported with DEEPSOI search, turning search off.\n");
+            printf( "Proof production is not yet supported with DEEPSOI search, turning search off.\n" );
         }
 
         if ( Options::get()->getBool( Options::PRODUCE_PROOFS ) && ( options->getBool( Options::DNC_MODE ) ) )
         {
             options->setBool( Options::DNC_MODE, false );
-            printf("Proof production is not yet supported with snc mode, turning snc off.\n");
+            printf( "Proof production is not yet supported with snc mode, turning snc off.\n" );
         }
 
         if ( Options::get()->getBool( Options::PRODUCE_PROOFS ) && ( options->getBool( Options::SOLVE_WITH_MILP ) ) )
         {
             options->setBool( Options::SOLVE_WITH_MILP, false );
-            printf("Proof production is not yet supported with MILP solvers, turning SOLVE_WITH_MILP off.\n");
+            printf( "Proof production is not yet supported with MILP solvers, turning SOLVE_WITH_MILP off.\n" );
         }
 
         if ( options->getBool( Options::DNC_MODE ) ||

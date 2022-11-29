@@ -91,11 +91,11 @@ void UNSATCertificateUtils::getExplanationRowCombination( unsigned var,
 }
 
 double UNSATCertificateUtils::computeCombinationUpperBound( const double *explanation,
-                                                               const SparseMatrix *initialTableau,
-                                                               const double *groundUpperBounds,
-                                                               const double *groundLowerBounds,
-                                                               unsigned numberOfRows,
-                                                               unsigned numberOfVariables )
+                                                            const SparseMatrix *initialTableau,
+                                                            const double *groundUpperBounds,
+                                                            const double *groundLowerBounds,
+                                                            unsigned numberOfRows,
+                                                            unsigned numberOfVariables )
 {
     ASSERT( explanation != NULL );
 

@@ -24,7 +24,7 @@ using namespace CVC4::context;
 class BoundsExplainerTestSuite : public CxxTest::TestSuite
 {
 public:
-    Context * context;
+    Context *context;
 
     void setUp()
     {
@@ -35,7 +35,6 @@ public:
     {
         TS_ASSERT_THROWS_NOTHING( delete context; );
     }
-
 
     /*
       Test initialization of BoundExplainer
@@ -96,7 +95,7 @@ public:
         }
 
         TS_ASSERT( be.isExplanationTrivial( numberOfVariables, true ) );
-        TS_ASSERT( be.isExplanationTrivial( numberOfVariables, false ) );
+        TS_ASSERT( be.isExplanationTrivial( numberOfVariables, false ) ) ;
     }
 
     /*

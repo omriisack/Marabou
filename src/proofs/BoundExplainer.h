@@ -30,7 +30,7 @@ public:
     BoundExplainer( unsigned numberOfVariables, unsigned numberOfRows, CVC4::context::Context &ctx );
     ~BoundExplainer();
 
-    BoundExplainer &operator=( const BoundExplainer &other);
+    BoundExplainer &operator=( const BoundExplainer &other );
     /*
       Returns the number of rows
      */

@@ -76,7 +76,7 @@ public:
     /*
       Tests changes in PLC Explanations list
     */
-    void test_plc_changes()
+    void test_plc_explanation_changes()
     {
         UnsatCertificateNode root = UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
         Vector<double> emptyVec;
