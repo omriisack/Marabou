@@ -496,7 +496,8 @@ double Statistics::printAverage( unsigned long long part, unsigned long long tot
 
     return (double)part / total;
 }
-void Statistics::printLongAttributeAsTime( unsigned long long longAsNumber )
+
+void Statistics::printLongAttributeAsTime( unsigned long long longAsNumber ) const
 {
 	unsigned int seconds = longAsNumber / 1000000;
 	unsigned int minutes = seconds / 60;

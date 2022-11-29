@@ -40,7 +40,7 @@ public:
     /*
       Test initialization of BoundExplainer
     */
-    void testInitialization()
+    void test_initialization()
     {
         unsigned numberOfVariables = 3;
         unsigned numberOfRows = 5;
@@ -59,7 +59,7 @@ public:
     /*
       Test setExplanation
     */
-    void testSetExplanation()
+    void test_set_explanation()
     {
         unsigned numberOfVariables = 2;
         unsigned numberOfRows = 2;
@@ -76,7 +76,7 @@ public:
     /*
       Test addition of an explanation of the new variable, and correct updates of all previous explanations
     */
-    void testVariableAddition()
+    void test_variable_addition()
     {
         unsigned numberOfVariables = 2;
         unsigned numberOfRows = 2;
@@ -96,13 +96,13 @@ public:
         }
 
         TS_ASSERT( be.isExplanationTrivial( numberOfVariables, true ) );
-        TS_ASSERT( be.isExplanationTrivial( numberOfVariables, false ) ) ;
+        TS_ASSERT( be.isExplanationTrivial( numberOfVariables, false ) );
     }
 
     /*
       Test explanation reset
     */
-    void testExplanationReset()
+    void test_explanation_reset()
     {
         unsigned numberOfVariables = 1;
         unsigned numberOfRows = 1;
@@ -118,7 +118,7 @@ public:
     /*
       Test main functionality of BoundExplainer i.e. updating explanations according to tableau rows
     */
-    void testExplanationUpdates()
+    void test_explanation_updates()
     {
         unsigned numberOfVariables = 6;
         unsigned numberOfRows = 3;

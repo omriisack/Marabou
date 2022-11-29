@@ -275,6 +275,11 @@ private:
     {
         return 0;
     }
+
+    bool shouldProduceProofs() const
+    {
+        return true;
+    }
 };
 
 #endif // __MockBoundManager_h__

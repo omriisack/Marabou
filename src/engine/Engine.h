@@ -236,6 +236,7 @@ public:
       Returns true iff the engine is in proof production mode
     */
     bool shouldProduceProofs() const;
+
     /*
       Update the ground bounds
     */
@@ -255,7 +256,7 @@ public:
     /*
      Set the current pointer of the UNSAT certificate
     */
-	void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node );
+	void setUNSATCertificateCurrentPointer( UnsatCertificateNode* node );
 
     /*
       Get the pointer to the root of the UNSAT certificate
@@ -812,7 +813,7 @@ private:
       Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
       Asserts the computed bound is epsilon close to the real one.
     */
-    bool certifyInfeasibility( const unsigned var ) const;
+    bool certifyInfeasibility( unsigned var ) const;
 
     /*
       Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
@@ -824,7 +825,7 @@ private:
      Separately for tightenings and actual bounds
      Returns true iff both bounds are epsilon close to their explanations
     */
-    bool validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const;
+    bool validateBounds( unsigned var, double epsilon, double M, bool isUpper ) const;
 
     /*
      Validates that all explanations epsilon close to real bounds
@@ -839,9 +840,9 @@ private:
     void explainSimplexFailure();
 
     /*
-      Sanity check for ground bounds
+      Sanity check for ground bounds, returns true iff all bounds are at least as tight as their ground bounds
     */
-    void checkGroundBounds() const;
+    bool checkGroundBounds() const;
 
     /*
       Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
@@ -858,8 +859,8 @@ private:
       If found, return true.
       If not, revert and return false
     */
-    bool explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row );
-    bool explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row );
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row ) const;
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row ) const;
 
     /*
       Delegates leaves with certification error to SMTLIB format

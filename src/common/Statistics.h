@@ -68,9 +68,9 @@ public:
      // branches of the search tree, that have since been popped)
      TOTAL_NUMBER_OF_VALID_CASE_SPLITS,
 
-	//Count number of delegated and certified leaves in the search tree
-	NUM_CERTIFIED_LEAVES,
-	NUM_DELEGATED_LEAVES,
+    // Total number of delegated and certified leaves in the search tree
+     NUM_CERTIFIED_LEAVES,
+     NUM_DELEGATED_LEAVES,
     };
 
     enum StatisticsLongAttribute
@@ -211,8 +211,8 @@ public:
      TIME_CONTEXT_PUSH_HOOK,
      TIME_CONTEXT_POP_HOOK,
 
-	// Total Certification Time
-	TOTAL_CERTIFICATION_TIME,
+    // Total Certification Time
+     TOTAL_CERTIFICATION_TIME,
     };
 
     enum StatisticsDoubleAttribute
@@ -318,8 +318,7 @@ public:
     /*
       Print a long attribute in time format
      */
-    void printLongAttributeAsTime( unsigned long long longAsNumber );
-
+    void printLongAttributeAsTime( unsigned long long longAsNumber ) const;
 
 private:
     // Initial timestamp

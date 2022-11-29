@@ -3273,7 +3273,7 @@ int Engine::explainFailureWithTableau()
     return -1;
 }
 
-bool Engine::certifyInfeasibility( const unsigned var ) const
+bool Engine::certifyInfeasibility( unsigned var ) const
 {
     if ( !_produceUNSATProofs )
         return false;
@@ -3287,7 +3287,7 @@ bool Engine::certifyInfeasibility( const unsigned var ) const
     return FloatUtils::isNegative( derivedBound );
 }
 
-double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
+double Engine::getExplainedBound( unsigned var, bool isUpper ) const
 {
     auto explanationVec = Vector<double>( 0 );
 
@@ -3298,7 +3298,7 @@ double Engine::getExplainedBound( const unsigned var, const bool isUpper ) const
     return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _tableau->getSparseA(), _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getM(), _tableau->getN() );
 }
 
-bool Engine::validateBounds( const unsigned var, const double epsilon, const double M, bool isUpper ) const
+bool Engine::validateBounds( unsigned var, double epsilon, double M, bool isUpper ) const
 {
     if ( !_produceUNSATProofs )
         return true;
@@ -3326,7 +3326,7 @@ bool Engine::validateBounds( const unsigned var, const double epsilon, const dou
     return true;
 }
 
-bool Engine::validateAllBounds( const double epsilon, const double M ) const
+bool Engine::validateAllBounds( double epsilon, double M ) const
 {
     if ( !_produceUNSATProofs )
         return true;
@@ -3340,14 +3340,16 @@ bool Engine::validateAllBounds( const double epsilon, const double M ) const
     return res;
 }
 
-void Engine::checkGroundBounds() const
+bool Engine::checkGroundBounds() const
 {
     unsigned n = _tableau->getN();
     for ( unsigned i = 0; i < n; ++i )
     {
-        ASSERT( FloatUtils::lte( _groundBoundManager.getLowerBound( i ), _boundManager.getLowerBound( i ) ) );
-        ASSERT( FloatUtils::gte( _groundBoundManager.getUpperBound( i ), _boundManager.getUpperBound( i ) ) );
+        if ( FloatUtils::gt( _groundBoundManager.getLowerBound( i ), _boundManager.getLowerBound( i ) ) ||
+             FloatUtils::lt( _groundBoundManager.getUpperBound( i ), _boundManager.getUpperBound( i ) ) )
+            return false;
     }
+    return true;
 }
 
 int Engine::explainFailureWithCostFunction()
@@ -3391,7 +3393,7 @@ int Engine::updateFirstInfeasibleBasic()
     return infVar;
 }
 
-bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, TableauRow *row )
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row ) const
 {
     auto backup = Vector<double>( 0, 0 );
     _boundManager.explainBound( var, isUpper, backup );
@@ -3406,7 +3408,7 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, TableauRo
     return false;
 }
 
-bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, SparseUnsortedList *row )
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row ) const
 {
     auto backup = Vector<double>( 0, 0 );
     _boundManager.explainBound( var, isUpper, backup );
@@ -3472,9 +3474,22 @@ bool Engine::certifyUNSATCertificate()
     _statistics.printLongAttributeAsTime( _statistics.getLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME ) );
 
     if ( certificationSucceeded )
+    {
         printf("Certified\n");
+        if ( _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) )
+            printf("Some leaves were delegated and need to be certified separately by an SMT solver\n");
+    }
     else
         printf("Error certifying UNSAT certificate\n");
+
+    DEBUG({
+        ASSERT( certificationSucceeded );
+        if ( _statistics.getUnsignedAttribute( Statistics::NUM_POPS ) )
+        {
+            double delegationRatio = _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) / _statistics.getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES );
+            ASSERT( FloatUtils::lt( delegationRatio, 0.01 ));
+        }
+    });
 
     return certificationSucceeded;
 }
@@ -3486,7 +3501,7 @@ void Engine::markLeafToDelegate()
 
     // Mark leaf with toDelegate Flag
     ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_SAVE );
+    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
     _UNSATCertificateCurrentPointer->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 

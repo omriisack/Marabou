@@ -234,8 +234,7 @@ struct MarabouOptions {
     Options::get()->setBool( Options::PERFORM_LP_TIGHTENING_AFTER_SPLIT, _performLpTighteningAfterSplit );
     Options::get()->setBool( Options::PRODUCE_PROOFS, _produceProofs );
 
-
-      // int options
+    // int options
     Options::get()->setInt( Options::NUM_WORKERS, _numWorkers );
     Options::get()->setInt( Options::NUM_BLAS_THREADS, _numBlasThreads );
     Options::get()->setInt( Options::INITIAL_TIMEOUT, _initialTimeout );

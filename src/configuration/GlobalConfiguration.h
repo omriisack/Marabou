@@ -82,7 +82,7 @@ public:
     static const bool USE_HARRIS_RATIO_TEST;
 
     // Toggle query-preprocessing on/off.
-	static const bool PREPROCESS_INPUT_QUERY;
+    static const bool PREPROCESS_INPUT_QUERY;
 
     // Assuming the preprocessor is on, toggle whether or not it will attempt to perform variable
     // elimination.
@@ -212,7 +212,7 @@ public:
     */
 
     // The number of accumualted eta matrices, after which the basis will be refactorized
-	static const unsigned REFACTORIZATION_THRESHOLD;
+    static const unsigned REFACTORIZATION_THRESHOLD;
 
     // The kind of basis factorization algorithm in use
     enum BasisFactorizationType {
@@ -233,11 +233,11 @@ public:
     static const unsigned DNC_DEPTH_THRESHOLD;
 
     /* Minimal coefficient of a variable in a Tableau row, that is used for bound tightening
-     */
+    */
     static const double MINIMAL_COEFFICIENT_FOR_TIGHTENING;
 
     /* The tolerance of errors when checking lemmas in the proof-checking process
-     */
+    */
     static const double LEMMAS_CERTIFICATION_TOLERANCE;
 
 #ifdef ENABLE_GUROBI

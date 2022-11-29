@@ -266,7 +266,7 @@ public:
 
     bool shouldProduceProofs() const
     {
-        return false;
+        return true;
     }
 };
 

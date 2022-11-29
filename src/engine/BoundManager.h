@@ -133,6 +133,7 @@ public:
       detect a conflict state.
     */
     bool consistentBounds( unsigned variable ) const;
+
     /*
        Register Tableau pointer for callbacks from tighten*Bound methods.
      */
@@ -161,7 +162,7 @@ public:
     /*
       Resets a bound explanation
     */
-    void resetExplanation ( unsigned var, bool isUpper ) const;
+    void resetExplanation( unsigned var, bool isUpper ) const;
 
     /*
       Returns the bounds explanation of a variable in the tableau
@@ -197,6 +198,11 @@ public:
       Returns true iff an explanation is trivial (i.e. the zero vector)
     */
     bool isExplanationTrivial( unsigned var, bool isUpper ) const;
+
+    /*
+      Return true iff boundManager should produce proofs
+    */
+    bool shouldProduceProofs() const;
 
 private:
     CVC4::context::Context &_context;

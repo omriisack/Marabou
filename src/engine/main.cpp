@@ -15,7 +15,6 @@
 
 #include "DnCMarabou.h"
 #include "Error.h"
-#include "GlobalConfiguration.h"
 #include "Marabou.h"
 #include "Options.h"
 
@@ -96,10 +95,10 @@ int main( int argc, char **argv )
             printf("Proof production is not yet supported with MILP solvers, turning SOLVE_WITH_MILP off.\n");
         }
 
-        if ( ( options->getBool( Options::DNC_MODE ) ||
+        if ( options->getBool( Options::DNC_MODE ) ||
              ( !options->getBool( Options::NO_PARALLEL_DEEPSOI ) &&
                !options->getBool( Options::SOLVE_WITH_MILP ) &&
-               options->getInt( Options::NUM_WORKERS ) > 1 ) ) )
+               options->getInt( Options::NUM_WORKERS ) > 1 ) )
             DnCMarabou().run();
         else
 	{

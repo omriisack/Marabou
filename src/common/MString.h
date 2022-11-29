@@ -55,8 +55,6 @@ public:
     String trim() const;
     void replaceAll( const String &toReplace, const String &replaceWith );
 
-	friend std::ostream &operator<<( std::ostream &stream, const String &string );
-
 protected:
 	Super _super;
 };

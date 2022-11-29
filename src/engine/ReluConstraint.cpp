@@ -164,7 +164,7 @@ void ReluConstraint::notifyLowerBound( unsigned variable, double newBound )
         if ( isActive() )
         {
             createTighteningRow();
-            bool proofs = _boundManager->getBoundExplainer() != nullptr;
+            bool proofs = _boundManager->shouldProduceProofs();
 
             // A positive lower bound is always propagated between f and b
             if ( ( variable == _f || variable == _b ) && bound > 0 )
@@ -252,7 +252,7 @@ void ReluConstraint::notifyUpperBound( unsigned variable, double newBound )
         if ( isActive() )
         {
             createTighteningRow();
-            bool proofs = _boundManager->getBoundExplainer() != nullptr;
+            bool proofs = _boundManager->shouldProduceProofs();
 
             if ( variable == _f )
             {

@@ -20,8 +20,8 @@ BoundExplainer::BoundExplainer( unsigned numberOfVariables, unsigned numberOfRow
     : _context( ctx ),
       _numberOfVariables( numberOfVariables )
     , _numberOfRows( numberOfRows )
-    , _upperBoundExplanations( _numberOfVariables, Vector<CVC4::context::CDO<double> *>( 0 ) )
-    , _lowerBoundExplanations( _numberOfVariables, Vector<CVC4::context::CDO<double> *>( 0 ) )
+    , _upperBoundExplanations( _numberOfVariables, Vector<CDO<double> *>( 0 ) )
+    , _lowerBoundExplanations( _numberOfVariables, Vector<CDO<double> *>( 0 ) )
     , _trivialUpperBoundExplanation( 0 )
     , _trivialLowerBoundExplanation( 0 )
 {
@@ -30,11 +30,11 @@ BoundExplainer::BoundExplainer( unsigned numberOfVariables, unsigned numberOfRow
          for ( unsigned j = 0; j < _numberOfRows; ++j )
          {
             _upperBoundExplanations[i].append( new ( true ) CDO<double>( &ctx, 0 ) );
-            _lowerBoundExplanations[i].append(new ( true ) CDO<double>( &ctx, 0 ) );
+            _lowerBoundExplanations[i].append( new ( true ) CDO<double>( &ctx, 0 ) );
          }
 
-         _trivialUpperBoundExplanation.append(new (true ) CDO<bool>(&ctx, true ) ) ;
-         _trivialLowerBoundExplanation.append(new (true ) CDO<bool>(&ctx, true ) );
+         _trivialUpperBoundExplanation.append( new ( true ) CDO<bool>( &ctx, true ) ) ;
+         _trivialLowerBoundExplanation.append( new ( true ) CDO<bool>( &ctx, true ) );
      }
 }
 
@@ -53,7 +53,7 @@ BoundExplainer::~BoundExplainer()
     }
 }
 
-BoundExplainer &BoundExplainer::operator=( const BoundExplainer &other)
+BoundExplainer &BoundExplainer::operator=( const BoundExplainer &other )
 {
     if ( this == &other )
         return *this;
@@ -86,7 +86,7 @@ unsigned BoundExplainer::getNumberOfVariables() const
     return _numberOfVariables;
 }
 
-const Vector<CVC4::context::CDO<double> *> &BoundExplainer::getExplanation( unsigned var, bool isUpper )
+const Vector<CDO<double> *> &BoundExplainer::getExplanation( unsigned var, bool isUpper )
 {
     ASSERT ( var < _numberOfVariables );
     return isUpper ? _upperBoundExplanations[var] : _lowerBoundExplanations[var];
@@ -127,9 +127,9 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         ci = -1;
 
     ASSERT( !FloatUtils::isZero( ci ) );
-    auto rowCoefficients = Vector<double>( _numberOfRows, 0 );
-    auto sum = Vector<double>( _numberOfRows, 0 );
-    Vector<CVC4::context::CDO<double> *> tempBound;
+    Vector<double> rowCoefficients = Vector<double>( _numberOfRows, 0 );
+    Vector<double> sum = Vector<double>( _numberOfRows, 0 );
+    Vector<CDO<double> *> tempBound;
 
     for ( unsigned i = 0; i < row._size; ++i )
     {
@@ -148,7 +148,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         // If we're currently explaining a lower bound, we use upper bound explanation iff variable's coefficient is negative
         tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
 
-        if ((tempUpper && _trivialUpperBoundExplanation[curVar]->get() ) || (!tempUpper && _trivialLowerBoundExplanation[curVar]->get() ) )
+        if ( ( tempUpper && *_trivialUpperBoundExplanation[curVar] ) || (!tempUpper && *_trivialLowerBoundExplanation[curVar] ) )
             continue;
 
         tempBound = tempUpper ? _upperBoundExplanations[curVar] : _lowerBoundExplanations[curVar];
@@ -162,7 +162,7 @@ void BoundExplainer::updateBoundExplanation( const TableauRow &row, bool isUpper
         if ( !FloatUtils::isZero( realCoefficient ) )
         {
             tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
-            if ( !( tempUpper && _trivialUpperBoundExplanation[row._lhs]->get() ) && !( !tempUpper && _trivialLowerBoundExplanation[row._lhs]->get() ) )
+            if ( !( tempUpper && *_trivialUpperBoundExplanation[row._lhs] ) && !( !tempUpper && *_trivialLowerBoundExplanation[row._lhs] ) )
             {
                 tempBound = tempUpper ? _upperBoundExplanations[row._lhs] : _lowerBoundExplanations[row._lhs];
                 addVecTimesScalar( sum, tempBound, realCoefficient );
@@ -198,9 +198,9 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
     }
 
     ASSERT( !FloatUtils::isZero( ci ) );
-    auto rowCoefficients = Vector<double>( _numberOfRows, 0 );
-    auto sum = Vector<double>( _numberOfRows, 0 );
-    Vector<CVC4::context::CDO<double> *> tempBound;
+    Vector<double> rowCoefficients = Vector<double>( _numberOfRows, 0 );
+    Vector<double> sum = Vector<double>( _numberOfRows, 0 );
+    Vector<CDO<double> *> tempBound;
 
     for ( const auto &entry : row )
     {
@@ -217,7 +217,7 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
         // If we're currently explaining a lower bound, we use upper bound explanation iff variable's coefficient is negative
         tempUpper = ( isUpper && realCoefficient > 0 ) || ( !isUpper && realCoefficient < 0 );
 
-        if ( ( tempUpper && _trivialUpperBoundExplanation[entry._index]->get() ) || ( !tempUpper && _trivialLowerBoundExplanation[entry._index]->get() ) )
+        if ( ( tempUpper && *_trivialUpperBoundExplanation[entry._index] ) || ( !tempUpper && *_trivialLowerBoundExplanation[entry._index] ) )
             continue;
 
         tempBound = tempUpper ? _upperBoundExplanations[entry._index] : _lowerBoundExplanations[entry._index];
@@ -231,7 +231,7 @@ void BoundExplainer::updateBoundExplanationSparse( const SparseUnsortedList &row
     setExplanation( sum, var, isUpper );
 }
 
-void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<CVC4::context::CDO<double> *> &input,  double scalar ) const
+void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<CDO<double> *> &input,  double scalar ) const
 {
     if ( input.empty() || FloatUtils::isZero( scalar ) )
         return;
@@ -239,7 +239,7 @@ void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<CVC4::
     ASSERT( sum.size() == _numberOfRows && input.size() == _numberOfRows );
 
     for ( unsigned i = 0; i < _numberOfRows; ++i )
-        sum[i] = sum[i] + scalar * input[i]->get();
+        sum[i] += scalar * ( *input[i] );
 }
 
 void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<double> &input,  double scalar ) const
@@ -250,7 +250,7 @@ void BoundExplainer::addVecTimesScalar( Vector<double> &sum, const Vector<double
     ASSERT( sum.size() == _numberOfRows && input.size() == _numberOfRows );
 
     for ( unsigned i = 0; i < _numberOfRows; ++i )
-        sum[i] = sum[i] + scalar * input[i];
+        sum[i] += scalar * input[i];
 }
 
 void BoundExplainer::extractRowCoefficients( const TableauRow &row, Vector<double> &coefficients, double ci ) const
@@ -296,11 +296,11 @@ void BoundExplainer::addVariable()
     }
 
     // Add a new explanation for the new variable
-    _trivialUpperBoundExplanation.append(new ( true ) CDO<bool>( &_context, true ) );
-    _trivialLowerBoundExplanation.append(new ( true ) CDO<bool>( &_context, true ) );
+    _trivialUpperBoundExplanation.append( new ( true ) CDO<bool>( &_context, true ) );
+    _trivialLowerBoundExplanation.append( new ( true ) CDO<bool>( &_context, true ) );
 
-    _upperBoundExplanations.append( Vector<CVC4::context::CDO<double> *>( 0 ) );
-    _lowerBoundExplanations.append( Vector<CVC4::context::CDO<double> *>( 0 ) );
+    _upperBoundExplanations.append( Vector<CDO<double> *>( 0 ) );
+    _lowerBoundExplanations.append( Vector<CDO<double> *>( 0 ) );
 
     for ( unsigned i = 0; i < _numberOfRows; ++i )
     {
@@ -316,10 +316,10 @@ void BoundExplainer::addVariable()
 void BoundExplainer::resetExplanation( unsigned var, bool isUpper )
 {
     ASSERT( var < _numberOfVariables );
-    auto temp = isUpper ? &_upperBoundExplanations[var] : &_lowerBoundExplanations[var];
+    Vector<CDO<double> *> temp = isUpper ? _upperBoundExplanations[var] : _lowerBoundExplanations[var];
 
     for ( unsigned i = 0; i < _numberOfRows; ++i )
-        ( *temp )[i]->set( 0 );
+        temp[i]->set( 0 );
 
     isUpper ? _trivialUpperBoundExplanation[var]->set( true ) : _trivialLowerBoundExplanation[var]->set( true );
 }
@@ -327,14 +327,14 @@ void BoundExplainer::resetExplanation( unsigned var, bool isUpper )
 void BoundExplainer::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper )
 {
     ASSERT( var < _numberOfVariables && ( explanation.empty() || explanation.size() == _numberOfRows ) );
-    auto temp = isUpper ? &_upperBoundExplanations[var] : &_lowerBoundExplanations[var];
+    Vector<CDO<double> *> temp = isUpper ? _upperBoundExplanations[var] : _lowerBoundExplanations[var];
     for ( unsigned i = 0; i < _numberOfRows; ++i )
-        ( *temp )[i]->set( explanation[i] );
+        temp[i]->set( explanation[i] );
 
     isUpper ? _trivialUpperBoundExplanation[var]->set( false ) : _trivialLowerBoundExplanation[var]->set( false );
 }
 
 bool BoundExplainer::isExplanationTrivial( unsigned var, bool isUpper ) const
 {
-    return isUpper ? _trivialUpperBoundExplanation[var]->get() : _trivialLowerBoundExplanation[var]->get();
+    return isUpper ? *_trivialUpperBoundExplanation[var] : *_trivialLowerBoundExplanation[var];
 }

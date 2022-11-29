@@ -26,12 +26,11 @@ public:
     /*
       Tests the whole functionality of the SmtLibWriter module
     */
-    void testSmtLibWriting()
+    void test_smtlib_writing()
     {
         file = new MockFile();
         Vector<double> row = { 1, 1 };
         SparseUnsortedList sparseRow( row.data(), 2 );
-        Vector<Vector<double>> initialTableau = { row };
         Vector<double> groundUpperBounds = { 1, 1 };
         Vector<double> groundLowerBounds = { 1 , -1 };
         List<String> instance;

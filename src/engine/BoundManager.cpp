@@ -382,7 +382,7 @@ void BoundManager::resetExplanation( const unsigned var, const bool isUpper ) co
 
 void BoundManager::setExplanation( const Vector<double> &explanation, unsigned var, bool isUpper ) const
 {
-    ASSERT( explanation.size() == _tableau->getM() || explanation.empty() );
+    ASSERT( explanation.size() == _boundExplainer->getNumberOfRows() || explanation.empty() );
     _boundExplainer->setExplanation( explanation, var, isUpper );
 }
 
@@ -506,4 +506,9 @@ double BoundManager::computeSparseRowBound( const SparseUnsortedList &row, const
 bool BoundManager::isExplanationTrivial( unsigned var, bool isUpper ) const
 {
     return _boundExplainer->isExplanationTrivial( var, isUpper );
+}
+
+bool BoundManager::shouldProduceProofs() const
+{
+    return _boundExplainer != nullptr;
 }
