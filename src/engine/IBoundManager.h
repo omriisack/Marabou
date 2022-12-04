@@ -122,25 +122,25 @@ public:
     virtual bool tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row ) = 0;
 
     /*
-      Adds a lemma to the UNSATCertificateNode object
-      Returns true iff adding the lemma has succeeded
+      Add a lemma to the UNSATCertificateNode object
+      Return true iff adding the lemma has succeeded
     */
-    virtual bool addLemmaExplanation(unsigned var, double value, BoundType affectedVarBound,
-                                     unsigned causingVar, BoundType causingVarBound,
-                                     PiecewiseLinearFunctionType constraintType ) = 0;
+    virtual bool addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+                                      unsigned causingVar, BoundType causingVarBound,
+                                      PiecewiseLinearFunctionType constraintType ) = 0;
 
     /*
-      Returns the content of the object containing all explanations for variable bounds in the tableau.
+      Return the content of the object containing all explanations for variable bounds in the tableau
     */
     virtual BoundExplainer *getBoundExplainer() const = 0;
 
     /*
-      Deep-Copies the BoundExplainer object content
+      Deep-copy the BoundExplainer object content
      */
-    virtual void setBoundExplainer( BoundExplainer* boundExplainer ) = 0;
+    virtual void setBoundExplainerContent( BoundExplainer* boundExplainer ) = 0;
 
     /*
-      Initializes the boundExplainer
+      Initialize the boundExplainer
      */
     virtual void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows ) = 0;
 

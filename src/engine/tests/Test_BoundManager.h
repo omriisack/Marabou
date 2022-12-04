@@ -280,8 +280,8 @@ public:
         }
 
         // Test explanation getting and setting
-        auto expl = Vector<double>( numberOfRows, 1 );
-        auto explained = Vector<double>( 0 );
+        Vector<double> expl ( numberOfRows, 1 );
+        Vector<double> explained ( 0 );
 
         boundManager.setExplanation( expl, 0, true );
         TS_ASSERT( !boundManager.isExplanationTrivial( 0, true ) );
@@ -296,13 +296,13 @@ public:
 
         // Test boundExplainer setting and getting
         BoundExplainer secondExplainer( numberOfVariables, numberOfRows, *context );
-        TS_ASSERT_THROWS_NOTHING( boundManager.setBoundExplainer( &secondExplainer ) );
+        TS_ASSERT_THROWS_NOTHING( boundManager.setBoundExplainerContent(&secondExplainer) );
 
         // Setting is effective if the non-trivial explanation became trivial
         TS_ASSERT_THROWS_NOTHING( boundManager.isExplanationTrivial( 1, false ) );
 
         // Compute sparse and tableau row bounds, according to the bounds stored in boundManager
-        double rowArr[5] = { 0,0,1,2,-1 };
+        double rowArr[5] = { 0, 0, 1, 2, -1 };
         SparseUnsortedList sparseRow ( rowArr, numberOfVariables );
         TS_ASSERT( boundManager.computeSparseRowBound( sparseRow, true, 4 ) == 3 );
 

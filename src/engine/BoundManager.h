@@ -145,39 +145,39 @@ public:
     void registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTightener );
 
     /*
-      Returns the content of the object containing all explanations for variable bounds in the tableau.
+      Return the content of the object containing all explanations for variable bounds in the tableau.
     */
     BoundExplainer *getBoundExplainer() const;
 
     /*
-      Deep-Copies the BoundExplainer object content
+      Deep-copy the BoundExplainer object content
      */
-    void setBoundExplainer( BoundExplainer *boundExplainer );
+    void setBoundExplainerContent( BoundExplainer *boundsExplainer );
 
     /*
-      Initializes the boundExplainer
+      Initialize the boundExplainer
      */
     void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows );
 
     /*
-      Resets a bound explanation
+      Reset a bound explanation
     */
     void resetExplanation( unsigned var, bool isUpper ) const;
 
     /*
-      Returns the bounds explanation of a variable in the tableau
+      Insert the bounds explanation of a variable in the tableau to the argument vector
     */
     void explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const;
 
     /*
-      Artificially updates an explanation, without using the recursive rule
+      Artificially update an explanation, without using the recursive rule
     */
     void setExplanation( const Vector<double> &explanation, unsigned var,  bool isUpper ) const;
 
     /*
-      Sets the engine of the BoundManager
+      Register Engine pointer for callbacks
     */
-    void setEngine( IEngine *engine);
+    void registerEngine( IEngine *engine);
 
     /*
       Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
@@ -195,7 +195,7 @@ public:
     double computeSparseRowBound( const SparseUnsortedList &row, bool isUpper, unsigned var ) const;
 
     /*
-      Returns true iff an explanation is trivial (i.e. the zero vector)
+      Return true iff an explanation is trivial (i.e. the zero vector)
     */
     bool isExplanationTrivial( unsigned var, bool isUpper ) const;
 
@@ -250,7 +250,7 @@ private:
     /*
       Explainer of all bounds
     */
-    BoundExplainer * _boundExplainer;
+    BoundExplainer *_boundExplainer;
 };
 
 #endif // __BoundManager_h__

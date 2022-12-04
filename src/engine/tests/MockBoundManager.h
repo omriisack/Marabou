@@ -221,7 +221,7 @@ public:
         return NULL;
     }
 
-    void setBoundExplainer(BoundExplainer* /* boundsExplanations */ )
+    void setBoundExplainerContent(BoundExplainer* /* boundsExplanations */ )
     {
     }
 
@@ -256,14 +256,11 @@ private:
         return tightenUpperBound( variable, value);
     }
 
-    /*
-      Replaces the indicating row by equation which is added to the Tableau
-    */
     bool addLemmaExplanation( unsigned /* var */, double /* value */, BoundType /* affectedVarBound */,
                               unsigned /* causingVar */, BoundType /* causingVarBound */,
                               PiecewiseLinearFunctionType /* constraintType */ )
     {
-        return false;
+        return true;
     }
 
     void initializeBoundExplainer( unsigned /* numberOfVariables */, unsigned /* numberOfRows */ )

@@ -82,8 +82,8 @@ Engine::Engine()
     _statistics.stampStartingTime();
     setRandomSeed( Options::get()->getInt( Options::SEED ) );
 
-    _boundManager.setEngine( this );
-    _groundBoundManager.setEngine( this );
+    _boundManager.registerEngine( this );
+    _groundBoundManager.registerEngine( this );
     _statisticsPrintingFrequency =
         ( _lpSolverType == LPSolverType::NATIVE ) ?
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY :
@@ -3547,7 +3547,7 @@ BoundExplainer *Engine::getBoundExplainer() const
 
 void Engine::setBoundExplainer( BoundExplainer *boundExplainer )
 {
-    _boundManager.setBoundExplainer( boundExplainer );
+    _boundManager.setBoundExplainerContent( boundExplainer );
 }
 
 void Engine::propagateBoundManagerTightenings()

@@ -265,6 +265,10 @@ private:
 
     std::shared_ptr<TableauRow> _tighteningRow;
 
+    /*
+     Create a the tableau row used for explaining bound tightening caused by the constraint
+     Stored in _tighteningRow
+    */
     void createTighteningRow();
 };
 

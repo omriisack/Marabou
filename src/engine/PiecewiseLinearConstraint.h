@@ -453,9 +453,9 @@ public:
         return _cdInfeasibleCases;
     }
 
-	void setTableauAuxVar( const unsigned counterpart )
+	void setTableauAuxVar( unsigned var )
 	{
-    	_tableauAuxVar = counterpart;
+    	_tableauAuxVar = var;
 	}
 
 protected:

@@ -391,29 +391,29 @@ BoundExplainer *BoundManager::getBoundExplainer() const
     return _boundExplainer;
 }
 
-void BoundManager::setBoundExplainer( BoundExplainer *boundsExplainer )
+void BoundManager::setBoundExplainerContent( BoundExplainer *boundsExplainer )
 {
     *_boundExplainer = *boundsExplainer;
 }
 
-bool BoundManager::addLemmaExplanation(unsigned var, double value, BoundType affectedVarBound,
-                                       unsigned causingVar, BoundType causingVarBound,
-                                       PiecewiseLinearFunctionType constraintType )
+bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
+                                        unsigned causingVar, BoundType causingVarBound,
+                                        PiecewiseLinearFunctionType constraintType )
 {
-    if ( !_engine->shouldProduceProofs() )
+    if ( !shouldProduceProofs() )
         return false;
 
     ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
 
     // Register new ground bound, update certificate, and reset explanation
-    auto explanation = Vector<double>( 0 );
+    Vector<double> explanation( 0 );
     explainBound( causingVar, causingVarBound, explanation );
 
     bool tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 
     if ( tightened )
     {
-        auto PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
+        std::shared_ptr<PLCExplanation> PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
         _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );
@@ -421,7 +421,7 @@ bool BoundManager::addLemmaExplanation(unsigned var, double value, BoundType aff
     return true;
 }
 
-void BoundManager::setEngine( IEngine *engine)
+void BoundManager::registerEngine( IEngine *engine)
 {
     _engine = engine;
 }
