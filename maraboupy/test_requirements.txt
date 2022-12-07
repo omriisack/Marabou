@@ -4,5 +4,5 @@ codecov==2.1.0
 numpy==1.19.2
 tensorflow==2.8.0
 onnx==1.10.2
-onnxruntime==1.10.0
+onnxruntime==1.12.0
 torch==1.11.0
