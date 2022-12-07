@@ -803,12 +803,6 @@ private:
     UnsatCertificateNode* _UNSATCertificate;
     UnsatCertificateNode* _UNSATCertificateCurrentPointer;
 
-
-    /*
-      Updates bounds after deducing Simplex infeasibility
-    */
-    int explainFailureWithTableau();
-
     /*
       Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
       Asserts the computed bound is epsilon close to the real one.
@@ -845,14 +839,14 @@ private:
     bool checkGroundBounds() const;
 
     /*
+      Updates bounds after deducing Simplex infeasibility
+    */
+    int explainFailureWithTableau();
+
+    /*
       Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
     */
     int explainFailureWithCostFunction();
-
-    /*
-      Updates explanations of the first infeasible basic var by cost function;
-    */
-    int updateFirstInfeasibleBasic();
 
     /*
       Updates an explanation of a bound according to a row, and checks for an explained contradiction.

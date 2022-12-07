@@ -3231,6 +3231,12 @@ void Engine::explainSimplexFailure()
 
     if ( infeasibleVar < 0 )
     {
+        _costFunctionManager->computeCoreCostFunction();
+        infeasibleVar = explainFailureWithCostFunction();
+    }
+
+    if ( infeasibleVar < 0 )
+    {
         markLeafToDelegate();
         return;
     }
@@ -3242,35 +3248,6 @@ void Engine::explainSimplexFailure()
     writeContradictionToCertificate( infeasibleVar );
 
     _UNSATCertificateCurrentPointer->makeLeaf();
-}
-
-int Engine::explainFailureWithTableau()
-{
-    // Failure of a simplex step implies infeasible bounds imposed by the row
-    TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
-
-    // If an infeasible basic is lower than its lower bound, then it cannot be increased.
-    // Thus the upper bound imposed by the row is too low
-    unsigned basicVar;
-
-    for ( unsigned i = 0; i < _tableau->getM(); ++i)
-    {
-        if ( _tableau->basicOutOfBounds( i ) )
-        {
-        _tableau->getTableauRow( i, &boundUpdateRow );
-        basicVar = boundUpdateRow._lhs;
-
-        if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, false ), _boundManager.getUpperBound( basicVar )  )
-             && explainAndCheckContradiction( basicVar, false, &boundUpdateRow ) )
-            return basicVar;
-
-        if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, true ), _boundManager.getLowerBound( basicVar ) )
-             && explainAndCheckContradiction( basicVar, true, &boundUpdateRow ) )
-            return basicVar;
-        }
-    }
-
-    return -1;
 }
 
 bool Engine::certifyInfeasibility( unsigned var ) const
@@ -3352,26 +3329,43 @@ bool Engine::checkGroundBounds() const
     return true;
 }
 
-int Engine::explainFailureWithCostFunction()
+int Engine::explainFailureWithTableau()
 {
-    int infVar = updateFirstInfeasibleBasic();
+    // Failure of a simplex step implies infeasible bounds imposed by the row
+    TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
 
-    if ( infVar >= 0 )
-        return infVar;
+    //  For every basic, check that is has no slack and its explanations indeed prove a contradiction
+    unsigned basicVar;
 
-    // If for some reason, no basic var with contradicting explained bound is found, try recomputing the cost function
-    _costFunctionManager->computeCoreCostFunction();
-    return updateFirstInfeasibleBasic();
+    for ( unsigned i = 0; i < _tableau->getM(); ++i)
+    {
+        if ( _tableau->basicOutOfBounds( i ) )
+        {
+            _tableau->getTableauRow( i, &boundUpdateRow );
+            basicVar = boundUpdateRow._lhs;
+
+            if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, false ), _boundManager.getUpperBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, false, &boundUpdateRow ) )
+                return basicVar;
+
+            if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, true ), _boundManager.getLowerBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, true, &boundUpdateRow ) )
+                return basicVar;
+        }
+    }
+
+    return -1;
 }
 
-int Engine::updateFirstInfeasibleBasic()
+int Engine::explainFailureWithCostFunction()
 {
+    // Failure of a simplex step might imply infeasible bounds imposed by the cost function
     unsigned m = _tableau->getM();
     int curBasicVar;
     int infVar = -1;
     double curCost;
     bool curUpper;
-    auto *costRow = _costFunctionManager->createRowOfCostFunction();
+    SparseUnsortedList *costRow = _costFunctionManager->createRowOfCostFunction();
 
     for ( unsigned i = 0; i < m; ++i )
     {
@@ -3382,6 +3376,16 @@ int Engine::updateFirstInfeasibleBasic()
             continue;
 
         curUpper = ( curCost < 0 );
+
+        // Check the basic variable has no slack
+        if ( !( !curUpper && FloatUtils::gt( _boundManager.computeSparseRowBound( *costRow, false, curBasicVar ),
+                                         _boundManager.getUpperBound( curBasicVar ) ) ) &&
+             !( curUpper && FloatUtils::lt( _boundManager.computeSparseRowBound( *costRow, true, curBasicVar ),
+                                         _boundManager.getLowerBound( curBasicVar ) ) ) )
+
+            continue;
+
+        // Check the explanation indeed proves a contradiction
         if ( explainAndCheckContradiction( curBasicVar, curUpper, costRow ) )
         {
             infVar = curBasicVar;
@@ -3400,10 +3404,12 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const Tab
 
     _boundManager.getBoundExplainer()->updateBoundExplanation( *row, isUpper, var );
 
-    if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
+    // Ensure the proof is correct
+    if ( certifyInfeasibility( var ) )
         return true;
 
-    _boundManager.setExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+    // If not, restores previous certificate if the proof is wrong
+    _boundManager.setExplanation( backup, var, isUpper );
 
     return false;
 }
@@ -3415,10 +3421,12 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const Spa
 
     _boundManager.getBoundExplainer()->updateBoundExplanationSparse( *row, isUpper, var );
 
-    if ( certifyInfeasibility( var ) ) // Ensures the proof is correct
+    // Ensure the proof is correct
+    if ( certifyInfeasibility( var ) )
         return true;
 
-    _boundManager.setExplanation( backup, var, isUpper ); // Restores previous certificate if the proof is wrong
+    // If not, restores previous certificate if the proof is wrong
+    _boundManager.setExplanation( backup, var, isUpper );
 
     return false;
 }

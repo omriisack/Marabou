@@ -221,7 +221,7 @@ public:
         return NULL;
     }
 
-    void setBoundExplainerContent(BoundExplainer* /* boundsExplanations */ )
+    void setBoundExplainerContent( BoundExplainer* /* boundsExplanations */ )
     {
     }
 
