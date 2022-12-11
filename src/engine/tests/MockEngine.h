@@ -251,7 +251,7 @@ public:
     {
     }
 
-    BoundExplainer *getBoundExplainer() const
+    const BoundExplainer *getBoundExplainer() const
     {
 	    return NULL;
     }

@@ -271,7 +271,7 @@ public:
     /*
       Get the boundExplainer
     */
-    BoundExplainer *getBoundExplainer() const;
+    const BoundExplainer *getBoundExplainer() const;
 
     /*
       Set the boundExplainer
@@ -839,22 +839,22 @@ private:
     bool checkGroundBounds() const;
 
     /*
-      Updates bounds after deducing Simplex infeasibility
+      Updates bounds after deducing Simplex infeasibility, according to a tableau row
     */
-    int explainFailureWithTableau();
+    unsigned explainFailureWithTableau();
 
     /*
       Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
     */
-    int explainFailureWithCostFunction();
+    unsigned explainFailureWithCostFunction();
 
     /*
       Updates an explanation of a bound according to a row, and checks for an explained contradiction.
       If found, return true.
       If not, revert and return false
     */
-    bool explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row ) const;
-    bool explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row ) const;
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row );
+    bool explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row );
 
     /*
       Delegates leaves with certification error to SMTLIB format

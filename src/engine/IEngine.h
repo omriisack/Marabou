@@ -173,7 +173,7 @@ public:
     /*
       Get the boundExplainer
     */
-    virtual BoundExplainer *getBoundExplainer() const = 0;
+    virtual const BoundExplainer *getBoundExplainer() const = 0;
 
     /*
       Set the boundExplainer

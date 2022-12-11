@@ -43,6 +43,8 @@ class IRowBoundTightener;
 class IBoundManager
 {
 public:
+    const static constexpr unsigned NO_VARIABLE_FOUND = UINT32_MAX -1;
+
     virtual ~IBoundManager() {};
 
     /*
@@ -132,12 +134,12 @@ public:
     /*
       Return the content of the object containing all explanations for variable bounds in the tableau
     */
-    virtual BoundExplainer *getBoundExplainer() const = 0;
+    virtual const BoundExplainer *getBoundExplainer() const = 0;
 
     /*
       Deep-copy the BoundExplainer object content
      */
-    virtual void setBoundExplainerContent( BoundExplainer* boundExplainer ) = 0;
+    virtual void copyBoundExplainerContent( const BoundExplainer* boundExplainer ) = 0;
 
     /*
       Initialize the boundExplainer
@@ -145,9 +147,19 @@ public:
     virtual void initializeBoundExplainer( unsigned numberOfVariables, unsigned numberOfRows ) = 0;
 
     /*
+      Given a row, updates the values of the bound explanations of a var according to the row
+    */
+    virtual void updateBoundExplanation( const TableauRow &row, bool isUpper, unsigned var ) = 0;
+
+    /*
+      Given a row as SparseUnsortedList, updates the values of the bound explanations of a var according to the row
+    */
+    virtual void updateBoundExplanationSparse( const SparseUnsortedList &row, bool isUpper, unsigned var ) = 0;
+
+    /*
       Get the index of a variable with inconsistent bounds, if exists, or -1 otherwise
     */
-    virtual int getInconsistentVariable() const = 0;
+    virtual unsigned getInconsistentVariable() const = 0;
 
     /*
       Return true iff boundManager should produce proofs

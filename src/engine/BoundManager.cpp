@@ -321,7 +321,7 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Tab
     if ( tightened )
     {
         if ( _engine->shouldProduceProofs() )
-            _boundExplainer->updateBoundExplanation( row, false, variable );
+            _boundExplainer->updateBoundExplanation( row, LOWER, variable );
 
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
@@ -336,7 +336,7 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Tab
     if ( tightened )
     {
         if ( _engine->shouldProduceProofs() )
-            _boundExplainer->updateBoundExplanation( row, true, variable );
+            _boundExplainer->updateBoundExplanation( row, UPPER, variable );
 
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
@@ -351,7 +351,7 @@ bool BoundManager::tightenLowerBound( unsigned variable, double value, const Spa
     if ( tightened )
     {
         if ( _engine->shouldProduceProofs() )
-            _boundExplainer->updateBoundExplanationSparse( row, false, variable );
+            _boundExplainer->updateBoundExplanationSparse( row, LOWER, variable );
 
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithLowerBoundUpdate( variable, value );
@@ -366,7 +366,7 @@ bool BoundManager::tightenUpperBound( unsigned variable, double value, const Spa
     if ( tightened )
     {
         if ( _engine->shouldProduceProofs() )
-            _boundExplainer->updateBoundExplanationSparse( row, true, variable );
+            _boundExplainer->updateBoundExplanationSparse( row, UPPER, variable );
 
         if ( _tableau != nullptr )
             _tableau->updateVariableToComplyWithUpperBoundUpdate( variable, value );
@@ -386,14 +386,24 @@ void BoundManager::setExplanation( const Vector<double> &explanation, unsigned v
     _boundExplainer->setExplanation( explanation, var, isUpper );
 }
 
-BoundExplainer *BoundManager::getBoundExplainer() const
+const BoundExplainer *BoundManager::getBoundExplainer() const
 {
     return _boundExplainer;
 }
 
-void BoundManager::setBoundExplainerContent( BoundExplainer *boundsExplainer )
+void BoundManager::copyBoundExplainerContent( const BoundExplainer *boundsExplainer )
 {
     *_boundExplainer = *boundsExplainer;
+}
+
+void BoundManager::updateBoundExplanation( const TableauRow &row, bool isUpper, unsigned var )
+{
+    _boundExplainer->updateBoundExplanation( row, isUpper, var );
+}
+
+void BoundManager::updateBoundExplanationSparse( const SparseUnsortedList &row, bool isUpper, unsigned var )
+{
+    _boundExplainer->updateBoundExplanationSparse( row, isUpper, var );
 }
 
 bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
@@ -432,11 +442,11 @@ void BoundManager::initializeBoundExplainer( unsigned numberOfVariables, unsigne
         _boundExplainer = new BoundExplainer( numberOfVariables, numberOfRows, _context );
 }
 
-int BoundManager::getInconsistentVariable() const
+unsigned BoundManager::getInconsistentVariable() const
 {
     if ( _consistentBounds )
-        return -1;
-    return ( int ) _firstInconsistentTightening._variable;
+        return NO_VARIABLE_FOUND;
+    return _firstInconsistentTightening._variable;
 }
 
 double BoundManager::computeRowBound( const TableauRow &row, const bool isUpper ) const

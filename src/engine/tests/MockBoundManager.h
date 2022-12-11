@@ -216,12 +216,20 @@ public:
     {
     }
 
-    BoundExplainer* getBoundExplainer() const
+    const BoundExplainer* getBoundExplainer() const
     {
         return NULL;
     }
 
-    void setBoundExplainerContent( BoundExplainer* /* boundsExplanations */ )
+    void copyBoundExplainerContent( const BoundExplainer* /* boundsExplanations */ )
+    {
+    }
+
+    void updateBoundExplanation( const TableauRow &/* row */, bool /* isUpper */, unsigned /* var */ )
+    {
+    }
+
+    void updateBoundExplanationSparse( const SparseUnsortedList &/* row */, bool /* isUpper */, unsigned /* var */ )
     {
     }
 
@@ -239,21 +247,22 @@ private:
 
     bool tightenLowerBound( unsigned variable, double value, const TableauRow &/* row */ )
     {
-        return tightenLowerBound( variable, value);
+        return tightenLowerBound( variable, value );
     }
+
     bool tightenUpperBound( unsigned variable, double value, const TableauRow &/* row */ )
     {
-        return tightenUpperBound( variable, value);
+        return tightenUpperBound( variable, value );
     }
 
     bool tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &/* row */ )
     {
-        return tightenLowerBound( variable, value);
+        return tightenLowerBound( variable, value );
     }
 
     bool tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &/* row */ )
     {
-        return tightenUpperBound( variable, value);
+        return tightenUpperBound( variable, value );
     }
 
     bool addLemmaExplanation( unsigned /* var */, double /* value */, BoundType /* affectedVarBound */,
@@ -268,9 +277,9 @@ private:
 
     }
 
-    int getInconsistentVariable() const
+    unsigned getInconsistentVariable() const
     {
-        return 0;
+        return NO_VARIABLE_FOUND;
     }
 
     bool shouldProduceProofs() const

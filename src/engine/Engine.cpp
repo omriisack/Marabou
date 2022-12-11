@@ -3219,23 +3219,23 @@ void Engine::explainSimplexFailure()
         return;
 
 //    checkGroundBounds();  // TODO keep commented when running on Cluster
-//    validateAllBounds( GlobalConfiguration::LEMMAS_CERTIFICATION_TOLERANCE, 1000000000 );
+//    validateAllBounds( GlobalConfiguration::LEMMA_CERTIFICATION_TOLERANCE, 1000000000 );
 
-    int infeasibleVar = _boundManager.getInconsistentVariable();
+    unsigned infeasibleVar = _boundManager.getInconsistentVariable();
 
-    if ( infeasibleVar < 0 || !certifyInfeasibility( infeasibleVar ) )
+    if ( infeasibleVar == IBoundManager::NO_VARIABLE_FOUND || !certifyInfeasibility( infeasibleVar ) )
         infeasibleVar = explainFailureWithTableau();
 
-    if ( infeasibleVar < 0 )
+    if ( infeasibleVar == IBoundManager::NO_VARIABLE_FOUND )
         infeasibleVar = explainFailureWithCostFunction();
 
-    if ( infeasibleVar < 0 )
+    if ( infeasibleVar == IBoundManager::NO_VARIABLE_FOUND )
     {
         _costFunctionManager->computeCoreCostFunction();
         infeasibleVar = explainFailureWithCostFunction();
     }
 
-    if ( infeasibleVar < 0 )
+    if ( infeasibleVar == IBoundManager::NO_VARIABLE_FOUND )
     {
         markLeafToDelegate();
         return;
@@ -3311,7 +3311,7 @@ bool Engine::validateAllBounds( double epsilon, double M ) const
     bool res = true;
 
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
-        if ( !validateBounds( var, epsilon, M, true ) || !validateBounds( var, epsilon, M, false ) )
+        if ( !validateBounds( var, epsilon, M, UPPER ) || !validateBounds( var, epsilon, M, LOWER ) )
             res = false;
 
     return res;
@@ -3329,7 +3329,7 @@ bool Engine::checkGroundBounds() const
     return true;
 }
 
-int Engine::explainFailureWithTableau()
+unsigned Engine::explainFailureWithTableau()
 {
     // Failure of a simplex step implies infeasible bounds imposed by the row
     TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
@@ -3344,25 +3344,25 @@ int Engine::explainFailureWithTableau()
             _tableau->getTableauRow( i, &boundUpdateRow );
             basicVar = boundUpdateRow._lhs;
 
-            if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, false ), _boundManager.getUpperBound( basicVar ) )
-                 && explainAndCheckContradiction( basicVar, false, &boundUpdateRow ) )
+            if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, LOWER ), _boundManager.getUpperBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, LOWER, &boundUpdateRow ) )
                 return basicVar;
 
-            if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, true ), _boundManager.getLowerBound( basicVar ) )
-                 && explainAndCheckContradiction( basicVar, true, &boundUpdateRow ) )
+            if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, UPPER ), _boundManager.getLowerBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, UPPER, &boundUpdateRow ) )
                 return basicVar;
         }
     }
 
-    return -1;
+    return IBoundManager::NO_VARIABLE_FOUND;
 }
 
-int Engine::explainFailureWithCostFunction()
+unsigned Engine::explainFailureWithCostFunction()
 {
     // Failure of a simplex step might imply infeasible bounds imposed by the cost function
     unsigned m = _tableau->getM();
-    int curBasicVar;
-    int infVar = -1;
+    unsigned curBasicVar;
+    unsigned infVar = IBoundManager::NO_VARIABLE_FOUND;
     double curCost;
     bool curUpper;
     SparseUnsortedList *costRow = _costFunctionManager->createRowOfCostFunction();
@@ -3378,9 +3378,9 @@ int Engine::explainFailureWithCostFunction()
         curUpper = ( curCost < 0 );
 
         // Check the basic variable has no slack
-        if ( !( !curUpper && FloatUtils::gt( _boundManager.computeSparseRowBound( *costRow, false, curBasicVar ),
+        if ( !( !curUpper && FloatUtils::gt( _boundManager.computeSparseRowBound( *costRow, LOWER, curBasicVar ),
                                          _boundManager.getUpperBound( curBasicVar ) ) ) &&
-             !( curUpper && FloatUtils::lt( _boundManager.computeSparseRowBound( *costRow, true, curBasicVar ),
+             !( curUpper && FloatUtils::lt( _boundManager.computeSparseRowBound( *costRow, UPPER, curBasicVar ),
                                          _boundManager.getLowerBound( curBasicVar ) ) ) )
 
             continue;
@@ -3397,12 +3397,12 @@ int Engine::explainFailureWithCostFunction()
     return infVar;
 }
 
-bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row ) const
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row )
 {
     auto backup = Vector<double>( 0, 0 );
     _boundManager.explainBound( var, isUpper, backup );
 
-    _boundManager.getBoundExplainer()->updateBoundExplanation( *row, isUpper, var );
+    _boundManager.updateBoundExplanation( *row, isUpper, var );
 
     // Ensure the proof is correct
     if ( certifyInfeasibility( var ) )
@@ -3414,12 +3414,12 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const Tab
     return false;
 }
 
-bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row ) const
+bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row )
 {
     auto backup = Vector<double>( 0, 0 );
     _boundManager.explainBound( var, isUpper, backup );
 
-    _boundManager.getBoundExplainer()->updateBoundExplanationSparse( *row, isUpper, var );
+    _boundManager.updateBoundExplanationSparse( *row, isUpper, var );
 
     // Ensure the proof is correct
     if ( certifyInfeasibility( var ) )
@@ -3548,14 +3548,14 @@ void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
     _UNSATCertificateCurrentPointer->setContradiction( leafContradiction );
 }
 
-BoundExplainer *Engine::getBoundExplainer() const
+const BoundExplainer *Engine::getBoundExplainer() const
 {
     return _boundManager.getBoundExplainer();
 }
 
 void Engine::setBoundExplainer( BoundExplainer *boundExplainer )
 {
-    _boundManager.setBoundExplainerContent( boundExplainer );
+    _boundManager.copyBoundExplainerContent( boundExplainer );
 }
 
 void Engine::propagateBoundManagerTightenings()
