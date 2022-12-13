@@ -210,7 +210,7 @@ public:
 
     bool consistentBounds() const { return true; }
 
-	double getExplainedBound( unsigned /* var */,  bool /* isUpper */ ) const
+	double explainBound( unsigned /* var */,  bool /* isUpper */ ) const
 	{
 		return 0.0;
 	}
@@ -237,7 +237,7 @@ public:
 	{
 	}
 
-    UnsatCertificateNode *getUNSATCertificateRoot() const
+    const UnsatCertificateNode *getUNSATCertificateRoot() const
 	{
 		return NULL;
 	}
@@ -256,7 +256,7 @@ public:
 	    return NULL;
     }
 
-    void setBoundExplainer( BoundExplainer * /*boundExplainer */ )
+    void setBoundExplainerContent( BoundExplainer * /*boundExplainer */ )
     {
     }
 

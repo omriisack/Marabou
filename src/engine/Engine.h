@@ -251,17 +251,17 @@ public:
     /*
       Get the current pointer of the UNSAT certificate
     */
-    UnsatCertificateNode* getUNSATCertificateCurrentPointer() const;
+    UnsatCertificateNode *getUNSATCertificateCurrentPointer() const;
 
     /*
      Set the current pointer of the UNSAT certificate
     */
-	void setUNSATCertificateCurrentPointer( UnsatCertificateNode* node );
+	void setUNSATCertificateCurrentPointer( UnsatCertificateNode *node );
 
     /*
       Get the pointer to the root of the UNSAT certificate
     */
-    UnsatCertificateNode* getUNSATCertificateRoot() const;
+    const UnsatCertificateNode *getUNSATCertificateRoot() const;
 
     /*
 	  Certify the UNSAT certificate
@@ -276,7 +276,7 @@ public:
     /*
       Set the boundExplainer
     */
-    void setBoundExplainer( BoundExplainer *boundExplainer );
+    void setBoundExplainerContent( BoundExplainer *boundExplainer );
 
     /*
       Propagate bound tightenings stored in the BoundManager
@@ -795,38 +795,33 @@ private:
     void checkGurobiBoundConsistency() const;
 
     /*
-      Proof Production
+      Proof Production data structes
      */
 
     bool _produceUNSATProofs;
     BoundManager _groundBoundManager;
-    UnsatCertificateNode* _UNSATCertificate;
-    UnsatCertificateNode* _UNSATCertificateCurrentPointer;
+    UnsatCertificateNode *_UNSATCertificate;
+    CVC4::context::CDO<UnsatCertificateNode*> *_UNSATCertificateCurrentPointer;
 
     /*
-      Returns true iff there is a variable with bounds which can explain infeasibility of the tableau
-      Asserts the computed bound is epsilon close to the real one.
+      Returns true iff there is a variable with bounds that can explain infeasibility of the tableau
     */
     bool certifyInfeasibility( unsigned var ) const;
 
     /*
-      Returns the value of a variable bound, as expressed by the bounds explainer and the initial bounds
+      Returns the value of a variable bound, as explained by the BoundExplainer
     */
-    double getExplainedBound( unsigned var,  bool isUpper ) const;
+    double explainBound( unsigned var,  bool isUpper ) const;
 
     /*
-     Validates that explanations epsilon close to real bounds of a given var
-     Separately for tightenings and actual bounds
-     Returns true iff both bounds are epsilon close to their explanations
+     Returns true iff both bounds are epsilon close to their explained bounds
     */
-    bool validateBounds( unsigned var, double epsilon, double M, bool isUpper ) const;
+    bool validateBounds( unsigned var, double epsilon, bool isUpper ) const;
 
     /*
-     Validates that all explanations epsilon close to real bounds
-     Separately for tightenings and actual bounds
-     Returns true iff all bounds are epsilon-close to their explanations
+     Returns true iff all bounds are epsilon-close to their explained bounds
     */
-    bool validateAllBounds( double epsilon, double M ) const;
+    bool validateAllBounds( double epsilon ) const;
 
     /*
       Finds the variable causing failure and updates its bounds explanations
@@ -844,14 +839,13 @@ private:
     unsigned explainFailureWithTableau();
 
     /*
-      Updates explanations of the basic var with the largest gap between real bound and bound explained by cost function;
+      Updates bounds after deducing Simplex infeasibility, according to the cost function
     */
     unsigned explainFailureWithCostFunction();
 
     /*
       Updates an explanation of a bound according to a row, and checks for an explained contradiction.
-      If found, return true.
-      If not, revert and return false
+      If a contradiction can be deduced, return true. Else, revert and return false
     */
     bool explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row );
     bool explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row );
@@ -863,14 +857,14 @@ private:
 
     /*
       Return the vector given by upper bound explanation - lower bound explanation
-      Assuming infeasibleVar is indeed infeasible, then the result it a contradiction vector
+      Assuming infeasibleVar is indeed infeasible, then the result is a contradiction vector
      */
-    const Vector<double> computeContradictionVec( unsigned infeasibleVar ) const;
+    const Vector<double> computeContradiction( unsigned infeasibleVar ) const;
 
     /*
-      Writes the details of a contradiction to the UNSAT certificate
+      Writes the details of a contradiction to the UNSAT certificate node
     */
-    void writeContradictionToCertificate( unsigned infeasibleVar );
+    void writeContradictionToCertificate( unsigned infeasibleVar ) const;
 };
 
 #endif // __Engine_h__

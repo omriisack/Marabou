@@ -305,7 +305,7 @@ void BoundManager::registerRowBoundTightener( IRowBoundTightener *ptrRowBoundTig
     _rowBoundTightener = ptrRowBoundTightener;
 }
 
-void BoundManager::explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const
+void BoundManager::getExplanation( unsigned variable, bool isUpper, Vector<double> &explanation ) const
 {
     ASSERT( _engine->shouldProduceProofs() && variable < _size );
     auto temp = _boundExplainer->getExplanation( variable, isUpper );
@@ -417,7 +417,7 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
 
     // Register new ground bound, update certificate, and reset explanation
     Vector<double> explanation( 0 );
-    explainBound( causingVar, causingVarBound, explanation );
+    getExplanation( causingVar, causingVarBound, explanation );
 
     bool tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 

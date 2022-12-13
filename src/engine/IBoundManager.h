@@ -26,9 +26,9 @@
 #ifndef __IBoundManager_h__
 #define __IBoundManager_h__
 
+#include <cstdint>
 #include "List.h"
 #include "Vector.h"
-#include "BoundExplainer.h"
 #include "PiecewiseLinearFunctionType.h"
 
 enum BoundType : unsigned
@@ -36,7 +36,9 @@ enum BoundType : unsigned
     LOWER = 0,
     UPPER = 1,
 };
-
+class BoundExplainer;
+class SparseUnsortedList;
+class TableauRow;
 class Tightening;
 class ITableau;
 class IRowBoundTightener;

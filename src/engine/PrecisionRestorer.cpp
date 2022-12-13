@@ -49,15 +49,21 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
     engine.storeState( targetEngineState,
                        TableauStateStorageLevel::STORE_NONE );
 
-    BoundExplainer boundExplainerBackup = BoundExplainer( targetN, targetM, engine.getContext() );
-    auto groundUpperBoundsBackup = Vector<double>(targetN, 0 );
-    auto groundLowerBoundsBackup = Vector<double>(targetN, 0 );
+    BoundExplainer boundExplainerBackup( targetN, targetM, engine.getContext() );
+    Vector<double> groundUpperBoundsBackup;
+    Vector<double> groundLowerBoundsBackup;
 
-    auto upperBoundsBackup = Vector<double>( targetN, 0 );
-    auto lowerBoundsBackup = Vector<double>( targetN, 0 );
+    Vector<double> upperBoundsBackup;
+    Vector<double> lowerBoundsBackup;
 
     if ( engine.shouldProduceProofs() )
     {
+        groundUpperBoundsBackup = Vector<double>( targetN, 0 );
+        groundLowerBoundsBackup = Vector<double>( targetN, 0 );
+
+        upperBoundsBackup = Vector<double>( targetN, 0 );
+        lowerBoundsBackup = Vector<double>( targetN, 0 );
+
         boundExplainerBackup = *engine.getBoundExplainer();
 
         for ( unsigned i = 0; i < targetN; ++i )
@@ -65,8 +71,8 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
             lowerBoundsBackup[i] = tableau.getLowerBound( i );
             upperBoundsBackup[i] = tableau.getUpperBound( i );
 
-            groundUpperBoundsBackup[i] = engine.getGroundBound( i, true );
-            groundLowerBoundsBackup[i] = engine.getGroundBound( i, false );
+            groundUpperBoundsBackup[i] = engine.getGroundBound( i, UPPER );
+            groundLowerBoundsBackup[i] = engine.getGroundBound( i, LOWER );
         }
     }
 
@@ -135,7 +141,7 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 
     if ( engine.shouldProduceProofs() )
     {
-        engine.setBoundExplainer( &boundExplainerBackup );
+        engine.setBoundExplainerContent( &boundExplainerBackup );
 
         for ( unsigned i = 0; i < targetN; ++i )
         {

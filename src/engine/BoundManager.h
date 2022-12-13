@@ -177,7 +177,7 @@ public:
     /*
       Insert the bounds explanation of a variable in the tableau to the argument vector
     */
-    void explainBound( unsigned variable, bool isUpper, Vector<double> &explanation ) const;
+    void getExplanation( unsigned variable, bool isUpper, Vector<double> &explanation ) const;
 
     /*
       Artificially update an explanation, without using the recursive rule

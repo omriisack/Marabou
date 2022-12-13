@@ -117,7 +117,7 @@ public:
 	/*
  	  Return the value of a variable bound, as expressed by the bounds explainer and the initial bounds
 	*/
-	virtual double getExplainedBound( unsigned var,  bool isUpper ) const = 0;
+	virtual double explainBound( unsigned var,  bool isUpper ) const = 0;
 
 	/*
 	 * Update the ground bounds
@@ -146,19 +146,19 @@ public:
     virtual double getGroundBound( unsigned var, bool isUpper ) const = 0;
 
     /*
-      Get the current pointer in the UNSAT certificate
+      Get the current pointer in the UNSAT certificate node
     */
-    virtual UnsatCertificateNode* getUNSATCertificateCurrentPointer() const = 0;
+    virtual UnsatCertificateNode *getUNSATCertificateCurrentPointer() const = 0;
 
     /*
       Set the current pointer in the UNSAT certificate
     */
-    virtual void setUNSATCertificateCurrentPointer(UnsatCertificateNode* node ) = 0;
+    virtual void setUNSATCertificateCurrentPointer( UnsatCertificateNode *node ) = 0;
 
     /*
-      Get the root of the UNSAT certificate
+      Get the root of the UNSAT certificate proof tree
     */
-    virtual UnsatCertificateNode* getUNSATCertificateRoot() const = 0;
+    virtual const UnsatCertificateNode *getUNSATCertificateRoot() const = 0;
 
     /*
       Certify the UNSAT certificate
@@ -176,9 +176,9 @@ public:
     virtual const BoundExplainer *getBoundExplainer() const = 0;
 
     /*
-      Set the boundExplainer
+      Set the boundExplainer content
     */
-    virtual void setBoundExplainer( BoundExplainer *boundExplainer ) = 0;
+    virtual void setBoundExplainerContent( BoundExplainer *boundExplainer ) = 0;
 
     /*
       Propagate bound tightenings stored in the BoundManager

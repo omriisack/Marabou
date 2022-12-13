@@ -173,9 +173,10 @@ void SmtCore::performSplit()
     _engine->preContextPushHook();
     pushContext();
 
-	UnsatCertificateNode* certificateNode = _engine->getUNSATCertificateCurrentPointer();;
+    UnsatCertificateNode* certificateNode = NULL;
     if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
 	{
+        certificateNode = _engine->getUNSATCertificateCurrentPointer();
         // Create children for UNSATCertificate current node, and assign a split to each of them
 		ASSERT( certificateNode );
 		for ( PiecewiseLinearCaseSplit& childSplit : splits )
@@ -190,12 +191,11 @@ void SmtCore::performSplit()
 	if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
 	{
         //Set the current node of the UNSAT certificate to be the child corresponding to the first split
-		auto *firstSplitChild = certificateNode->getChildBySplit( *split );
+		UnsatCertificateNode *firstSplitChild = certificateNode->getChildBySplit( *split );
 		ASSERT( firstSplitChild );
 		_engine->setUNSATCertificateCurrentPointer( firstSplitChild );
 		ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
 	}
-	_stack.append( stackEntry ); //TODO moved here so depth will be accurate when applying the split
 
     _engine->applySplit( *split );
     stackEntry->_activeSplit = *split;
@@ -208,6 +208,8 @@ void SmtCore::performSplit()
         stackEntry->_alternativeSplits.append( *split );
         ++split;
     }
+
+	_stack.append( stackEntry );
 
     if ( _statistics )
     {
@@ -275,7 +277,6 @@ bool SmtCore::popSplit()
     }
 
     bool inconsistent = true;
-    UnsatCertificateNode* currentCertificateNode = _engine->getUNSATCertificateCurrentPointer();
     while ( inconsistent )
     {
         // Remove any entries that have no alternatives
@@ -289,12 +290,6 @@ bool SmtCore::popSplit()
                 throw MarabouError( MarabouError::DEBUGGING_ERROR );
             }
 
-            if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
-		    {
-                ASSERT( currentCertificateNode );
-                currentCertificateNode = currentCertificateNode->getParent();
-		    }
-
             delete _stack.back()->_engineState;
             delete _stack.back();
             _stack.popBack();
@@ -303,13 +298,6 @@ bool SmtCore::popSplit()
 
             if ( _stack.empty() )
                 return false;
-
-            if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
-            {
-                // In case that the current pointer is not the root
-                ASSERT( currentCertificateNode );
-                _engine->setUNSATCertificateCurrentPointer( currentCertificateNode );
-            }
         }
 
         if ( checkSkewFromDebuggingSolution() )
@@ -335,15 +323,12 @@ bool SmtCore::popSplit()
         // popped
         stackEntry->_impliedValidSplits.clear();
 
-
-        if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateRoot() )
+        // Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
+        if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateCurrentPointer() )
         {
-            //Set the current node of the UNSAT certificate to be the child corresponding to the chosen split
             UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
             ASSERT( certificateNode );
-            certificateNode = certificateNode->getParent();
-            ASSERT( certificateNode );
-            auto *splitChild = certificateNode->getChildBySplit( *split );
+            UnsatCertificateNode *splitChild = certificateNode->getChildBySplit( *split );
             ASSERT( splitChild );
             _engine->setUNSATCertificateCurrentPointer( splitChild );
             ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
@@ -361,8 +346,8 @@ bool SmtCore::popSplit()
 
         inconsistent = !_engine->consistentBounds();
 
-        if ( inconsistent )
-            _engine->explainSimplexFailure(); //TODO inspect
+        if ( _engine->shouldProduceProofs() && inconsistent )
+            _engine->explainSimplexFailure();
     }
 
     if ( _statistics )

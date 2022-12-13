@@ -2,7 +2,7 @@
 /*! \file Engine.cpp
  ** \verbatim
  ** Top contributors (to current version):
- **   Guy Katz, Duligur Ibeling, Andrew Wu
+ **   Guy Katz, Duligur Ibeling, Andrew Wu, Omri Isac
  ** This file is part of the Marabou project.
  ** Copyright (c) 2017-2019 by the authors listed in the file AUTHORS
  ** in the top-level source directory) and their institutional affiliations.
@@ -70,7 +70,6 @@ Engine::Engine()
     , _produceUNSATProofs( Options::get()->getBool( Options::PRODUCE_PROOFS ) )
     , _groundBoundManager( _context )
     , _UNSATCertificate( NULL )
-    , _UNSATCertificateCurrentPointer( NULL )
 {
     _smtCore.setStatistics( &_statistics );
     _tableau->setStatistics( &_statistics );
@@ -87,7 +86,9 @@ Engine::Engine()
     _statisticsPrintingFrequency =
         ( _lpSolverType == LPSolverType::NATIVE ) ?
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY :
-        GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY_GUROBI ;
+        GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY_GUROBI;
+
+    _produceUNSATProofs ? _UNSATCertificateCurrentPointer = new ( true ) CVC4::context::CDO<UnsatCertificateNode*>( &_context, NULL ) : NULL;
 }
 
 Engine::~Engine()
@@ -98,12 +99,14 @@ Engine::~Engine()
         _work = NULL;
     }
 
-    if ( _UNSATCertificate ) //TODO consider deleting outside engine
+    if ( _UNSATCertificate )
 	{
 		delete _UNSATCertificate;
 		_UNSATCertificate = NULL;
-		_UNSATCertificateCurrentPointer = NULL;
 	}
+
+    if ( _produceUNSATProofs && _UNSATCertificateCurrentPointer )
+        _UNSATCertificateCurrentPointer->deleteSelf();
 }
 
 void Engine::setVerbosity( unsigned verbosity )
@@ -305,10 +308,11 @@ bool Engine::solve( unsigned timeoutInSeconds )
                         _statistics.print();
                     }
 
+                    // Allows checking proofs produced for UNSAT leaves of satisfiable query search tree
                     if ( _produceUNSATProofs )
 					{
                     	ASSERT( _UNSATCertificateCurrentPointer );
-                        _UNSATCertificateCurrentPointer->setSATSolutionFlag();
+                        ( **_UNSATCertificateCurrentPointer ).setSATSolutionFlag();
 					}
 					_exitCode = Engine::SAT;
                     return true;
@@ -351,7 +355,9 @@ bool Engine::solve( unsigned timeoutInSeconds )
             _tableau->toggleOptimization( false );
             // The current query is unsat, and we need to pop.
             // If we're at level 0, the whole query is unsat.
-			explainSimplexFailure();
+            if ( _produceUNSATProofs )
+			    explainSimplexFailure();
+
             if ( !_smtCore.popSplit() )
             {
                 mainLoopEnd = TimeUtils::sampleMicro();
@@ -1219,7 +1225,8 @@ void Engine::addAuxiliaryVariables()
     for ( auto &eq : equations )
     {
         unsigned auxVar = originalN + count;
-        _preprocessedQuery->_lastAddendToAux.insert( eq._addends.back()._variable, auxVar );
+        if ( _produceUNSATProofs )
+            _preprocessedQuery->_lastAddendToAux.insert( eq._addends.back()._variable, auxVar );
         eq.addAddend( -1, auxVar );
         _preprocessedQuery->setLowerBound( auxVar, eq._scalar );
         _preprocessedQuery->setUpperBound( auxVar, eq._scalar );
@@ -1285,7 +1292,7 @@ void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
         constraint->registerAsWatcher( _tableau );
         constraint->setStatistics( &_statistics );
 
-        // Assuming aux var is use
+        // Assuming aux var is use, add the constraint's auxiliary variable assigned to it in the tableau, to the constraint
         if ( _produceUNSATProofs && _preprocessedQuery->_lastAddendToAux.exists( constraint->getParticipatingVariables().back() ) )
              constraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( constraint->getParticipatingVariables().back() ) );
     }
@@ -1385,7 +1392,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             if ( _produceUNSATProofs )
             {
                 _UNSATCertificate = new UnsatCertificateNode( NULL, PiecewiseLinearCaseSplit() );
-                _UNSATCertificateCurrentPointer = _UNSATCertificate;
+                _UNSATCertificateCurrentPointer->set( _UNSATCertificate );
                 _UNSATCertificate->setVisited();
                 _groundBoundManager.initialize( n );
 
@@ -1945,7 +1952,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
             if ( _produceUNSATProofs && FloatUtils::gt( bound._value, _boundManager.getLowerBound( bound._variable ) ) )
             {
-                _boundManager.resetExplanation( variable, false );
+                _boundManager.resetExplanation( variable, LOWER );
                 updateGroundLowerBound( variable, bound._value );
                 _boundManager.tightenLowerBound( variable, bound._value );
             }
@@ -1957,7 +1964,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
             if ( _produceUNSATProofs && FloatUtils::lt( bound._value, _boundManager.getUpperBound( bound._variable ) ) )
             {
-                _boundManager.resetExplanation( variable, true );
+                _boundManager.resetExplanation( variable, UPPER );
                 updateGroundUpperBound( variable, bound._value );
                 _boundManager.tightenUpperBound( variable, bound._value );
             }
@@ -1967,7 +1974,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     }
 
     if ( _produceUNSATProofs && _UNSATCertificateCurrentPointer )
-        _UNSATCertificateCurrentPointer->setVisited();
+        ( **_UNSATCertificateCurrentPointer ).setVisited();
 
 	DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
@@ -2752,7 +2759,9 @@ bool Engine::restoreSmtState( SmtState & smtState )
     {
         // The current query is unsat, and we need to pop.
         // If we're at level 0, the whole query is unsat.
-		explainSimplexFailure();
+        if ( _produceUNSATProofs )
+            explainSimplexFailure();
+
         if ( !_smtCore.popSplit() )
         {
             if ( _verbosity > 0 )
@@ -3191,20 +3200,21 @@ InputQuery Engine::buildQueryFromCurrentState() const {
 
 void Engine::updateGroundUpperBound( const unsigned var, const double value )
 {
-    ASSERT( var < _tableau->getN() );
+    ASSERT( var < _tableau->getN() && _produceUNSATProofs );
     if ( FloatUtils::lt( value, _groundBoundManager.getUpperBound( var ) ) )
        _groundBoundManager.setUpperBound( var, value );
 }
 
 void Engine::updateGroundLowerBound( const unsigned var, const double value )
 {
-    ASSERT( var < _tableau->getN() );
+    ASSERT( var < _tableau->getN() && _produceUNSATProofs );
     if ( FloatUtils::gt( value, _groundBoundManager.getLowerBound( var ) ) )
       _groundBoundManager.setLowerBound( var, value );
 }
 
 double Engine::getGroundBound( unsigned var, bool isUpper ) const
 {
+    ASSERT( var < _tableau->getN() && _produceUNSATProofs );
     return isUpper ? _groundBoundManager.getUpperBound( var ) : _groundBoundManager.getLowerBound( var );
 }
 
@@ -3215,11 +3225,9 @@ bool Engine::shouldProduceProofs() const
 
 void Engine::explainSimplexFailure()
 {
-    if ( !_produceUNSATProofs )
-        return;
+    ASSERT( _produceUNSATProofs );
 
-//    checkGroundBounds();  // TODO keep commented when running on Cluster
-//    validateAllBounds( GlobalConfiguration::LEMMA_CERTIFICATION_TOLERANCE, 1000000000 );
+    DEBUG( checkGroundBounds() );
 
     unsigned infeasibleVar = _boundManager.getInconsistentVariable();
 
@@ -3241,51 +3249,55 @@ void Engine::explainSimplexFailure()
         return;
     }
 
-    ASSERT( ( unsigned ) infeasibleVar < _tableau->getN() );
-    ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
+    ASSERT( infeasibleVar < _tableau->getN() );
+    ASSERT( _UNSATCertificateCurrentPointer && !( **_UNSATCertificateCurrentPointer ).getContradiction() );
     _statistics.incUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES );
 
     writeContradictionToCertificate( infeasibleVar );
 
-    _UNSATCertificateCurrentPointer->makeLeaf();
+    ( **_UNSATCertificateCurrentPointer ).makeLeaf();
 }
 
 bool Engine::certifyInfeasibility( unsigned var ) const
 {
-    if ( !_produceUNSATProofs )
-        return false;
+   ASSERT( _produceUNSATProofs );
 
-    auto contradictionVec = computeContradictionVec( var );
+    Vector<double> contradiction = computeContradiction( var );
 
-    if ( contradictionVec.empty() )
-        return FloatUtils::isNegative( _boundManager.getUpperBound( var ) - _groundBoundManager.getLowerBound( var ) );
+    if ( contradiction.empty() )
+        return FloatUtils::isNegative( _groundBoundManager.getUpperBound( var ) - _groundBoundManager.getLowerBound( var ) );
 
-    double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( contradictionVec.data(), _tableau->getSparseA(), _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getM(), _tableau->getN() );
+    double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( contradiction.data(), _tableau->getSparseA(),
+                                                                               _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(),
+                                                                               _tableau->getM(), _tableau->getN() );
     return FloatUtils::isNegative( derivedBound );
 }
 
-double Engine::getExplainedBound( unsigned var, bool isUpper ) const
+double Engine::explainBound( unsigned var, bool isUpper ) const
 {
-    auto explanationVec = Vector<double>( 0 );
+    ASSERT( _produceUNSATProofs );
+
+    Vector<double> explanationVec( 0 );
 
     if  ( !_boundManager.isExplanationTrivial( var, isUpper ) )
-        _boundManager.explainBound( var, isUpper, explanationVec );
+        _boundManager.getExplanation( var, isUpper, explanationVec );
 
-    const double *explanation =  explanationVec.empty() ? NULL : explanationVec.data();
-    return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _tableau->getSparseA(), _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getM(), _tableau->getN() );
+    const double *explanation = explanationVec.empty() ? NULL : explanationVec.data();
+    return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _tableau->getSparseA(),
+                                                _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(),
+                                                _tableau->getM(), _tableau->getN() );
 }
 
-bool Engine::validateBounds( unsigned var, double epsilon, double M, bool isUpper ) const
+bool Engine::validateBounds( unsigned var, double epsilon, bool isUpper ) const
 {
-    if ( !_produceUNSATProofs )
-        return true;
+    ASSERT( _produceUNSATProofs );
 
     double explained, real;
-    explained = getExplainedBound( var, isUpper );
+    explained = explainBound( var, isUpper );
     if ( isUpper )
     {
         real = _boundManager.getUpperBound( var );
-        if ( explained - real > epsilon || explained - real < -M  || FloatUtils::abs( explained ) > M )
+        if ( explained - real > epsilon )
         {
             printf( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
@@ -3294,7 +3306,7 @@ bool Engine::validateBounds( unsigned var, double epsilon, double M, bool isUppe
     else
     {
         real = _boundManager.getLowerBound( var );
-        if ( explained - real  < -epsilon || explained - real > M || FloatUtils::abs( explained ) > M )
+        if ( explained - real  < -epsilon )
         {
             printf( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
@@ -3303,15 +3315,14 @@ bool Engine::validateBounds( unsigned var, double epsilon, double M, bool isUppe
     return true;
 }
 
-bool Engine::validateAllBounds( double epsilon, double M ) const
+bool Engine::validateAllBounds( double epsilon ) const
 {
-    if ( !_produceUNSATProofs )
-        return true;
+    ASSERT( _produceUNSATProofs );
 
     bool res = true;
 
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
-        if ( !validateBounds( var, epsilon, M, UPPER ) || !validateBounds( var, epsilon, M, LOWER ) )
+        if ( !validateBounds( var, epsilon, UPPER ) || !validateBounds( var, epsilon, LOWER ) )
             res = false;
 
     return res;
@@ -3319,8 +3330,9 @@ bool Engine::validateAllBounds( double epsilon, double M ) const
 
 bool Engine::checkGroundBounds() const
 {
-    unsigned n = _tableau->getN();
-    for ( unsigned i = 0; i < n; ++i )
+    ASSERT( _produceUNSATProofs );
+
+    for ( unsigned i = 0; i < _tableau->getN(); ++i )
     {
         if ( FloatUtils::gt( _groundBoundManager.getLowerBound( i ), _boundManager.getLowerBound( i ) ) ||
              FloatUtils::lt( _groundBoundManager.getUpperBound( i ), _boundManager.getUpperBound( i ) ) )
@@ -3331,13 +3343,15 @@ bool Engine::checkGroundBounds() const
 
 unsigned Engine::explainFailureWithTableau()
 {
+    ASSERT( _produceUNSATProofs );
+
     // Failure of a simplex step implies infeasible bounds imposed by the row
     TableauRow boundUpdateRow = TableauRow( _tableau->getN() );
 
     //  For every basic, check that is has no slack and its explanations indeed prove a contradiction
     unsigned basicVar;
 
-    for ( unsigned i = 0; i < _tableau->getM(); ++i)
+    for ( unsigned i = 0; i < _tableau->getM(); ++i )
     {
         if ( _tableau->basicOutOfBounds( i ) )
         {
@@ -3359,15 +3373,16 @@ unsigned Engine::explainFailureWithTableau()
 
 unsigned Engine::explainFailureWithCostFunction()
 {
+    ASSERT( _produceUNSATProofs );
+
     // Failure of a simplex step might imply infeasible bounds imposed by the cost function
-    unsigned m = _tableau->getM();
     unsigned curBasicVar;
     unsigned infVar = IBoundManager::NO_VARIABLE_FOUND;
     double curCost;
     bool curUpper;
     SparseUnsortedList *costRow = _costFunctionManager->createRowOfCostFunction();
 
-    for ( unsigned i = 0; i < m; ++i )
+    for ( unsigned i = 0; i < _tableau->getM(); ++i )
     {
         curBasicVar = _tableau->basicIndexToVariable( i );
         curCost = _costFunctionManager->getBasicCost( i );
@@ -3399,8 +3414,10 @@ unsigned Engine::explainFailureWithCostFunction()
 
 bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row )
 {
-    auto backup = Vector<double>( 0, 0 );
-    _boundManager.explainBound( var, isUpper, backup );
+    ASSERT( _produceUNSATProofs );
+
+    Vector<double> backup( 0 );
+    _boundManager.getExplanation( var, isUpper, backup );
 
     _boundManager.updateBoundExplanation( *row, isUpper, var );
 
@@ -3416,8 +3433,10 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const Tab
 
 bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row )
 {
-    auto backup = Vector<double>( 0, 0 );
-    _boundManager.explainBound( var, isUpper, backup );
+    ASSERT( _produceUNSATProofs );
+
+    Vector<double> backup( 0 );
+    _boundManager.getExplanation( var, isUpper, backup );
 
     _boundManager.updateBoundExplanationSparse( *row, isUpper, var );
 
@@ -3431,25 +3450,24 @@ bool Engine::explainAndCheckContradiction( unsigned var, bool isUpper, const Spa
     return false;
 }
 
-UnsatCertificateNode* Engine::getUNSATCertificateCurrentPointer() const
+ UnsatCertificateNode* Engine::getUNSATCertificateCurrentPointer() const
 {
-    return _UNSATCertificateCurrentPointer;
+    return _UNSATCertificateCurrentPointer->get();
 }
 
-void Engine::setUNSATCertificateCurrentPointer(UnsatCertificateNode* node )
+void Engine::setUNSATCertificateCurrentPointer( UnsatCertificateNode* node )
 {
-    _UNSATCertificateCurrentPointer = node;
+    _UNSATCertificateCurrentPointer->set( node );
 }
 
-UnsatCertificateNode* Engine::getUNSATCertificateRoot() const
+const UnsatCertificateNode* Engine::getUNSATCertificateRoot() const
 {
     return _UNSATCertificate;
 }
 
 bool Engine::certifyUNSATCertificate()
 {
-    if ( !_produceUNSATProofs || !_UNSATCertificate  )
-        return false;
+    ASSERT( _produceUNSATProofs && _UNSATCertificate && !_smtCore.getStackDepth() );
 
     for ( auto &constraint : _plConstraints )
     {
@@ -3459,8 +3477,6 @@ bool Engine::certifyUNSATCertificate()
             return false;
         }
     }
-
-    ASSERT( !_smtCore.getStackDepth() );
 
     struct timespec certificationStart = TimeUtils::sampleMicro();
     _precisionRestorer.restoreInitialEngineState( *this );
@@ -3474,7 +3490,8 @@ bool Engine::certifyUNSATCertificate()
         groundLowerBounds[i] = _groundBoundManager.getLowerBound( i );
     }
 
-    Checker unsatCertificateChecker( _UNSATCertificate, _tableau->getM(),  _tableau->getSparseA(), groundUpperBounds, groundLowerBounds, _plConstraints );
+    Checker unsatCertificateChecker( _UNSATCertificate, _tableau->getM(),  _tableau->getSparseA(),
+                                     groundUpperBounds, groundLowerBounds, _plConstraints );
     bool certificationSucceeded = unsatCertificateChecker.check();
 
     _statistics.setLongAttribute( Statistics::TOTAL_CERTIFICATION_TIME, TimeUtils::timePassed( certificationStart, TimeUtils::sampleMicro() ) );
@@ -3504,48 +3521,53 @@ bool Engine::certifyUNSATCertificate()
 
 void Engine::markLeafToDelegate()
 {
-    if ( !_produceUNSATProofs )
-        return;
+   ASSERT( _produceUNSATProofs );
 
     // Mark leaf with toDelegate Flag
-    ASSERT( _UNSATCertificateCurrentPointer && !_UNSATCertificateCurrentPointer->getContradiction() );
-    _UNSATCertificateCurrentPointer->setDelegationStatus( DelegationStatus::DELEGATE_DONT_SAVE );
-    _UNSATCertificateCurrentPointer->deletePLCExplanations();
+    UnsatCertificateNode *currentUnsatCertificateNode = _UNSATCertificateCurrentPointer->get();
+    ASSERT( _UNSATCertificateCurrentPointer && ! currentUnsatCertificateNode->getContradiction() );
+    currentUnsatCertificateNode->setDelegationStatus( DelegationStatus::DELEGATE_SAVE );
+    currentUnsatCertificateNode->deletePLCExplanations();
     _statistics.incUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES );
 
-    if ( !_UNSATCertificateCurrentPointer->getChildren().empty() )
-        _UNSATCertificateCurrentPointer->makeLeaf();
+    if ( !currentUnsatCertificateNode->getChildren().empty() )
+        currentUnsatCertificateNode->makeLeaf();
 }
 
-const Vector<double> Engine::computeContradictionVec( unsigned infeasibleVar ) const
+const Vector<double> Engine::computeContradiction( unsigned infeasibleVar ) const
 {
+    ASSERT( _produceUNSATProofs );
+
     unsigned m = _tableau->getM();
-    auto upperBoundExplanation = Vector<double>( 0 );
-    auto lowerBoundExplanation = Vector<double>( 0 );
+    Vector<double> upperBoundExplanation( 0 );
+    Vector<double> lowerBoundExplanation( 0 );
 
-    if ( !_boundManager.isExplanationTrivial( infeasibleVar, true ) )
-        _boundManager.explainBound( infeasibleVar, true, upperBoundExplanation );
+    if ( !_boundManager.isExplanationTrivial( infeasibleVar, UPPER ) )
+        _boundManager.getExplanation( infeasibleVar, UPPER, upperBoundExplanation );
 
-    if( !_boundManager.isExplanationTrivial( infeasibleVar, false ) )
-        _boundManager.explainBound( infeasibleVar, false, lowerBoundExplanation );
+    if( !_boundManager.isExplanationTrivial( infeasibleVar, LOWER ) )
+        _boundManager.getExplanation( infeasibleVar, LOWER, lowerBoundExplanation );
 
     if ( upperBoundExplanation.empty() && lowerBoundExplanation.empty() )
         return Vector<double>( 0 );
 
-    auto contradictionVec = upperBoundExplanation.empty() ? Vector<double>( m, 0 )  : Vector<double>( upperBoundExplanation );
+    Vector<double> contradiction = upperBoundExplanation.empty() ? Vector<double>( m, 0 ) : Vector<double>( upperBoundExplanation );
 
     if ( !lowerBoundExplanation.empty() )
         for ( unsigned i = 0; i < m; ++i )
-            contradictionVec[i] -= lowerBoundExplanation[i];
+            contradiction[i] -= lowerBoundExplanation[i];
 
-    return contradictionVec;
+    return contradiction;
 }
 
-void Engine::writeContradictionToCertificate( unsigned infeasibleVar )
+void Engine::writeContradictionToCertificate( unsigned infeasibleVar ) const
 {
-    auto leafContradictionVec = computeContradictionVec( infeasibleVar );
+    ASSERT( _produceUNSATProofs );
+
+    Vector<double> leafContradictionVec = computeContradiction( infeasibleVar );
+
     Contradiction *leafContradiction = leafContradictionVec.empty() ? new Contradiction( infeasibleVar ) : new Contradiction( leafContradictionVec );
-    _UNSATCertificateCurrentPointer->setContradiction( leafContradiction );
+    ( **_UNSATCertificateCurrentPointer ).setContradiction( leafContradiction );
 }
 
 const BoundExplainer *Engine::getBoundExplainer() const
@@ -3553,7 +3575,7 @@ const BoundExplainer *Engine::getBoundExplainer() const
     return _boundManager.getBoundExplainer();
 }
 
-void Engine::setBoundExplainer( BoundExplainer *boundExplainer )
+void Engine::setBoundExplainerContent( BoundExplainer *boundExplainer )
 {
     _boundManager.copyBoundExplainerContent( boundExplainer );
 }

@@ -274,7 +274,6 @@ private:
 
     void initializeBoundExplainer( unsigned /* numberOfVariables */, unsigned /* numberOfRows */ )
     {
-
     }
 
     unsigned getInconsistentVariable() const
