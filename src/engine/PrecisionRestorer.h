@@ -28,7 +28,7 @@ public:
         DO_NOT_RESTORE_BASICS = 1,
     };
 
-    void storeInitialEngineState( IEngine &engine );
+    void storeInitialEngineState( const IEngine &engine );
     void restoreInitialEngineState( IEngine &engine );
 
 
@@ -37,18 +37,8 @@ public:
                            SmtCore &smtCore,
                            RestoreBasics restoreBasics );
 
-    /*
-     Have the PrecisionRestorer start reporting statistics.
-    */
-    void setStatistics( Statistics *statistics );
-
 private:
     EngineState _initialEngineState;
-
-    /*
-      Statistics collection
-    */
-    Statistics *_statistics;
 };
 
 #endif // __PrecisionRestorer_h__

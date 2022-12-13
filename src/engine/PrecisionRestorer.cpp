@@ -22,7 +22,7 @@
 #include "TableauStateStorageLevel.h"
 #include "UnsatCertificateNode.h"
 
-void PrecisionRestorer::storeInitialEngineState( IEngine &engine )
+void PrecisionRestorer::storeInitialEngineState( const IEngine &engine )
 {
     engine.storeState( _initialEngineState,
                        TableauStateStorageLevel::STORE_ENTIRE_TABLEAU_STATE );
@@ -195,15 +195,4 @@ void PrecisionRestorer::restorePrecision( IEngine &engine,
 }
 
 
-void PrecisionRestorer::setStatistics( Statistics *statistics )
-{
-   _statistics = statistics;
-}
 
-//
-// Local Variables:
-// compile-command: "make -C ../.. "
-// tags-file-name: "../../TAGS"
-// c-basic-offset: 4
-// End:
-//

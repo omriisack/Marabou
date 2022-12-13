@@ -139,14 +139,9 @@ public:
     {
     }
 
-	SparseUnsortedList* createRowOfCostFunction() const
+	const SparseUnsortedList* createRowOfCostFunction() const
 	{
     	return NULL;
-	}
-
-	int getFirstParticipatingBasicIndex() const
-	{
-    	return -1;
 	}
 };
 

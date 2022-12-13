@@ -96,13 +96,7 @@ public:
     /*
      * Returns the cost function as a SparseUnsortedList object, so it can be viewed as a Tableau row.
      */
-    SparseUnsortedList* createRowOfCostFunction() const;
-
-	/*
-	 * Gets the first index of the basic participating in the cost function (cost != 0)
-	 * Returns -1 if for some reason not found.
-	 */
-    int getFirstParticipatingBasicIndex() const;
+    const SparseUnsortedList* createRowOfCostFunction() const;
 
 private:
     /*
