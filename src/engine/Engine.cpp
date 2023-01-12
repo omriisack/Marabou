@@ -88,7 +88,7 @@ Engine::Engine()
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY :
         GlobalConfiguration::STATISTICS_PRINTING_FREQUENCY_GUROBI;
 
-    _produceUNSATProofs ? _UNSATCertificateCurrentPointer = new ( true ) CVC4::context::CDO<UnsatCertificateNode*>( &_context, NULL ) : NULL;
+    _UNSATCertificateCurrentPointer = _produceUNSATProofs ?  new ( true ) CVC4::context::CDO<UnsatCertificateNode*>( &_context, NULL ) : NULL;
 }
 
 Engine::~Engine()
