@@ -7,11 +7,11 @@ cd $mydir
 # TODO: add progress bar, -q is quite, if removing it the progress bar is in
 # multiple lines
 echo "downloading boost"
-wget -q https://sourceforge.net/projects/boost/files/boost/1.81.0/boost_1_81_0.tar.gz/download -O boost_1_81_0.tar.gz
+wget -q https://sourceforge.net/projects/boost/files/boost/1.68.0/boost_1_68_0.tar.gz/download -O boost_1_68_0.tar.gz
 echo "unzipping boost"
-tar xzvf boost_1_81_0.tar.gz >> /dev/null
+tar xzvf boost_1_68_0.tar.gz >> /dev/null
 echo "installing boost"
-cd boost_1_81_0;
+cd boost_1_68_0;
 
 if [[ $OSTYPE == 'darwin'* ]]; then
     export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
