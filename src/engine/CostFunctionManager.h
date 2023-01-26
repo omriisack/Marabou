@@ -94,10 +94,9 @@ public:
     void dumpCostFunction() const;
 
     /*
-     * Returns the cost function as a SparseUnsortedList object, so it can be viewed as a Tableau row.
-     */
+      Returns the cost function as a SparseUnsortedList object, so it can be viewed as a Tableau row.
+    */
     const SparseUnsortedList* createRowOfCostFunction() const;
-
 private:
     /*
       The tableau.

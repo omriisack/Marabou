@@ -140,7 +140,7 @@ public:
     void setNetworkLevelReasoner( NLR::NetworkLevelReasoner *nlr );
     NLR::NetworkLevelReasoner *getNetworkLevelReasoner() const;
 
-    // A map which will help computing the tableau aux variable of a PLC equations
+    // A map for storing the tableau aux variable assigned to each PLC
     Map<unsigned, unsigned> _lastAddendToAux;
 
 private:

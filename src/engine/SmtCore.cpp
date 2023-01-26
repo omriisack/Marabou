@@ -180,7 +180,7 @@ void SmtCore::performSplit()
         // Create children for UNSATCertificate current node, and assign a split to each of them
         ASSERT( certificateNode );
         for ( PiecewiseLinearCaseSplit& childSplit : splits )
-             new UnsatCertificateNode( certificateNode, childSplit ) ;
+            new UnsatCertificateNode( certificateNode, childSplit );
     }
 
     SmtStackEntry *stackEntry = new SmtStackEntry;
@@ -195,7 +195,7 @@ void SmtCore::performSplit()
         ASSERT( firstSplitChild );
         _engine->setUNSATCertificateCurrentPointer( firstSplitChild );
         ASSERT( _engine->getUNSATCertificateCurrentPointer()->getSplit() == *split );
-	}
+    }
 
     _engine->applySplit( *split );
     stackEntry->_activeSplit = *split;
@@ -209,7 +209,7 @@ void SmtCore::performSplit()
         ++split;
     }
 
-	_stack.append( stackEntry );
+    _stack.append( stackEntry );
 
     if ( _statistics )
     {

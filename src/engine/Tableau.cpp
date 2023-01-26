@@ -2106,7 +2106,6 @@ void Tableau::addRow()
         _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_M, _m );
         _statistics->setUnsignedAttribute( Statistics::CURRENT_TABLEAU_N, _n );
     }
-
 }
 
 void Tableau::registerToWatchVariable( VariableWatcher *watcher, unsigned variable )
