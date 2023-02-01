@@ -1982,7 +1982,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
     if ( _produceUNSATProofs && _UNSATCertificateCurrentPointer )
         ( **_UNSATCertificateCurrentPointer ).setVisited();
 
-	DEBUG( _tableau->verifyInvariants() );
+    DEBUG( _tableau->verifyInvariants() );
     ENGINE_LOG( "Done with split\n" );
 }
 
