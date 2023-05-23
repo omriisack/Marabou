@@ -1349,18 +1349,18 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( _produceUNSATProofs )
         {
-            bool containsNonReLUs = false;
+            bool containsUnsupportedConstraints = false;
             for ( auto &plConstraint : _preprocessedQuery->getPiecewiseLinearConstraints() )
             {
-                if ( plConstraint->getType() != RELU )
+                if ( plConstraint->getType() != RELU && plConstraint->getType() != SIGN )
                 {
-                    containsNonReLUs = true;
+                    containsUnsupportedConstraints = true;
                     _produceUNSATProofs = false;
                     Options::get()->setBool( Options::PRODUCE_PROOFS, false );
                 }
             }
 
-            if ( containsNonReLUs )
+            if ( containsUnsupportedConstraints )
             {
                 ENGINE_LOG( "Turning off proof production since activations are not yet supported\n" );
                 printf( "Turning off proof production since activations not are yet supported\n" );
@@ -3477,9 +3477,9 @@ bool Engine::certifyUNSATCertificate()
 
     for ( auto &constraint : _plConstraints )
     {
-        if ( constraint->getType() != RELU )
+        if ( constraint->getType() != RELU && constraint->getType() != SIGN )
         {
-            printf( "Certification Error! Marabou doesn't support certification for none ReLU constraints.\n" );
+            printf( "Certification Error! Marabou currently supports certification for ReLU and sign constraints only.\n" );
             return false;
         }
     }

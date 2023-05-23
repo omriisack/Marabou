@@ -64,7 +64,7 @@ private:
     bool checkNode( const UnsatCertificateNode *node );
 
     /*
-      Return true iff the changes in the ground bounds are certified, with tolerance to errors with at most size epsilon
+      Return true iff all changes in the ground bounds are certified, with tolerance to errors with at most size epsilon
     */
     bool checkAllPLCExplanations( const UnsatCertificateNode *node, double epsilon );
 
@@ -86,7 +86,32 @@ private:
     /*
       Return a pointer to the problem constraint representing the split
     */
-    PiecewiseLinearConstraint *getCorrespondingReLUConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+    PiecewiseLinearConstraint *getCorrespondingConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+
+    /*
+     Return a pointer to a ReLU problem constraint representing the split
+    */
+    PiecewiseLinearConstraint *getCorrespondingReluConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+
+    /*
+     Return a pointer to a sign problem constraint representing the split
+    */
+    PiecewiseLinearConstraint *getCorrespondingSignConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+
+    /*
+     Return a pointer to a absolute value problem constraint representing the split
+    */
+    PiecewiseLinearConstraint *getCorrespondingAbsConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+
+    /*
+     Return a pointer to a max problem constraint representing the split
+    */
+    PiecewiseLinearConstraint *getCorrespondingMaxConstraint( const List<PiecewiseLinearCaseSplit> &splits );
+
+    /*
+     Return a pointer to a disjunction problem constraint representing the split
+    */
+    PiecewiseLinearConstraint *getCorrespondingDisjunctionConstraint( const List<PiecewiseLinearCaseSplit> &splits );
 
     /*
       Return true iff a list of splits represents a splits over a single variable

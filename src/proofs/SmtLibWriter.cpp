@@ -41,6 +41,14 @@ void SmtLibWriter::addReLUConstraint( unsigned b, unsigned f, const PhaseStatus 
 void SmtLibWriter::addTableauRow( const SparseUnsortedList &row, List<String> &instance )
 {
     unsigned size = row.getSize();
+
+    auto it = row.end()--;
+    if ( std::isnan( it->_value ) || FloatUtils::isZero( it->_value ) )
+        --size;
+
+    if ( !size )
+        return;
+
     unsigned counter = 0;
     String assertRowLine = "( assert ( = 0";
     auto entry = row.begin();
