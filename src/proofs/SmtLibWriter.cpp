@@ -100,7 +100,8 @@ void SmtLibWriter::writeInstanceToFile( IFile &file, const List<String> &instanc
 
 String SmtLibWriter::signedValue( double val )
 {
+    unsigned precision = ( unsigned ) std::log10( 1 / GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
     std::stringstream s;
-    s << std::fixed << std::setprecision( SmtLibWriter::_accuracy ) << abs( val );
-    return val > 0 ? s.str() : "( - " + s.str() + " )";
+    s << std::fixed << std::setprecision( precision ) << abs( val );
+    return val >= 0 ? String( s.str() ).trimZerosFromRight() : String( "( - " + s.str() ).trimZerosFromRight() + " )";
 }
