@@ -1413,10 +1413,8 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             }
 
             if ( containsUnsupportedConstraints )
-            {
                 ENGINE_LOG( "Turning off proof production since activations are not yet supported\n" );
-                printf( "Turning off proof production since activations not are yet supported\n" );
-            }
+
         }
 
         if ( _lpSolverType == LPSolverType::NATIVE )
@@ -3357,7 +3355,7 @@ bool Engine::validateBounds( unsigned var, double epsilon, bool isUpper ) const
         real = _boundManager.getUpperBound( var );
         if ( explained - real > epsilon )
         {
-            printf( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
+            ENGINE_LOG( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }
@@ -3366,7 +3364,7 @@ bool Engine::validateBounds( unsigned var, double epsilon, bool isUpper ) const
         real = _boundManager.getLowerBound( var );
         if ( explained - real  < -epsilon )
         {
-            printf( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
+            ENGINE_LOG( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }
