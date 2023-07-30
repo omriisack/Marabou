@@ -1293,8 +1293,10 @@ void Engine::initializeBoundsAndConstraintWatchersInTableau( unsigned
         constraint->setStatistics( &_statistics );
 
         // Assuming aux var is use, add the constraint's auxiliary variable assigned to it in the tableau, to the constraint
-        if ( _produceUNSATProofs && _preprocessedQuery->_lastAddendToAux.exists( constraint->getParticipatingVariables().back() ) )
-             constraint->setTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( constraint->getParticipatingVariables().back() ) );
+        if ( _produceUNSATProofs  )
+            for ( unsigned var : constraint->getNativeAuxVars() )
+                if ( _preprocessedQuery->_lastAddendToAux.exists( var ) )
+                    constraint->addTableauAuxVar( _preprocessedQuery->_lastAddendToAux.at( var ), var );
     }
 
     _tsConstraints = _preprocessedQuery->getTranscendentalConstraints();
@@ -1352,7 +1354,7 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
             bool containsUnsupportedConstraints = false;
             for ( auto &plConstraint : _preprocessedQuery->getPiecewiseLinearConstraints() )
             {
-                if ( plConstraint->getType() != RELU && plConstraint->getType() != SIGN )
+                if ( !UNSATCertificateUtils::getSupportedActivations().exists( plConstraint->getType() ) )
                 {
                     containsUnsupportedConstraints = true;
                     _produceUNSATProofs = false;
@@ -3305,7 +3307,7 @@ bool Engine::validateBounds( unsigned var, double epsilon, bool isUpper ) const
         real = _boundManager.getUpperBound( var );
         if ( explained - real > epsilon )
         {
-            ENGINE_LOG( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
+            printf( "Var %d. Computed Upper %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }
@@ -3314,7 +3316,7 @@ bool Engine::validateBounds( unsigned var, double epsilon, bool isUpper ) const
         real = _boundManager.getLowerBound( var );
         if ( explained - real  < -epsilon )
         {
-            ENGINE_LOG( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
+            printf( "Var %d. Computed Lower  %.5lf, real %.5lf. Difference is %.10lf\n", var, explained, real, abs( explained - real ) );
             return false;
         }
     }
@@ -3477,9 +3479,9 @@ bool Engine::certifyUNSATCertificate()
 
     for ( auto &constraint : _plConstraints )
     {
-        if ( constraint->getType() != RELU && constraint->getType() != SIGN )
+        if ( !UNSATCertificateUtils::getSupportedActivations().exists( constraint->getType() ) )
         {
-            printf( "Certification Error! Marabou currently supports certification for ReLU and sign constraints only.\n" );
+            printf( "Certification Error! Network contains activation function that is not yet supported by Marabou certification.\n" );
             return false;
         }
     }
@@ -3518,7 +3520,7 @@ bool Engine::certifyUNSATCertificate()
         if ( _statistics.getUnsignedAttribute( Statistics::NUM_POPS ) )
         {
             double delegationRatio = _statistics.getUnsignedAttribute( Statistics::NUM_DELEGATED_LEAVES ) / _statistics.getUnsignedAttribute( Statistics::NUM_CERTIFIED_LEAVES );
-            ASSERT( FloatUtils::lt( delegationRatio, 0.01 ));
+            ASSERT( FloatUtils::lt( delegationRatio, 0.01 ) );
         }
     });
 

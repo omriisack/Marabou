@@ -205,7 +205,22 @@ public:
 
     bool isImplication() const override;
 
+    inline Set<unsigned> getEliminatedElements() const
+    {
+        return _eliminatedElements;
+    }
 
+    inline Set<unsigned> getParticipatingElements() const
+    {
+        Set<unsigned> participatingElements = {};
+        for ( const auto &element : _elements )
+            participatingElements.insert( element );
+
+        for ( const auto &element : _eliminatedElements )
+            participatingElements.insert( element );
+
+        return participatingElements;
+    }
  private:
     unsigned _f;
     Set<unsigned> _elements;
@@ -213,6 +228,10 @@ public:
 
     Map<unsigned, unsigned> _auxToElement;
     Map<unsigned, unsigned> _elementToAux;
+
+    Map<unsigned, unsigned> _elementToTableauAux;
+    Map<unsigned, std::shared_ptr<TableauRow>> _elementToTighteningRow;
+    Set<unsigned> _eliminatedElements;
 
     bool _obsolete;
 
@@ -261,6 +280,10 @@ public:
       Return true iff f or the elements are not all within bounds.
     */
     bool haveOutOfBoundVariables() const;
+
+    void createElementTighteningRow( unsigned element );
+    const List<unsigned> getNativeAuxVars() const override;
+    void addTableauAuxVar( unsigned tableauAuxVar, unsigned constraintAuxVar ) override;
 };
 
 #endif // __MaxConstraint_h__

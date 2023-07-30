@@ -39,14 +39,39 @@ public:
     static void addFooter( List<String> &instance );
 
     /*
-      Adds a line representing ReLU constraint, in SMTLIB format, to the SMTLIB instance
+      Adds a line representing a ReLU constraint, in SMTLIB format, to the SMTLIB instance
     */
     static void addReLUConstraint( unsigned b, unsigned f, const PhaseStatus status, List<String> &instance );
+
+    /*
+      Adds a line representing a sign constraint, in SMTLIB format, to the SMTLIB instance
+    */
+    static void addSignConstraint( unsigned b, unsigned f, const PhaseStatus status, List<String> &instance );
+
+    /*
+     Adds a line representing an absolute value constraint, in SMTLIB format, to the SMTLIB instance
+   */
+    static void addAbsConstraint( unsigned b, unsigned f, const PhaseStatus status, List<String> &instance );
+
+    /*
+     Adds a line representing a max constraint, in SMTLIB format, to the SMTLIB instance
+    */
+    static void addMaxConstraint( unsigned f, const Set<unsigned> &elements, List<String> &instance );
+
+    /*
+     Adds a line representing a disjunction constraint, in SMTLIB format, to the SMTLIB instance
+    */
+    static void addDisjunctionConstraint( const List<PiecewiseLinearCaseSplit> &disjuncts, List<String> &instance );
 
     /*
       Adds a line representing a Tableau Row, in SMTLIB format, to the SMTLIB instance
     */
     static void addTableauRow( const SparseUnsortedList &row, List<String> &instance );
+
+    /*
+     Adds a line representing an equation , in SMTLIB format, to the SMTLIB instance
+   */
+    static void addEquation( const Equation &eq, List<String> &instance );
 
     /*
       Adds lines representing the ground upper bounds, in SMTLIB format, to the SMTLIB instance
@@ -67,9 +92,6 @@ public:
       Returns a string representing the value of a double
      */
     static String signedValue( double val );
-
-private:
-    static const unsigned _accuracy = 8;
 };
 
 #endif //__SmtLibWriter_h__

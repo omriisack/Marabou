@@ -395,14 +395,15 @@ void SignConstraint::notifyLowerBound( unsigned variable, double bound )
     {
         setPhaseStatus( PhaseStatus::SIGN_PHASE_POSITIVE );
 
-        // If lb of f is > 1, we have a contradiction
-        if ( FloatUtils::gt( bound, 1 ) )
-            throw InfeasibleQueryException();
 
         if ( _boundManager != nullptr )
         {
             if ( _boundManager->shouldProduceProofs() )
             {
+                // If lb of f is > 1, we have a contradiction
+                if ( FloatUtils::gt( bound, 1 ) )
+                    throw InfeasibleQueryException();
+
                 _boundManager->addLemmaExplanation( _f, 1, LOWER, variable, LOWER, getType() );
                 _boundManager->addLemmaExplanation( _b, 0, LOWER, variable, LOWER, getType() );
             }
@@ -441,15 +442,17 @@ void SignConstraint::notifyUpperBound( unsigned variable, double bound )
 
     if ( variable == _f && FloatUtils::lt( bound, 1 ) )
     {
-        // If ub of f is < -1, we have a contradiction
-        if ( FloatUtils::lt( bound, -1 ) )
-            throw InfeasibleQueryException();
+
 
         setPhaseStatus( PhaseStatus::SIGN_PHASE_NEGATIVE );
         if ( _boundManager != nullptr )
         {
             if ( _boundManager->shouldProduceProofs() )
             {
+                // If ub of f is < -1, we have a contradiction
+                if ( FloatUtils::lt( bound, -1 )  )
+                    throw InfeasibleQueryException();
+
                 _boundManager->addLemmaExplanation( _f, -1, UPPER, variable, UPPER, getType() );
                 _boundManager->addLemmaExplanation( _b, 0, UPPER, variable, UPPER, getType() );
             }

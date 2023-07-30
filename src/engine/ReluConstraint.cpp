@@ -1044,7 +1044,7 @@ void ReluConstraint::updateScoreBasedOnPolarity()
 void ReluConstraint::createTighteningRow()
 {
     // Create the row only when needed and when not already created
-    if ( !_boundManager->getBoundExplainer() || _tighteningRow || !_auxVarInUse || !_tableauAuxVar )
+    if ( !_boundManager->getBoundExplainer() || _tighteningRow || !_auxVarInUse || _tableauAuxVars.empty() )
         return;
 
     _tighteningRow = std::unique_ptr<TableauRow>( new TableauRow ( 3 ) );
@@ -1053,7 +1053,14 @@ void ReluConstraint::createTighteningRow()
     _tighteningRow->_lhs =  _f;
     _tighteningRow->_row[0] = TableauRow::Entry( _b, 1 );
     _tighteningRow->_row[1] = TableauRow::Entry( _aux, 1 );
-    _tighteningRow->_row[2] = TableauRow::Entry( _tableauAuxVar, 1 );
+    _tighteningRow->_row[2] = TableauRow::Entry( _tableauAuxVars.back(), 1 );
+}
+
+const List<unsigned> ReluConstraint::getNativeAuxVars() const
+{
+    if ( _auxVarInUse )
+        return { _aux };
+    return {};
 }
 
 //

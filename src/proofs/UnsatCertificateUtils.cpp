@@ -133,3 +133,9 @@ double UNSATCertificateUtils::computeCombinationUpperBound( const double *explan
 
     return derivedBound;
 }
+
+const Set<PiecewiseLinearFunctionType> UNSATCertificateUtils::getSupportedActivations()
+{
+    return { RELU, SIGN, ABSOLUTE_VALUE, MAX, DISJUNCTION };
+}
+

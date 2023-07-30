@@ -15,6 +15,8 @@
 #ifndef __Checker_h__
 #define __Checker_h__
 
+#include "AbsoluteValueConstraint.h"
+#include "MaxConstraint.h"
 #include "Set.h"
 #include "Stack.h"
 #include "UnsatCertificateNode.h"
@@ -67,6 +69,26 @@ private:
       Return true iff all changes in the ground bounds are certified, with tolerance to errors with at most size epsilon
     */
     bool checkAllPLCExplanations( const UnsatCertificateNode *node, double epsilon );
+
+    /*
+     Return true iff a change in the ground bounds caused by a ReLU constraint is certified, with tolerance to errors with at most size epsilon
+    */
+    bool checkReluLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+
+    /*
+     Return true iff a change in the ground bounds caused by a sign constraint is certified, with tolerance to errors with at most size epsilon
+    */
+    bool checkSignLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+
+    /*
+     Return true iff a change in the ground bounds caused by an absolute value constraint is certified, with tolerance to errors with at most size epsilon
+    */
+    bool checkAbsLemma( const PLCExplanation &expl,  PiecewiseLinearConstraint &constraint, double epsilon );
+
+    /*
+     Return true iff a change in the ground bounds caused by a max constraint is certified, with tolerance to errors with at most size epsilon
+    */
+    bool checkMaxLemma( const PLCExplanation &expl,  PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
       Checks a contradiction

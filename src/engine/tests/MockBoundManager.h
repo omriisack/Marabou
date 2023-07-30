@@ -283,7 +283,7 @@ private:
 
     bool shouldProduceProofs() const
     {
-        return true;
+        return false;
     }
 };
 

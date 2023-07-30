@@ -104,13 +104,21 @@ bool Checker::checkNode( const UnsatCertificateNode *node )
                 childrenSplitConstraint->setPhaseStatus( RELU_PHASE_INACTIVE );
         }
 
-        if ( childrenSplitConstraint && childrenSplitConstraint->getType() == PiecewiseLinearFunctionType::SIGN )
+        else if ( childrenSplitConstraint && childrenSplitConstraint->getType() == PiecewiseLinearFunctionType::SIGN )
         {
             auto tightenings = child->getSplit().getBoundTightenings();
             if ( tightenings.front()._type == Tightening::LB  )
                 childrenSplitConstraint->setPhaseStatus( SIGN_PHASE_POSITIVE );
             else
                 childrenSplitConstraint->setPhaseStatus( SIGN_PHASE_NEGATIVE );
+        }
+        else if ( childrenSplitConstraint && childrenSplitConstraint->getType() == PiecewiseLinearFunctionType::ABSOLUTE_VALUE )
+        {
+            auto tightenings = child->getSplit().getBoundTightenings();
+            if ( tightenings.front()._type == Tightening::LB )
+                childrenSplitConstraint->setPhaseStatus( ABS_PHASE_POSITIVE );
+            else
+                childrenSplitConstraint->setPhaseStatus( ABS_PHASE_NEGATIVE );
         }
 
         if ( !checkNode( child ) )
@@ -157,148 +165,39 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
     // NOTE, this will change as PLCExplanation will
     for ( const auto &plcExplanation : node->getPLCExplanations() )
     {
-        bool constraintMatched = false;
+        PiecewiseLinearConstraint *matchedConstraint = NULL;
         bool tighteningMatched = false;
-        auto explanationVector = Vector<double>( 0, 0 );
-        List<unsigned> constraintVars;
-
         unsigned causingVar = plcExplanation->getCausingVar();
         unsigned affectedVar = plcExplanation->getAffectedVar();
-        double bound = plcExplanation->getBound();
-        const double *explanation = plcExplanation->getExplanation();
-        BoundType causingVarBound = plcExplanation->getCausingVarBound();
-        BoundType affectedVarBound = plcExplanation->getAffectedVarBound();
-        PiecewiseLinearFunctionType constraintType = plcExplanation->getConstraintType();
-
-        double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
-        unsigned b = 0;
-        unsigned f = 0;
-        unsigned aux = 0;
 
         // Make sure propagation was made by a problem constraint
         for ( const auto &constraint : _problemConstraints )
-        {
-            constraintVars = constraint->getParticipatingVariables();
-            if ( constraintType == PiecewiseLinearFunctionType::RELU && constraintVars.exists( affectedVar ) && constraintVars.exists( causingVar ) )
-            {
-                Vector<unsigned> conVec( constraintVars.begin(), constraintVars.end() );
-                b = conVec[0];
-                f = conVec[1];
-                aux = conVec[2];
-                constraintMatched = true;
+            if ( constraint->getParticipatingVariables().exists( affectedVar ) && constraint->getParticipatingVariables().exists( causingVar ) )
+                matchedConstraint = constraint;
 
-                // If explanation is phase fixing, mark it
-                if ( ( affectedVarBound == LOWER && affectedVar == f && FloatUtils::isPositive( bound ) ) || ( affectedVarBound == UPPER && affectedVar == aux && FloatUtils::isZero( bound ) ) )
-                    constraint->setPhaseStatus( RELU_PHASE_ACTIVE );
-                else if ( ( affectedVarBound == LOWER && affectedVar == aux && FloatUtils::isPositive( bound ) ) || ( affectedVarBound == UPPER && affectedVar == f && FloatUtils::isZero( bound ) ) )
-                    constraint->setPhaseStatus( RELU_PHASE_INACTIVE );
-            }
-            else if ( constraintType == PiecewiseLinearFunctionType::SIGN && constraintVars.exists( affectedVar ) && constraintVars.exists( causingVar ) )
-            {
-                b = constraintVars.front();
-                f = constraintVars.back();
-                constraintMatched = true;
-                // Any explanation is phase fixing
-                if ( ( affectedVarBound == LOWER && affectedVar == f && FloatUtils::gt( bound, -1 ) ) || ( affectedVarBound == LOWER && affectedVar == b && !FloatUtils::isNegative( bound ) ) )
-                    constraint->setPhaseStatus( SIGN_PHASE_POSITIVE );
-                else if ( ( affectedVarBound == UPPER && affectedVar == f && FloatUtils::gt( bound, 1 ) ) || ( affectedVarBound == UPPER && affectedVar == b && FloatUtils::isNegative( bound ) ) )
-                    constraint->setPhaseStatus( SIGN_PHASE_NEGATIVE );
-            }
-        }
-
-        if ( !constraintMatched )
+        if ( !matchedConstraint )
             return false;
 
-        if ( causingVar != b && causingVar != f && causingVar != aux )
-            return false;
+        PiecewiseLinearFunctionType constraintType = matchedConstraint->getType();
 
         if ( constraintType == RELU )
-        {
-            // Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each rule in ReluConstraint.cpp
-            // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
-
-            // If lb of b is non negative, then ub of aux is 0
-            if ( causingVar == b && causingVarBound == LOWER && affectedVar == aux && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
-                tighteningMatched = true;
-
-            // If lb of f is positive, then ub if aux is 0
-            else if ( causingVar == f && causingVarBound == LOWER && affectedVar == aux && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
-                tighteningMatched = true;
-
-            // If lb of b is positive x, then lb of aux is -x
-            else if ( causingVar == b && causingVarBound == LOWER && affectedVar == aux &&affectedVarBound == UPPER && FloatUtils::gte(explainedBound, - bound - epsilon ) && bound > 0 )
-                tighteningMatched = true;
-
-            // If lb of aux is positive, then ub of f is 0
-            else if ( causingVar == aux && causingVarBound ==LOWER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
-                tighteningMatched = true;
-
-            // If lb of f is negative, then it is 0
-            else if ( causingVar == f && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && FloatUtils::isZero( bound ) && FloatUtils::isNegative( explainedBound - epsilon ) )
-                tighteningMatched = true;
-
-            // Propagate ub from f to b
-            else if ( causingVar == f && causingVarBound == UPPER && affectedVar == b && affectedVarBound == UPPER && FloatUtils::lte( explainedBound, bound + epsilon ) )
-                tighteningMatched = true;
-
-            // If ub of b is non positive, then ub of f is 0
-            else if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && !FloatUtils::isPositive( explainedBound - epsilon ) )
-                tighteningMatched = true;
-
-            // If ub of b is non positive x, then lb of aux is -x
-            else if ( causingVar == b && causingVarBound == UPPER && affectedVar == aux && affectedVarBound == LOWER && bound > 0 && !FloatUtils::isPositive( explainedBound - epsilon ) && FloatUtils::lte( explainedBound, -bound + epsilon) )
-                tighteningMatched = true;
-
-            // If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
-            else if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isPositive( bound ) && FloatUtils::lte( explainedBound,  bound + epsilon ) )
-                tighteningMatched = true;
-
-            // If ub of aux is x, then lb of b is -x
-            else if ( causingVar == aux && causingVarBound == UPPER && affectedVar == b && affectedVarBound == LOWER && FloatUtils::lte( explainedBound, -bound + epsilon ) )
-                tighteningMatched = true;
-        }
+          tighteningMatched = checkReluLemma( *plcExplanation, *matchedConstraint, epsilon );
         else if ( constraintType == SIGN )
-        {
-            // If lb of f is > -1, then lb of f is 1
-            if ( causingVar == f && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && bound == 1 && FloatUtils::gt( explainedBound + epsilon, -1 ) )
-                tighteningMatched = true;
-
-            // If lb of f is > -1, then lb of b is 0
-            if ( causingVar == f && causingVarBound == LOWER && affectedVar == b && affectedVarBound == LOWER && bound == 0 && FloatUtils::gt( explainedBound + epsilon, -1 ) )
-                tighteningMatched = true;
-
-            // If lb of b is non negative, then lb of f is 1
-            if ( causingVar == b && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && bound == 1 && !FloatUtils::isNegative( explainedBound + epsilon ) )
-                tighteningMatched = true;
-
-            // If ub of f is < 1, then ub of f is -1
-            if ( causingVar == f && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && bound == -1 && FloatUtils::lt( explainedBound + epsilon, 1 ) )
-                tighteningMatched = true;
-
-            // If ub of f is < 1, then ub of b is 0
-            if ( causingVar == f && causingVarBound == UPPER && affectedVar == b && affectedVarBound == UPPER && bound == 0 && FloatUtils::lt( explainedBound + epsilon, 1 ) )
-                tighteningMatched = true;
-
-            // If ub of b is negative, then ub of f is -1
-            if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && bound == -1 && FloatUtils::isNegative( explainedBound + epsilon ) )
-                tighteningMatched = true;
-        }
+            tighteningMatched = checkSignLemma( *plcExplanation, *matchedConstraint, epsilon );
         else if ( constraintType == ABSOLUTE_VALUE )
-        {
-            //TODO complete
-            tighteningMatched = true;
-        }
-
-        if ( !tighteningMatched )
-        {
-            printf("lemma unmatched\n");
+            tighteningMatched = checkAbsLemma( *plcExplanation, *matchedConstraint, epsilon );
+        else if (constraintType == MAX)
+            tighteningMatched = checkMaxLemma( *plcExplanation, *matchedConstraint, epsilon );
+        else
             return false;
-        }
 
+        double bound = plcExplanation->getBound();
         // If so, update the ground bounds and continue
+        BoundType affectedVarBound = plcExplanation->getAffectedVarBound();
+
         auto &temp = affectedVarBound == UPPER ? _groundUpperBounds : _groundLowerBounds;
-        bool isTighter = affectedVarBound ? FloatUtils::lt( bound, temp[affectedVar] ) : FloatUtils::gt( bound, temp[affectedVar] );
-        if ( isTighter )
+        bool isTighter = affectedVarBound == UPPER ? FloatUtils::lt( bound, temp[affectedVar] ) : FloatUtils::gt( bound, temp[affectedVar] );
+        if ( isTighter && tighteningMatched )
         {
             temp[affectedVar] = bound;
             ASSERT( !_upperBoundChanges.empty() && !_lowerBoundChanges.empty() );
@@ -357,14 +256,35 @@ void Checker::writeToFile()
     }
 
     for ( auto &constraint : _problemConstraints )
-        if ( constraint->getType() == PiecewiseLinearFunctionType::RELU )
+    {
+        auto vars = constraint->getParticipatingVariables();
+        if ( constraint->getType() == RELU )
         {
-            auto vars = constraint->getParticipatingVariables();
             b = vars.front();
             vars.popBack();
             f = vars.back();
             SmtLibWriter::addReLUConstraint( b, f, constraint->getPhaseStatus(), leafInstance );
         }
+        else if ( constraint->getType() == SIGN )
+        {
+            b = vars.front();
+            f = vars.back();
+            SmtLibWriter::addSignConstraint( b, f, constraint->getPhaseStatus(), leafInstance );
+        }
+        else if ( constraint->getType() == ABSOLUTE_VALUE )
+        {
+            b = vars.front();
+            f = vars.back();
+            SmtLibWriter::addAbsConstraint( b, f, constraint->getPhaseStatus(), leafInstance );
+        }
+        else if ( constraint->getType() == MAX )
+            SmtLibWriter::addMaxConstraint( constraint->getParticipatingVariables().back(), ( ( MaxConstraint * )constraint )->getParticipatingElements(), leafInstance );
+        else if ( constraint->getType() == DISJUNCTION )
+        {
+            //TODO check
+            SmtLibWriter::addDisjunctionConstraint( constraint->getCaseSplits(), leafInstance );
+        }
+    }
 
     SmtLibWriter::addFooter( leafInstance );
     File file ( "delegated" + std::to_string( _delegationCounter ) + ".smtlib" );
@@ -473,19 +393,302 @@ PiecewiseLinearConstraint *Checker::getCorrespondingSignConstraint( const List<P
     return correspondingConstraint;
 }
 
-PiecewiseLinearConstraint *Checker::getCorrespondingAbsConstraint( const List<PiecewiseLinearCaseSplit> &/*splits*/ )
+PiecewiseLinearConstraint *Checker::getCorrespondingAbsConstraint( const List<PiecewiseLinearCaseSplit> &splits )
 {
-    //TODO complete
+    if ( splits.size() != 2 )
+        return NULL;
+
+    auto firstSplitTightenings = splits.front().getBoundTightenings();
+    auto secondSplitTightenings = splits.back().getBoundTightenings();
+
+    // Find an LB tightening, it marks the positive split
+    auto &positiveSplit = firstSplitTightenings.front()._type == Tightening::LB ? firstSplitTightenings : secondSplitTightenings;
+    auto &negativeSplit = firstSplitTightenings.front()._type == Tightening::LB ? secondSplitTightenings : firstSplitTightenings;
+
+    unsigned b = positiveSplit.front()._variable;
+    unsigned posAux = positiveSplit.back()._variable;
+
+    unsigned negAux = negativeSplit.back()._variable;
+    // Check details of both constraints - value and types
+    if ( positiveSplit.size() != 2 || negativeSplit.size() != 2 || positiveSplit.back()._type != Tightening::UB || positiveSplit.front()._type != Tightening::LB || negativeSplit.back()._type != Tightening::UB || negativeSplit.front()._type != Tightening::UB )
+        return NULL;
+
+    if ( FloatUtils::areDisequal( negativeSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( negativeSplit.front()._value, 0.0 ) ||  FloatUtils::areDisequal(positiveSplit.back()._value, 0.0 ) || FloatUtils::areDisequal( positiveSplit.front()._value, 0.0 ))
+        return NULL;
+
+    // Check that f=sign(b) corresponds to a problem constraints
+    PiecewiseLinearConstraint *correspondingConstraint = NULL;
+    for ( auto &constraint : _problemConstraints )
+    {
+        auto constraintVars = constraint->getParticipatingVariables();
+        if ( constraint->getType() == PiecewiseLinearFunctionType::ABSOLUTE_VALUE && constraintVars.front() == b && constraintVars.back() == negAux && constraintVars.exists( posAux )  )
+            correspondingConstraint = constraint;
+    }
+
+    // Return the constraint for which f=abs(b)
+    return correspondingConstraint;
+}
+
+PiecewiseLinearConstraint *Checker::getCorrespondingMaxConstraint( const List<PiecewiseLinearCaseSplit> &splits )
+{
+    bool constraintMatched = true;
+
+    for ( auto &constraint : _problemConstraints )
+    {
+        if ( constraint->getType() != MAX )
+            continue;
+
+        // When checking, it is possible that the problem constraints already eliminated elements that appear in the proof
+        List<PiecewiseLinearCaseSplit> constraintSplits = constraint->getCaseSplits();
+        for ( auto const &element : ( ( MaxConstraint * ) constraint )->getEliminatedElements() )
+        {
+            PiecewiseLinearCaseSplit eliminatedElementCaseSplit;
+            eliminatedElementCaseSplit.storeBoundTightening( Tightening( element, 0, Tightening::UB ) );
+            constraintSplits.append( eliminatedElementCaseSplit );
+        }
+
+        for ( const auto &split : splits )
+            if ( !constraintSplits.exists( split ) )
+                constraintMatched = false;
+
+        if ( constraintMatched )
+            return constraint;
+    }
     return NULL;
 }
 
-PiecewiseLinearConstraint *Checker::getCorrespondingMaxConstraint( const List<PiecewiseLinearCaseSplit> &/*splits*/ )
+PiecewiseLinearConstraint *Checker::getCorrespondingDisjunctionConstraint( const List<PiecewiseLinearCaseSplit> & splits )
 {
-    //TODO complete
+    bool constraintMatched = true;
+
+    for ( auto &constraint : _problemConstraints )
+    {
+        if ( constraint->getType() != DISJUNCTION )
+            continue;
+
+        // constraintMatched will remain true iff the splits list is the same as the list of disjuncts (up to order)
+        for ( const auto &split : constraint->getCaseSplits() )
+            if ( !splits.exists( split ) )
+                constraintMatched = false;
+
+        for ( const auto &split : splits )
+            if ( !constraint->getCaseSplits().exists( split ) )
+                constraintMatched = false;
+
+        if ( constraintMatched )
+            return constraint;
+    }
     return NULL;
 }
 
-PiecewiseLinearConstraint *Checker::getCorrespondingDisjunctionConstraint( const List<PiecewiseLinearCaseSplit> &/*splits*/ )
+bool Checker::checkReluLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
-    return NULL;
+    ASSERT( constraint.getType() == RELU );
+    ASSERT( expl.getConstraintType() == RELU );
+
+    unsigned causingVar = expl.getCausingVar();
+    unsigned affectedVar = expl.getAffectedVar();
+    double bound = expl.getBound();
+    const double *explanation = expl.getExplanation();
+    BoundType causingVarBound = expl.getCausingVarBound();
+    BoundType affectedVarBound = expl.getAffectedVarBound();
+
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+
+    bool tighteningMatched = false;
+    List<unsigned> constraintVars = constraint.getParticipatingVariables();
+    ASSERT(constraintVars.size() == 3 );
+
+    Vector<unsigned> conVec( constraintVars.begin(), constraintVars.end() );
+    unsigned b = conVec[0];
+    unsigned f = conVec[1];
+    unsigned aux = conVec[2];
+
+    // If explanation is phase fixing, mark it
+    if ( ( affectedVarBound == LOWER && affectedVar == f && FloatUtils::isPositive( bound ) ) || ( affectedVarBound == UPPER && affectedVar == aux && FloatUtils::isZero( bound ) ) )
+        constraint.setPhaseStatus( RELU_PHASE_ACTIVE );
+    else if ( ( affectedVarBound == LOWER && affectedVar == aux && FloatUtils::isPositive( bound ) ) || ( affectedVarBound == UPPER && affectedVar == f && FloatUtils::isZero( bound ) ) )
+        constraint.setPhaseStatus( RELU_PHASE_INACTIVE );
+
+    // Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each rule in ReluConstraint.cpp
+    // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
+
+    // If lb of b is non negative, then ub of aux is 0
+    if ( causingVar == b && causingVarBound == LOWER && affectedVar == aux && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
+        tighteningMatched = true;
+
+    // If lb of f is positive, then ub if aux is 0
+    else if ( causingVar == f && causingVarBound == LOWER && affectedVar == aux && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
+        tighteningMatched = true;
+
+    // If lb of b is positive x, then lb of aux is -x
+    else if ( causingVar == b && causingVarBound == LOWER && affectedVar == aux &&affectedVarBound == UPPER && FloatUtils::gte( explainedBound, - bound - epsilon ) && bound > 0 )
+        tighteningMatched = true;
+
+    // If lb of aux is positive, then ub of f is 0
+    else if ( causingVar == aux && causingVarBound ==LOWER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && FloatUtils::isPositive( explainedBound + epsilon ) )
+        tighteningMatched = true;
+
+    // If lb of f is negative, then it is 0
+    else if ( causingVar == f && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && FloatUtils::isZero( bound ) && FloatUtils::isNegative( explainedBound - epsilon ) )
+        tighteningMatched = true;
+
+    // Propagate ub from f to b
+    else if ( causingVar == f && causingVarBound == UPPER && affectedVar == b && affectedVarBound == UPPER && FloatUtils::lte( explainedBound, bound + epsilon ) )
+        tighteningMatched = true;
+
+    // If ub of b is non positive, then ub of f is 0
+    else if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && !FloatUtils::isPositive( explainedBound - epsilon ) )
+        tighteningMatched = true;
+
+    // If ub of b is non positive x, then lb of aux is -x
+    else if ( causingVar == b && causingVarBound == UPPER && affectedVar == aux && affectedVarBound == LOWER && bound > 0 && !FloatUtils::isPositive( explainedBound - epsilon ) && FloatUtils::lte( explainedBound, - bound + epsilon ) )
+        tighteningMatched = true;
+
+    // If ub of b is positive, then propagate to f ( positivity of explained bound is not checked since negative explained ub can always explain positive bound )
+    else if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::isPositive( bound ) && FloatUtils::lte( explainedBound,  bound + epsilon ) )
+        tighteningMatched = true;
+
+    // If ub of aux is x, then lb of b is -x
+    else if ( causingVar == aux && causingVarBound == UPPER && affectedVar == b && affectedVarBound == LOWER && FloatUtils::lte( explainedBound, - bound + epsilon ) )
+        tighteningMatched = true;
+
+    return tighteningMatched;
+}
+
+bool Checker::checkSignLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+{
+    ASSERT( constraint.getType() == SIGN );
+    ASSERT( expl.getConstraintType() == SIGN );
+
+    unsigned causingVar = expl.getCausingVar();
+    unsigned affectedVar = expl.getAffectedVar();
+    double bound = expl.getBound();
+    const double *explanation = expl.getExplanation();
+    BoundType causingVarBound = expl.getCausingVarBound();
+    BoundType affectedVarBound = expl.getAffectedVarBound();
+
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    List<unsigned> constraintVars = constraint.getParticipatingVariables();
+    ASSERT(constraintVars.size() == 2 );
+
+    unsigned b = constraintVars.front();
+    unsigned f = constraintVars.back();
+
+    bool tighteningMatched = false;
+
+    // Any explanation is phase fixing
+    if ( ( affectedVarBound == LOWER && affectedVar == f && FloatUtils::gt( bound, -1 ) ) || ( affectedVarBound == LOWER && affectedVar == b && !FloatUtils::isNegative( bound ) ) )
+        constraint.setPhaseStatus( SIGN_PHASE_POSITIVE );
+    else if ( ( affectedVarBound == UPPER && affectedVar == f && FloatUtils::gt( bound, 1 ) ) || ( affectedVarBound == UPPER && affectedVar == b && FloatUtils::isNegative( bound ) ) )
+        constraint.setPhaseStatus( SIGN_PHASE_NEGATIVE );
+
+    // Make sure the explanation is explained using a sign bound tightening. Cases are matching each rule in SignConstraint.cpp
+    // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
+
+
+    // If lb of f is > -1, then lb of f is 1
+    if ( causingVar == f && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && FloatUtils::areEqual( bound, 1 ) && FloatUtils::gte( explainedBound + epsilon, -1 ) )
+        tighteningMatched = true;
+
+    // If lb of f is > -1, then lb of b is 0
+    else if ( causingVar == f && causingVarBound == LOWER && affectedVar == b && affectedVarBound == LOWER && FloatUtils::isZero( bound ) && FloatUtils::gte( explainedBound + epsilon, -1 ) )
+        tighteningMatched = true;
+
+    // If lb of b is non negative, then lb of f is 1
+    else if ( causingVar == b && causingVarBound == LOWER && affectedVar == f && affectedVarBound == LOWER && FloatUtils::areEqual( bound, 1 ) && !FloatUtils::isNegative( explainedBound + epsilon ) )
+        tighteningMatched = true;
+
+    // If ub of f is < 1, then ub of f is -1
+    else if ( causingVar == f && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::areEqual( bound, -1 ) && FloatUtils::lte( explainedBound - epsilon, 1 ) )
+        tighteningMatched = true;
+
+    // If ub of f is < 1, then ub of b is 0
+    else if ( causingVar == f && causingVarBound == UPPER && affectedVar == b && affectedVarBound == UPPER && FloatUtils::isZero( bound ) && FloatUtils::lte( explainedBound - epsilon, 1 ) )
+        tighteningMatched = true;
+
+    // If ub of b is negative, then ub of f is -1
+    else if ( causingVar == b && causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::areEqual( bound, -1 ) && FloatUtils::isNegative( explainedBound - epsilon ) )
+        tighteningMatched = true;
+
+    return tighteningMatched;
+}
+
+bool Checker::checkAbsLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+{
+    ASSERT( constraint.getType() == ABSOLUTE_VALUE );
+    ASSERT( expl.getConstraintType() == ABSOLUTE_VALUE );
+    ASSERT( epsilon > 0 );
+
+    unsigned causingVar = expl.getCausingVar();
+    unsigned affectedVar = expl.getAffectedVar();
+    double bound = expl.getBound();
+    const double *explanation = expl.getExplanation();
+    BoundType causingVarBound = expl.getCausingVarBound();
+    BoundType affectedVarBound = expl.getAffectedVarBound();
+
+    double explainedUpperBound = UNSATCertificateUtils::computeBound( causingVar,  UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    double explainedLowerBound = UNSATCertificateUtils::computeBound( causingVar, LOWER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+
+    List<unsigned> constraintVars = constraint.getParticipatingVariables();
+    ASSERT(constraintVars.size() == 4 );
+
+    Vector<unsigned> conVec( constraintVars.begin(), constraintVars.end() );
+    unsigned b = conVec[0] ;
+    unsigned f = conVec[1];
+
+    bool tighteningMatched = false;
+
+    // Make sure the explanation is explained using an absolute value bound tightening. Cases are matching each rule in AbsolutValueConstraint.cpp
+    // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
+
+    //f is always the affected var
+    if ( affectedVar != f )
+        return false;
+
+    // Ub of f can be tightened by both ub and -lb of b
+    if ( causingVar == b && affectedVarBound == UPPER && FloatUtils::lte( explainedUpperBound, bound + epsilon ) )
+        tighteningMatched = true;
+    else if ( causingVar == b && affectedVarBound == UPPER && FloatUtils::lte( -explainedLowerBound,  bound + epsilon ) )
+        tighteningMatched = true;
+
+    // If lb of f is < 0, then it is 0
+    else if ( causingVar == f && causingVarBound == LOWER && affectedVarBound == LOWER && FloatUtils::isZero( bound ) && FloatUtils::isNegative( explainedLowerBound ) )
+        tighteningMatched = true;
+
+    //TODO debug
+    if ( !tighteningMatched )
+            printf("var is %d bound type is %d explained upper bound is %.5lf, explained lower bound is %.5lf real bound is %.5lf\n", causingVar, causingVarBound,  explainedUpperBound, explainedLowerBound, bound );
+
+    return tighteningMatched;
+}
+
+bool Checker::checkMaxLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+{
+    ASSERT( constraint.getType() == MAX );
+    ASSERT( expl.getConstraintType() == MAX );
+
+    unsigned causingVar = expl.getCausingVar();
+    unsigned affectedVar = expl.getAffectedVar();
+    double bound = expl.getBound();
+    const double *explanation = expl.getExplanation();
+    BoundType causingVarBound = expl.getCausingVarBound();
+    BoundType affectedVarBound = expl.getAffectedVarBound();
+
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    List<unsigned> constraintVars = constraint.getParticipatingVariables();
+
+    unsigned f = constraintVars.back();
+
+    if ( !constraintVars.exists( causingVar ) || causingVar == f )
+        return false;
+
+    bool tighteningMatched = false;
+    // Make sure the explanation is explained using a max bound tightening.
+    // Only tightening type is of the form f = element, for some element
+
+    if ( causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::lte( explainedBound,  bound + epsilon ) )
+        tighteningMatched = true;
+
+    return tighteningMatched;
 }
