@@ -221,6 +221,12 @@ public:
 
         return participatingElements;
     }
+
+    inline double getMaxValueOfEliminatedPhases() const
+    {
+        return _maxValueOfEliminatedPhases;
+    }
+
  private:
     unsigned _f;
     Set<unsigned> _elements;

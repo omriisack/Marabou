@@ -423,7 +423,7 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
 
     if ( tightened )
     {
-        std::shared_ptr<PLCExplanation> PLCExpl = std::make_shared<PLCExplanation>( causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
+        std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>(causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
         _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );

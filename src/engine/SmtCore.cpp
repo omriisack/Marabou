@@ -295,6 +295,11 @@ bool SmtCore::popSplit()
             _stack.popBack();
             popContext();
 
+            if ( _engine->shouldProduceProofs() && _engine->getUNSATCertificateCurrentPointer() )
+            {
+                UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
+                _engine->setUNSATCertificateCurrentPointer( certificateNode->getParent() );
+            }
 
             if ( _stack.empty() )
                 return false;
@@ -329,7 +334,7 @@ bool SmtCore::popSplit()
             UnsatCertificateNode *certificateNode = _engine->getUNSATCertificateCurrentPointer();
             ASSERT( certificateNode );
             UnsatCertificateNode *splitChild = certificateNode->getChildBySplit( *split );
-            if ( !splitChild )
+            while ( !splitChild )
             {
                 certificateNode = certificateNode->getParent();
                 ASSERT( certificateNode );

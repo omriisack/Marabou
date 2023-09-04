@@ -29,6 +29,11 @@ class SmtLibWriter
 {
 public:
     /*
+      Precision used for writing floating point numbers
+     */
+    static const unsigned SMTLIBWRITER_PRECISION;
+
+    /*
       Adds a SMTLIB header to the SMTLIB instance with numberOfVariables variables
     */
     static void addHeader( unsigned numberOfVariables, List<String> &instance );
@@ -82,6 +87,11 @@ public:
       Adds lines representing the ground lower bounds, in SMTLIB format, to the SMTLIB instance
     */
     static void addGroundLowerBounds( Vector<double> &bounds, List<String> &instance );
+
+    /*
+      Adds lines representing a tightening, in SMTLIB format, to the SMTLIB instance
+    */
+    static void addTightening( Tightening t, List<String> &instance );
 
     /*
       Writes an instances to a file

@@ -12,15 +12,15 @@
  ** [[ Add lengthier description here ]]
  **/
 
-#include "PlcExplanation.h"
+#include "PlcLemma.h"
 
-PLCExplanation::PLCExplanation( unsigned causingVar,
-                                unsigned affectedVar,
-                                double bound,
-                                BoundType causingVarBound,
-                                BoundType affectedVarBound,
-                                const Vector<double> &explanation,
-                                PiecewiseLinearFunctionType constraintType )
+PLCLemma::PLCLemma(unsigned causingVar,
+                   unsigned affectedVar,
+                   double bound,
+                   BoundType causingVarBound,
+                   BoundType affectedVarBound,
+                   const Vector<double> &explanation,
+                   PiecewiseLinearFunctionType constraintType )
     : _causingVar( causingVar )
     , _affectedVar( affectedVar )
     , _bound( bound )
@@ -37,7 +37,7 @@ PLCExplanation::PLCExplanation( unsigned causingVar,
     }
 }
 
-PLCExplanation::~PLCExplanation()
+PLCLemma::~PLCLemma()
 {
     if ( _explanation )
     {
@@ -46,37 +46,37 @@ PLCExplanation::~PLCExplanation()
     }
 }
 
-unsigned PLCExplanation::getCausingVar() const
+unsigned PLCLemma::getCausingVar() const
 {
     return _causingVar;
 }
 
-unsigned PLCExplanation::getAffectedVar() const
+unsigned PLCLemma::getAffectedVar() const
 {
     return _affectedVar;
 }
 
-double PLCExplanation::getBound() const
+double PLCLemma::getBound() const
 {
     return _bound;
 }
 
-BoundType PLCExplanation::getCausingVarBound() const
+BoundType PLCLemma::getCausingVarBound() const
 {
     return _causingVarBound;
 }
 
-BoundType PLCExplanation::getAffectedVarBound() const
+BoundType PLCLemma::getAffectedVarBound() const
 {
     return _affectedVarBound;
 }
 
-const double *PLCExplanation::getExplanation() const
+const double *PLCLemma::getExplanation() const
 {
     return _explanation;
 }
 
-PiecewiseLinearFunctionType PLCExplanation::getConstraintType() const
+PiecewiseLinearFunctionType PLCLemma::getConstraintType() const
 {
     return _constraintType;
 }

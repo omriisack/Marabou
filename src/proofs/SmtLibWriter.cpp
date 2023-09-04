@@ -15,6 +15,8 @@
 #include <iomanip>
 #include "SmtLibWriter.h"
 
+const unsigned SmtLibWriter::SMTLIBWRITER_PRECISION = ( unsigned ) std::log10( 1 / GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
+
 void SmtLibWriter::addHeader( unsigned numberOfVariables, List<String> &instance )
 {
     instance.append( "( set-logic QF_LRA )\n" );
@@ -61,14 +63,14 @@ void SmtLibWriter::addAbsConstraint( unsigned b, unsigned f, const PhaseStatus s
 void SmtLibWriter::addMaxConstraint( unsigned f, const Set<unsigned> &elements, List<String> &instance )
 {
     String assertRowLine;
-    unsigned counter = 0;
+    unsigned counter;
     unsigned size = elements.size();
 
     // For all elements, if elements is larger than all others, then f = element
     for ( const auto &element : elements )
     {
         counter = 0;
-        assertRowLine = "( assert ";
+        assertRowLine = "( assert ( =>";
         for ( auto const &otherElement : elements )
         {
             if ( otherElement == element )
@@ -76,48 +78,42 @@ void SmtLibWriter::addMaxConstraint( unsigned f, const Set<unsigned> &elements, 
 
             if ( counter < size - 2 )
             {
-                assertRowLine += "( and ( >= x" + std::to_string( element ) + " x" + std::to_string( otherElement ) + " ) ";
+                assertRowLine += " ( and";
                 ++counter;
             }
-            else
-                assertRowLine += "( >= x" + std::to_string( element ) + " x" + std::to_string( otherElement ) + " ) ";
+
+            assertRowLine += " ( >= x" + std::to_string( element ) + " x" + std::to_string( otherElement ) + " )";
         }
-
-        assertRowLine += ") => ( = x" + std::to_string( f ) + " x" + std::to_string( element ) + " )";
-
-        for ( unsigned i = 0; i < counter ; ++i )
+        for ( unsigned i = 0; i < size - 2 ; ++i )
             assertRowLine += String( " )" );
 
-        instance.append( assertRowLine + "\n" );
+        assertRowLine += " ( = x" + std::to_string( f ) + " x" + std::to_string( element ) + " )";
+
+
+        instance.append( assertRowLine + " ) )\n" );
     }
 }
 
 void SmtLibWriter::addDisjunctionConstraint( const List<PiecewiseLinearCaseSplit> &disjuncts, List<String> &instance )
 {
+    ASSERT( !disjuncts.empty() );
+
     unsigned size;
-    unsigned disjunctsCounter = 0;
-    instance.append( "( assert ( ");
+    instance.append( "( assert\n");
+
     for ( const auto &disjunct : disjuncts )
     {
-        if ( disjunctsCounter < disjuncts.size() - 1 )
-            instance.append("\nor\n");
-        ++disjunctsCounter;
+        if ( !( disjunct == disjuncts.back() ) )
+            instance.append("( or\n");
 
         size = disjunct.getEquations().size() + disjunct.getBoundTightenings().size();
-
+        ASSERT( size )
         if ( size == 1 && disjunct.getEquations().size() == 1 )
             SmtLibWriter::addEquation( disjunct.getEquations().back(), instance );
-        else if (  size == 1 && disjunct.getBoundTightenings().size() == 1 )
-        {
-            Tightening bound = disjunct.getBoundTightenings().back();
-            if ( bound._type == Tightening::LB )
-                instance.append( String( "( >= x" ) + std::to_string( bound._variable ) + " " + signedValue(  bound._value ) + " )" );
-            else
-                instance.append( String( "( <= x" + std::to_string( bound._variable ) ) + String( " " ) + signedValue(  bound._value ) + " )" );
-        }
+        else if ( size == 1 && disjunct.getBoundTightenings().size() == 1 )
+            SmtLibWriter::addTightening( disjunct.getBoundTightenings().back(), instance );
         else
         {
-            instance.append( "\t" );
             unsigned counter = 0;
 
             for ( const auto &eq : disjunct.getEquations() )
@@ -134,10 +130,7 @@ void SmtLibWriter::addDisjunctionConstraint( const List<PiecewiseLinearCaseSplit
                     instance.append( "( and ");
                 ++counter;
 
-                if ( bound._type == Tightening::LB )
-                    instance.append( String( "( >= x" ) + std::to_string( bound._variable ) + " " + signedValue(  bound._value ) + " )" );
-                else
-                    instance.append( String( "( <= x" + std::to_string( bound._variable ) ) + String( " " ) + signedValue(  bound._value ) + " )" );
+                SmtLibWriter::addTightening( bound, instance );
             }
         }
 
@@ -174,29 +167,24 @@ void SmtLibWriter::addTableauRow( const SparseUnsortedList &row, List<String> &i
         if ( FloatUtils::isZero( entry->_value ) )
             continue;
 
-        if ( counter == size - 1 )
-            break;
+        if ( counter != size - 1 )
+            assertRowLine += String( " ( + " );
+        else
+            assertRowLine += String( " " );
+
 
         // Coefficients +-1 can be neglected
         if ( entry->_value == 1 )
-            assertRowLine += String( " ( + x" ) + std::to_string( entry->_index );
+            assertRowLine += String( "x" ) + std::to_string( entry->_index );
         else if (entry->_value == -1 )
-            assertRowLine += String( " ( + ( - x" ) + std::to_string( entry->_index ) + " )";
+            assertRowLine += String( "( - x" ) + std::to_string( entry->_index ) + " )";
         else
-            assertRowLine += String( " ( + ( * " ) + signedValue( entry->_value ) + " x" + std::to_string( entry->_index ) + " )";
+            assertRowLine += String( "( * " ) + signedValue( entry->_value ) + " x" + std::to_string( entry->_index ) + " )";
 
         ++counter;
     }
 
-    // Add last element; Coefficients +-1 can be neglected
-    if ( entry->_value == 1 )
-        assertRowLine += String( " x" ) + std::to_string( entry->_index );
-    else if (entry->_value == -1 )
-        assertRowLine += String( " ( - x" ) + std::to_string( entry->_index ) + " )";
-    else
-        assertRowLine += String( " ( * " ) + signedValue( entry->_value ) + " x" + std::to_string( entry->_index ) + " )";
-
-    for ( unsigned i = 0; i < counter + 2 ; ++i )
+    for ( unsigned i = 0; i < counter + 1 ; ++i )
         assertRowLine += String( " )" );
 
     instance.append( assertRowLine + "\n" );
@@ -228,9 +216,8 @@ void SmtLibWriter::writeInstanceToFile( IFile &file, const List<String> &instanc
 
 String SmtLibWriter::signedValue( double val )
 {
-    unsigned precision = ( unsigned ) std::log10( 1 / GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
     std::stringstream s;
-    s << std::fixed << std::setprecision( precision ) << abs( val );
+    s << std::fixed << std::setprecision( SMTLIBWRITER_PRECISION ) << abs( val );
     return val >= 0 ? String( s.str() ).trimZerosFromRight() : String( "( - " + s.str() ).trimZerosFromRight() + " )";
 }
 
@@ -254,35 +241,40 @@ void SmtLibWriter::addEquation( const Equation &eq, List<String> &instance )
         // Scalar should be <= than sum of addends
         assertRowLine += "( <= ";
 
-    assertRowLine +=  signedValue( eq._scalar ) + String( " " );
+    assertRowLine +=  signedValue( eq._scalar );
+
     for ( const auto &addend : eq._addends )
     {
-        if ( FloatUtils::isZero( addend._coefficient ) || addend == eq._addends.back() )
+        if ( FloatUtils::isZero( addend._coefficient )  )
             continue;
+
+        if ( !( addend == eq._addends.back() ) )
+            assertRowLine += String( " ( + " );
+        else
+            assertRowLine += String( " " );
+
 
         // Coefficients +-1 can be neglected
         if ( addend._coefficient == 1 )
-            assertRowLine += String( " ( + x" ) + std::to_string( addend._variable );
+            assertRowLine += String( "x" ) + std::to_string( addend._variable );
         else if (addend._coefficient == -1 )
-            assertRowLine += String( " ( + ( - x" ) + std::to_string( addend._variable ) + " )";
+            assertRowLine += String( "( - x" ) + std::to_string( addend._variable ) + " )";
         else
-            assertRowLine += String( " ( + ( * " ) + signedValue( addend._coefficient ) + " x" + std::to_string( addend._variable ) + " )";
+            assertRowLine += String( "( * " ) + signedValue( addend._coefficient ) + " x" + std::to_string( addend._variable ) + " )";
 
         ++counter;
     }
 
-    Equation::Addend addend = eq._addends.back();
-
-    // Coefficients +-1 can be neglected
-    if (  addend._coefficient == 1 )
-        assertRowLine += String( " x" ) + std::to_string( addend._variable  );
-    else if ( addend._coefficient == -1 )
-        assertRowLine += String( " ( - x" ) + std::to_string( addend._variable  ) + " )";
-    else
-        assertRowLine += String( " ( * " ) + signedValue( addend._coefficient ) + " x" + std::to_string( addend._variable  ) + " )";
-
     for ( unsigned i = 0; i < counter ; ++i )
         assertRowLine += String( " )" );
 
-    instance.append( assertRowLine + " ) " );
+    instance.append( assertRowLine + " ");
+}
+
+void SmtLibWriter::addTightening( Tightening bound, List<String> &instance )
+{
+    if ( bound._type == Tightening::LB )
+        instance.append( String( "( >= x" ) + std::to_string( bound._variable ) + " " + signedValue(  bound._value ) + " )" );
+    else
+        instance.append( String( "( <= x" + std::to_string( bound._variable ) ) + String( " " ) + signedValue(  bound._value ) + " )" );
 }

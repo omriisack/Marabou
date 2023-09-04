@@ -16,6 +16,7 @@
 #define __Checker_h__
 
 #include "AbsoluteValueConstraint.h"
+#include "DisjunctionConstraint.h"
 #include "MaxConstraint.h"
 #include "Set.h"
 #include "Stack.h"
@@ -73,22 +74,22 @@ private:
     /*
      Return true iff a change in the ground bounds caused by a ReLU constraint is certified, with tolerance to errors with at most size epsilon
     */
-    bool checkReluLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    bool checkReluLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
      Return true iff a change in the ground bounds caused by a sign constraint is certified, with tolerance to errors with at most size epsilon
     */
-    bool checkSignLemma( const PLCExplanation &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    bool checkSignLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
      Return true iff a change in the ground bounds caused by an absolute value constraint is certified, with tolerance to errors with at most size epsilon
     */
-    bool checkAbsLemma( const PLCExplanation &expl,  PiecewiseLinearConstraint &constraint, double epsilon );
+    bool checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
      Return true iff a change in the ground bounds caused by a max constraint is certified, with tolerance to errors with at most size epsilon
     */
-    bool checkMaxLemma( const PLCExplanation &expl,  PiecewiseLinearConstraint &constraint, double epsilon );
+    bool checkMaxLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
       Checks a contradiction

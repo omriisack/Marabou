@@ -326,6 +326,13 @@ void MaxConstraint::getEntailedTightenings( List<Tightening> &tightenings ) cons
     maxElementLB = FloatUtils::max( _maxValueOfEliminatedPhases, maxElementLB );
     maxElementUB = FloatUtils::max( _maxValueOfEliminatedPhases, maxElementUB );
 
+    // To be later checked by the proof-checker
+    if ( maxElementUB == _maxValueOfEliminatedPhases )
+        maxElementForUB = _f;
+
+    if ( maxElementLB == _maxValueOfEliminatedPhases )
+        maxElementForLB = _f;
+
     // f_UB and maxElementUB need to be equal. If not, the lower of the two wins.
     if ( FloatUtils::areDisequal( fUB, maxElementUB ) )
     {
@@ -360,10 +367,9 @@ void MaxConstraint::getEntailedTightenings( List<Tightening> &tightenings ) cons
     // fLB cannot be smaller than maxElementLB
     if ( FloatUtils::lt( fLB, maxElementLB ) )
     {
-        if ( proofs )
+        if ( proofs && maxElementForLB != _f )
         {
-            ASSERT(_elements.exists( maxElementForLB ) );
-            ASSERT( _elementToTighteningRow[maxElementForLB] != NULL );
+            ASSERT(_elements.exists( maxElementForLB ) && _elementToTighteningRow[maxElementForLB] != NULL );
             _boundManager->tightenLowerBound( _f, maxElementLB, *_elementToTighteningRow[maxElementForLB] );
         }
         else
@@ -739,7 +745,7 @@ void MaxConstraint::eliminateCase( unsigned variable )
             _auxToElement.erase( aux );
         }
 
-        if ( _elementToTighteningRow.exists( variable) && _elementToTighteningRow[variable] != NULL )
+        if ( _elementToTighteningRow.exists( variable ) && _elementToTighteningRow[variable] != NULL )
         {
             _elementToTighteningRow[variable] = NULL;
             _elementToTighteningRow.erase( variable );
@@ -797,6 +803,7 @@ const List<unsigned> MaxConstraint::getNativeAuxVars() const
 
     return auxVars;
 }
+
 void MaxConstraint::addTableauAuxVar( unsigned tableauAuxVar, unsigned constraintAuxVar )
 {
     unsigned element = _auxToElement[constraintAuxVar];

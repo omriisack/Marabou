@@ -22,18 +22,18 @@
 /*
   Contains all necessary info of a ground bound update during a run (i.e from ReLU phase-fixing)
 */
-class PLCExplanation
+class PLCLemma
 {
 public:
-    PLCExplanation( unsigned causingVar,
-                    unsigned affectedVar,
-                    double bound,
-                    BoundType causingVarBound,
-                    BoundType affectedVarBound,
-                    const Vector<double> &explanation,
-                    PiecewiseLinearFunctionType constraintType );
+    PLCLemma(unsigned causingVar,
+             unsigned affectedVar,
+             double bound,
+             BoundType causingVarBound,
+             BoundType affectedVarBound,
+             const Vector<double> &explanation,
+             PiecewiseLinearFunctionType constraintType );
 
-    ~PLCExplanation();
+    ~PLCLemma();
 
 
     /*

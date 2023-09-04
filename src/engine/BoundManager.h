@@ -46,7 +46,7 @@
 #include "ITableau.h"
 #include "IEngine.h"
 #include "List.h"
-#include "PlcExplanation.h"
+#include "PlcLemma.h"
 #include "Tightening.h"
 #include "UnsatCertificateNode.h"
 #include "Vector.h"
