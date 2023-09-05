@@ -404,8 +404,8 @@ void SignConstraint::notifyLowerBound( unsigned variable, double bound )
                 if ( FloatUtils::gt( bound, 1 ) )
                     throw InfeasibleQueryException();
 
-                _boundManager->addLemmaExplanation( _f, 1, LOWER, variable, LOWER, getType() );
-                _boundManager->addLemmaExplanation( _b, 0, LOWER, variable, LOWER, getType() );
+                _boundManager->addLemmaExplanation( _f, 1, LOWER, { variable }, LOWER, getType() );
+                _boundManager->addLemmaExplanation( _b, 0, LOWER, { variable }, LOWER, getType() );
             }
             else
             {
@@ -420,7 +420,7 @@ void SignConstraint::notifyLowerBound( unsigned variable, double bound )
         if ( _boundManager != nullptr )
         {
             if ( _boundManager->shouldProduceProofs() )
-                _boundManager->addLemmaExplanation( _f, 1, LOWER, variable, LOWER, getType() );
+                _boundManager->addLemmaExplanation( _f, 1, LOWER, { variable }, LOWER, getType() );
             else
                 _boundManager->tightenLowerBound( _f, 1 );
         }
@@ -453,8 +453,8 @@ void SignConstraint::notifyUpperBound( unsigned variable, double bound )
                 if ( FloatUtils::lt( bound, -1 )  )
                     throw InfeasibleQueryException();
 
-                _boundManager->addLemmaExplanation( _f, -1, UPPER, variable, UPPER, getType() );
-                _boundManager->addLemmaExplanation( _b, 0, UPPER, variable, UPPER, getType() );
+                _boundManager->addLemmaExplanation( _f, -1, UPPER, { variable }, UPPER, getType() );
+                _boundManager->addLemmaExplanation( _b, 0, UPPER, { variable }, UPPER, getType() );
             }
             else
             {
@@ -469,7 +469,7 @@ void SignConstraint::notifyUpperBound( unsigned variable, double bound )
         if ( _boundManager != nullptr )
         {
             if ( _boundManager->shouldProduceProofs() )
-                _boundManager->addLemmaExplanation( _f, -1, UPPER, variable, UPPER, getType() );
+                _boundManager->addLemmaExplanation( _f, -1, UPPER, { variable }, UPPER, getType() );
             else
                 _boundManager->tightenUpperBound( _f, -1 );
         }

@@ -294,7 +294,6 @@ void MaxConstraint::getEntailedTightenings( List<Tightening> &tightenings ) cons
 {
     bool proofs = _boundManager && _boundManager->shouldProduceProofs();
     unsigned maxElementForLB = _f;
-    unsigned maxElementForUB = _f;
 
     // Lower and upper bounds for the f variable
     double fLB = existsLowerBound( _f ) ? getLowerBound( _f ) : FloatUtils::negativeInfinity();
@@ -316,19 +315,11 @@ void MaxConstraint::getEntailedTightenings( List<Tightening> &tightenings ) cons
         if ( !existsUpperBound( element ) )
             maxElementUB = FloatUtils::infinity();
         else
-        {
             maxElementUB = FloatUtils::max( getUpperBound( element ), maxElementUB );
-            if( maxElementUB == getUpperBound( element ) )
-                maxElementForUB = element;
-        }
     }
 
     maxElementLB = FloatUtils::max( _maxValueOfEliminatedPhases, maxElementLB );
     maxElementUB = FloatUtils::max( _maxValueOfEliminatedPhases, maxElementUB );
-
-    // To be later checked by the proof-checker
-    if ( maxElementUB == _maxValueOfEliminatedPhases )
-        maxElementForUB = _f;
 
     if ( maxElementLB == _maxValueOfEliminatedPhases )
         maxElementForLB = _f;
@@ -339,7 +330,7 @@ void MaxConstraint::getEntailedTightenings( List<Tightening> &tightenings ) cons
         if ( FloatUtils::gt( fUB, maxElementUB ) )
         {
             if ( proofs )
-                _boundManager->addLemmaExplanation( _f, maxElementUB, UPPER, maxElementForUB, UPPER, getType() );
+                _boundManager->addLemmaExplanation( _f, maxElementUB, UPPER, getElements(), UPPER, getType() );
             else
                 tightenings.append( Tightening( _f, maxElementUB, Tightening::UB ) );
         }

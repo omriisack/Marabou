@@ -407,23 +407,55 @@ void BoundManager::updateBoundExplanationSparse( const SparseUnsortedList &row, 
 }
 
 bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
-                                        unsigned causingVar, BoundType causingVarBound,
+                                        const List<unsigned> &causingVars, BoundType causingVarBound,
                                         PiecewiseLinearFunctionType constraintType )
 {
     if ( !shouldProduceProofs() )
         return false;
 
-    ASSERT( causingVar < _tableau->getN() && var < _tableau->getN() );
+    ASSERT( var < _tableau->getN() );
 
     // Register new ground bound, update certificate, and reset explanation
     Vector<double> explanation( 0 );
-    getExplanation( causingVar, causingVarBound, explanation );
+    Vector<Vector<double>> allExplanations( 0 );
 
     bool tightened = affectedVarBound == UPPER ? tightenUpperBound( var, value ) : tightenLowerBound( var, value );
 
     if ( tightened )
     {
-        std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>(causingVar, var, value, causingVarBound, affectedVarBound, explanation, constraintType );
+
+        if ( constraintType == RELU || constraintType == SIGN )
+        {
+            ASSERT( causingVars.size() == 1 );
+            getExplanation( causingVars.front(), causingVarBound, explanation );
+            allExplanations.append( explanation );
+        }
+        else if ( constraintType == ABSOLUTE_VALUE )
+        {
+            ASSERT( causingVars.size() == 2 );
+
+            getExplanation( causingVars.front(), causingVarBound, explanation );
+            allExplanations.append( explanation );
+            explanation.clear();
+
+            getExplanation( causingVars.back(), causingVarBound == UPPER ? LOWER : UPPER, explanation );
+            allExplanations.append( explanation );
+        }
+        else if ( constraintType == MAX )
+        {
+            ASSERT( causingVars.size() );
+
+            for ( const auto &element : causingVars )
+            {
+                getExplanation( element, UPPER, explanation );
+                allExplanations.append( explanation );
+                explanation.clear();
+            }
+        }
+        else
+            throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED );
+
+        std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>( causingVars, var, value, causingVarBound, affectedVarBound, allExplanations, constraintType );
         _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );

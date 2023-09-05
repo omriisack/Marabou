@@ -14,41 +14,57 @@
 
 #include "PlcLemma.h"
 
-PLCLemma::PLCLemma(unsigned causingVar,
-                   unsigned affectedVar,
-                   double bound,
-                   BoundType causingVarBound,
-                   BoundType affectedVarBound,
-                   const Vector<double> &explanation,
-                   PiecewiseLinearFunctionType constraintType )
-    : _causingVar( causingVar )
-    , _affectedVar( affectedVar )
+PLCLemma::PLCLemma( const List<unsigned> &causingVars,
+                    unsigned affectedVar,
+                    double bound,
+                    BoundType causingVarBound,
+                    BoundType affectedVarBound,
+                    const Vector<Vector<double>> &explanations,
+                    PiecewiseLinearFunctionType constraintType )
+    : _causingVars( causingVars )
+    ,_affectedVar( affectedVar )
     , _bound( bound )
     , _causingVarBound( causingVarBound )
     , _affectedVarBound( affectedVarBound )
     , _constraintType( constraintType )
 {
-    if ( explanation.empty() )
-        _explanation = NULL;
+
+    if ( explanations.empty() )
+        _explanations = NULL;
     else
     {
-        _explanation = new double[explanation.size()];
-        std::copy( explanation.begin(), explanation.end(), _explanation );
+        unsigned numOfExplanations = explanations.size();
+        unsigned proofSize = explanations[0].size();
+
+        ASSERT( numOfExplanations == causingVars.size() );
+
+        if ( _constraintType == RELU || _constraintType == SIGN )
+            ASSERT( numOfExplanations == 1);
+
+        if ( _constraintType == ABSOLUTE_VALUE )
+            ASSERT( numOfExplanations == 2);
+
+        _explanations = new double[numOfExplanations * explanations[0].size()];
+
+        for ( unsigned i = 0; i < numOfExplanations; ++i )
+            for ( unsigned j = 0; j < proofSize; ++j )
+                _explanations[i * proofSize + j] = explanations[i][j];
+
     }
 }
 
 PLCLemma::~PLCLemma()
 {
-    if ( _explanation )
+    if ( _explanations )
     {
-        delete [] _explanation;
-        _explanation = NULL;
+        delete [] _explanations;
+        _explanations = NULL;
     }
 }
 
-unsigned PLCLemma::getCausingVar() const
+const List<unsigned> &PLCLemma::getCausingVars() const
 {
-    return _causingVar;
+    return _causingVars;
 }
 
 unsigned PLCLemma::getAffectedVar() const
@@ -71,9 +87,9 @@ BoundType PLCLemma::getAffectedVarBound() const
     return _affectedVarBound;
 }
 
-const double *PLCLemma::getExplanation() const
+const double *PLCLemma::getExplanations() const
 {
-    return _explanation;
+    return _explanations;
 }
 
 PiecewiseLinearFunctionType PLCLemma::getConstraintType() const

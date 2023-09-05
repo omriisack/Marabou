@@ -254,7 +254,7 @@ private:
       Adds a lemma to the UNSATCertificateNode object
      */
     bool addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
-                              unsigned causingVar, BoundType causingVarBound,
+                              const List<unsigned> &causingVars, BoundType causingVarBound,
                               PiecewiseLinearFunctionType constraintType );
 
     /*

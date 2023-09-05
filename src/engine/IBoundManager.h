@@ -130,7 +130,7 @@ public:
       Return true iff adding the lemma has succeeded
     */
     virtual bool addLemmaExplanation( unsigned var, double value, BoundType affectedVarBound,
-                                      unsigned causingVar, BoundType causingVarBound,
+                                      const List<unsigned> &causingVars, BoundType causingVarBound,
                                       PiecewiseLinearFunctionType constraintType ) = 0;
 
     /*

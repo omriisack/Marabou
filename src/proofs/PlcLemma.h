@@ -25,13 +25,13 @@
 class PLCLemma
 {
 public:
-    PLCLemma(unsigned causingVar,
-             unsigned affectedVar,
-             double bound,
-             BoundType causingVarBound,
-             BoundType affectedVarBound,
-             const Vector<double> &explanation,
-             PiecewiseLinearFunctionType constraintType );
+    PLCLemma( const List<unsigned> &causingVars,
+              unsigned affectedVar,
+              double bound,
+              BoundType causingVarBound,
+              BoundType affectedVarBound,
+              const Vector<Vector<double>> &explanation,
+              PiecewiseLinearFunctionType constraintType );
 
     ~PLCLemma();
 
@@ -39,21 +39,21 @@ public:
     /*
      Getters for all fields
     */
-    unsigned getCausingVar() const;
+    const List<unsigned> &getCausingVars() const;
     unsigned getAffectedVar() const;
     double getBound() const;
     BoundType getCausingVarBound() const;
     BoundType getAffectedVarBound() const;
-    const double *getExplanation() const;
+    const double *getExplanations() const;
     PiecewiseLinearFunctionType getConstraintType() const;
 
 private:
-    unsigned _causingVar;
+    const List<unsigned> _causingVars;
     unsigned _affectedVar;
     double _bound;
     BoundType _causingVarBound;
     BoundType _affectedVarBound;
-    double *_explanation;
+    double *_explanations;
     PiecewiseLinearFunctionType _constraintType;
 };
 

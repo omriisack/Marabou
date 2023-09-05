@@ -146,7 +146,7 @@ void AbsoluteValueConstraint::notifyLowerBound( unsigned variable, double bound 
             {
                 double fUpperBound = FloatUtils::max( -bound, getUpperBound( _b ) ) ;
                 if ( proofs )
-                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, variable, fUpperBound == -bound ? LOWER : UPPER, getType() );
+                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, fUpperBound == -bound ? LOWER : UPPER, getType() );
                 else
                     _boundManager->tightenUpperBound( _f, fUpperBound );
 
@@ -171,9 +171,7 @@ void AbsoluteValueConstraint::notifyLowerBound( unsigned variable, double bound 
             // for some reason, negative
             if ( bound < 0 )
             {
-                if ( proofs )
-                    _boundManager->addLemmaExplanation( _f, 0, LOWER, variable, LOWER, getType() );
-                else
+                if ( !proofs )
                     _boundManager->tightenLowerBound( _f, 0 );
             }
         }
@@ -215,7 +213,7 @@ void AbsoluteValueConstraint::notifyUpperBound( unsigned variable, double bound 
             {
                 double fUpperBound =  FloatUtils::max( bound, -getLowerBound( _b ) ) ;
                 if ( proofs )
-                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, variable, fUpperBound == bound ? UPPER : LOWER, getType() );
+                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, fUpperBound == bound ? UPPER : LOWER, getType() );
                 else
                     _boundManager->tightenUpperBound( _f, fUpperBound );
 

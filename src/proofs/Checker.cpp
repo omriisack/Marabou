@@ -162,6 +162,8 @@ bool Checker::checkContradiction( const UnsatCertificateNode *node ) const
     }
 
     double contradictionUpperBound = UNSATCertificateUtils::computeCombinationUpperBound( contradiction, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    if (! FloatUtils::isNegative( contradictionUpperBound ) )
+        printf("Contradiction error\n");
 
     return FloatUtils::isNegative( contradictionUpperBound );
 }
@@ -175,13 +177,18 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
     {
         PiecewiseLinearConstraint *matchedConstraint = NULL;
         bool tighteningMatched = false;
-        unsigned causingVar = plcExplanation->getCausingVar();
+        const List<unsigned> causingVars = plcExplanation->getCausingVars();
         unsigned affectedVar = plcExplanation->getAffectedVar();
 
         // Make sure propagation was made by a problem constraint
         for ( const auto &constraint : _problemConstraints )
-            if ( constraint->getParticipatingVariables().exists( affectedVar ) && constraint->getParticipatingVariables().exists( causingVar ) )
+            if ( constraint->getParticipatingVariables().exists( affectedVar ) )
+            {
                 matchedConstraint = constraint;
+                for ( const auto var : causingVars )
+                    if ( !constraint->getParticipatingVariables().exists( var ) )
+                        matchedConstraint = NULL;
+            }
 
         if ( !matchedConstraint )
             return false;
@@ -486,14 +493,15 @@ PiecewiseLinearConstraint *Checker::getCorrespondingDisjunctionConstraint( const
     return NULL;
 }
 
-bool Checker::checkReluLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+bool Checker::checkReluLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
     ASSERT( constraint.getType() == RELU && expl.getConstraintType() == RELU && epsilon > 0 );
+    ASSERT( expl.getCausingVars().size() == 1 );
 
-    unsigned causingVar = expl.getCausingVar();
+    unsigned causingVar = expl.getCausingVars().front();
     unsigned affectedVar = expl.getAffectedVar();
     double bound = expl.getBound();
-    const double *explanation = expl.getExplanation();
+    const double *explanation = expl.getExplanations();
     BoundType causingVarBound = expl.getCausingVarBound();
     BoundType affectedVarBound = expl.getAffectedVarBound();
 
@@ -557,17 +565,22 @@ bool Checker::checkReluLemma(const PLCLemma &expl, PiecewiseLinearConstraint &co
     else if ( causingVar == aux && causingVarBound == UPPER && affectedVar == b && affectedVarBound == LOWER && FloatUtils::lte( explainedBound, - bound + epsilon ) )
         tighteningMatched = true;
 
+    //TODO debug
+    if ( !tighteningMatched )
+        printf("ReLU: var is %d bound type is %d explained bound is %.5lf real bound is %.5lf\n", causingVar, causingVarBound,  explainedBound, bound );
+
     return tighteningMatched;
 }
 
-bool Checker::checkSignLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+bool Checker::checkSignLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
     ASSERT( constraint.getType() == SIGN && expl.getConstraintType() == SIGN && epsilon > 0 );
+    ASSERT( expl.getCausingVars().size() == 1 );
 
-    unsigned causingVar = expl.getCausingVar();
+    unsigned causingVar = expl.getCausingVars().front();
     unsigned affectedVar = expl.getAffectedVar();
     double bound = expl.getBound();
-    const double *explanation = expl.getExplanation();
+    const double *explanation = expl.getExplanations();
     BoundType causingVarBound = expl.getCausingVarBound();
     BoundType affectedVarBound = expl.getAffectedVarBound();
 
@@ -617,19 +630,26 @@ bool Checker::checkSignLemma(const PLCLemma &expl, PiecewiseLinearConstraint &co
     return tighteningMatched;
 }
 
-bool Checker::checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+bool Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
     ASSERT( constraint.getType() == ABSOLUTE_VALUE && expl.getConstraintType() == ABSOLUTE_VALUE && epsilon > 0 );
+    ASSERT( expl.getCausingVars().size() == 2 );
 
-    unsigned causingVar = expl.getCausingVar();
-    unsigned affectedVar = expl.getAffectedVar();
-    double bound = expl.getBound();
-    const double *explanation = expl.getExplanation();
     BoundType causingVarBound = expl.getCausingVarBound();
     BoundType affectedVarBound = expl.getAffectedVarBound();
+    unsigned affectedVar = expl.getAffectedVar();
+    double bound = expl.getBound();
 
-    double explainedUpperBound = UNSATCertificateUtils::computeBound( causingVar,  UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
-    double explainedLowerBound = UNSATCertificateUtils::computeBound( causingVar, LOWER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    unsigned upperCausingVar = causingVarBound == UPPER ? expl.getCausingVars().front() : expl.getCausingVars().back();
+    unsigned lowerCausingVar = causingVarBound == UPPER ? expl.getCausingVars().back() : expl.getCausingVars().front();
+
+    ASSERT( upperCausingVar == lowerCausingVar );
+
+    const double *upperExplanation = causingVarBound == UPPER ? expl.getExplanations() : expl.getExplanations() + _proofSize;
+    const double *lowerExplanation = causingVarBound == UPPER ? expl.getExplanations() +_proofSize : expl.getExplanations();
+
+    double explainedUpperBound = UNSATCertificateUtils::computeBound( upperCausingVar,  UPPER, upperExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    double explainedLowerBound = UNSATCertificateUtils::computeBound( lowerCausingVar, LOWER, lowerExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
 
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
     ASSERT(constraintVars.size() == 4 );
@@ -647,60 +667,75 @@ bool Checker::checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &con
     if ( affectedVar != f )
         return false;
 
-    // TODO should check that it is indeed the maximal bound -l(b) and u(b)
     // Ub of f can be tightened by both ub and -lb of b
-    if ( causingVar == b && affectedVarBound == UPPER && FloatUtils::lte( explainedUpperBound, bound + epsilon ) )
-        tighteningMatched = true;
-    else if ( causingVar == b && affectedVarBound == UPPER && FloatUtils::lte( -explainedLowerBound,  bound + epsilon ) )
-        tighteningMatched = true;
-
-    // If lb of f is < 0, then it is 0
-    else if ( causingVar == f && causingVarBound == LOWER && affectedVarBound == LOWER && FloatUtils::isZero( bound ) && FloatUtils::isNegative( explainedLowerBound ) )
+    if ( upperCausingVar == b && affectedVarBound == UPPER && bound > 0 && FloatUtils::lte( explainedUpperBound, bound + epsilon ) && FloatUtils::lte( - explainedLowerBound,  bound + epsilon ) )
         tighteningMatched = true;
 
     //TODO debug
     if ( !tighteningMatched )
-            printf("ABS: var is %d bound type is %d explained upper bound is %.5lf, explained lower bound is %.5lf real bound is %.5lf\n", causingVar, causingVarBound,  explainedUpperBound, explainedLowerBound, bound );
+        printf("ABS: var is %d bound type is %d explained upper bound is %.5lf, explained lower bound is %.5lf real bound is %.5lf\n", upperCausingVar, causingVarBound,  explainedUpperBound, explainedLowerBound, bound );
+
 
     return tighteningMatched;
 }
 
-bool Checker::checkMaxLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+bool Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
     ASSERT( constraint.getType() == MAX && expl.getConstraintType() == MAX && epsilon > 0);
     MaxConstraint *maxConstraint =  ( MaxConstraint * ) &constraint;
+    ASSERT( expl.getCausingVars().size() );
 
-    unsigned causingVar = expl.getCausingVar();
+    double maxBound = maxConstraint->getMaxValueOfEliminatedPhases();
+    const List<unsigned> causingVars = expl.getCausingVars();
     unsigned affectedVar = expl.getAffectedVar();
     double bound = expl.getBound();
-    const double *explanation = expl.getExplanation();
+    const double *allExplanations = expl.getExplanations();
+    double *explanation = new double[_proofSize];
+    double explainedBound;
     BoundType causingVarBound = expl.getCausingVarBound();
     BoundType affectedVarBound = expl.getAffectedVarBound();
 
-    double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+    unsigned f = maxConstraint->getF();
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
 
-    unsigned f = maxConstraint->getF();
+    unsigned counter = 0;
+
+    for( const auto var : causingVars )
+    {
+        if ( !constraintVars.exists( var ) && var != f )
+        {
+            delete[] explanation;
+            return false;
+        }
+
+        for ( unsigned j = 0; j < _proofSize; ++j )
+            explanation[j] = allExplanations[ ( counter * _proofSize ) + j];
+
+        explainedBound = UNSATCertificateUtils::computeBound( var, UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+
+        if ( explainedBound > maxBound )
+            maxBound = explainedBound;
+
+        ++counter;
+    }
+
+    delete[] explanation;
+
     for ( const auto &element : maxConstraint->getEliminatedElements() )
         constraintVars.append( element );
 
-    if ( !constraintVars.exists( causingVar ) && causingVar != f )
-        return false;
 
     bool tighteningMatched = false;
     // Make sure the explanation is explained using a max bound tightening.
     // Only tightening type is of the form f = element, for some element
 
-    if ( causingVarBound == UPPER && affectedVar == f && causingVar != f && affectedVarBound == UPPER && FloatUtils::lte( explainedBound,  bound + epsilon ) )
+    if ( causingVarBound == UPPER && affectedVar == f && affectedVarBound == UPPER && FloatUtils::lte( maxBound,  bound + epsilon ) )
         tighteningMatched = true;
-    if ( causingVarBound == UPPER && affectedVar == f && causingVar == f && affectedVarBound == UPPER && FloatUtils::lte( maxConstraint->getMaxValueOfEliminatedPhases(),  bound + epsilon ) )
-        tighteningMatched = true;
-    // TODO should check that it is indeed the maximal upper bound among all other elements
-
 
     //TODO debug
     if ( !tighteningMatched )
-        printf("MAX: var is %d bound type is %d explained bound is %.5lf real bound is %.5lf\n", causingVar, causingVarBound, explainedBound, bound );
+        printf("MAX: bound type is %d explained bound is %.5lf real bound is %.5lf\n", causingVarBound, maxBound, bound );
+
 
     return tighteningMatched;
 }
