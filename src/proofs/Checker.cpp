@@ -222,9 +222,9 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
         else if ( constraintType == SIGN )
             explainedBound = checkSignLemma( *plcLemma, *matchedConstraint, epsilon );
         else if ( constraintType == ABSOLUTE_VALUE )
-            explainedBound = checkAbsLemma( *plcLemma, *matchedConstraint, epsilon );
+            explainedBound = checkAbsLemma( *plcLemma, *matchedConstraint );
         else if ( constraintType == MAX )
-            explainedBound = checkMaxLemma( *plcLemma, *matchedConstraint, epsilon );
+            explainedBound = checkMaxLemma( *plcLemma, *matchedConstraint );
         else
             return false;
 
@@ -663,9 +663,9 @@ double Checker::checkSignLemma( const PLCLemma &expl, PiecewiseLinearConstraint 
     return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
 }
 
-double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint )
 {
-    ASSERT( constraint.getType() == ABSOLUTE_VALUE && expl.getConstraintType() == ABSOLUTE_VALUE && epsilon > 0 );
+    ASSERT( constraint.getType() == ABSOLUTE_VALUE && expl.getConstraintType() == ABSOLUTE_VALUE  );
     ASSERT( expl.getCausingVars().size() == 2 );
 
     BoundType causingVarBound = expl.getCausingVarBound();
@@ -709,9 +709,9 @@ double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &
     return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
 }
 
-double Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
+double Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint )
 {
-    ASSERT( constraint.getType() == MAX && expl.getConstraintType() == MAX && epsilon > 0 );
+    ASSERT( constraint.getType() == MAX && expl.getConstraintType() == MAX );
     MaxConstraint *maxConstraint =  ( MaxConstraint * ) &constraint;
 
     double maxBound = maxConstraint->getMaxValueOfEliminatedPhases();
