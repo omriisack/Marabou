@@ -423,7 +423,6 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
 
     if ( tightened )
     {
-
         if ( constraintType == RELU || constraintType == SIGN )
         {
             ASSERT( causingVars.size() == 1 );
@@ -433,18 +432,17 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
         else if ( constraintType == ABSOLUTE_VALUE )
         {
             ASSERT( causingVars.size() == 2 );
+            ASSERT( causingVars.front() == causingVars.back() );
 
-            getExplanation( causingVars.front(), causingVarBound, explanation );
+            getExplanation( causingVars.front(), UPPER, explanation );
             allExplanations.append( explanation );
             explanation.clear();
 
-            getExplanation( causingVars.back(), causingVarBound == UPPER ? LOWER : UPPER, explanation );
+            getExplanation( causingVars.back(), LOWER, explanation );
             allExplanations.append( explanation );
         }
         else if ( constraintType == MAX )
         {
-            ASSERT( causingVars.size() );
-
             for ( const auto &element : causingVars )
             {
                 getExplanation( element, UPPER, explanation );
@@ -456,7 +454,7 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
             throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED );
 
         std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>( causingVars, var, value, causingVarBound, affectedVarBound, allExplanations, constraintType );
-        _engine->getUNSATCertificateCurrentPointer()->addPLCExplanation( PLCExpl );
+        _engine->getUNSATCertificateCurrentPointer()->addPLCLemma(PLCExpl);
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );
     }

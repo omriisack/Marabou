@@ -56,7 +56,7 @@ private:
 
     unsigned _delegationCounter;
 
-    // Keeps track of bounds changes, so only stored bounds will be reverted when traveling the tree
+    // Keeps track of bounds changes, so only stored bounds will be reverted when traversing the tree
     Stack<Set<unsigned>> _upperBoundChanges;
     Stack<Set<unsigned>> _lowerBoundChanges;
 
@@ -72,24 +72,24 @@ private:
     bool checkAllPLCExplanations( const UnsatCertificateNode *node, double epsilon );
 
     /*
-     Return true iff a change in the ground bounds caused by a ReLU constraint is certified, with tolerance to errors with at most size epsilon
+     Return a change in the ground bounds caused by a ReLU constraint.
     */
-    bool checkReluLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    double checkReluLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
-     Return true iff a change in the ground bounds caused by a sign constraint is certified, with tolerance to errors with at most size epsilon
+     Return a change in the ground bounds caused by a Sign constraint.
     */
-    bool checkSignLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    double checkSignLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
-     Return true iff a change in the ground bounds caused by an absolute value constraint is certified, with tolerance to errors with at most size epsilon
+     Return a change in the ground bounds caused by a Absolute Value constraint.
     */
-    bool checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    double checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
-     Return true iff a change in the ground bounds caused by a max constraint is certified, with tolerance to errors with at most size epsilon
+     Return a change in the ground bounds caused by a Max constraint.
     */
-    bool checkMaxLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    double checkMaxLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
       Checks a contradiction

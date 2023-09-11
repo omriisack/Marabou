@@ -60,37 +60,48 @@ void SmtLibWriter::addAbsConstraint( unsigned b, unsigned f, const PhaseStatus s
         instance.append(  "( assert ( = x" + std::to_string( f ) + " ( - x"  + std::to_string( b ) + " ) ) )\n" );
 }
 
-void SmtLibWriter::addMaxConstraint( unsigned f, const Set<unsigned> &elements, List<String> &instance )
+void SmtLibWriter::addMaxConstraint( unsigned f, const Set<unsigned> &elements, const PhaseStatus status, double info ,List<String> &instance )
 {
     String assertRowLine;
     unsigned counter;
     unsigned size = elements.size();
 
-    // For all elements, if elements is larger than all others, then f = element
-    for ( const auto &element : elements )
+    // f equals to some value (the value of info)
+    if ( status == MAX_PHASE_ELIMINATED  )
+        instance.append( String ( "( assert ( = x" + std::to_string( f ) + " " ) + signedValue( info ) + " ) )\n" );
+
+    // f equals to some element (info should be an index)
+    else if ( status != PHASE_NOT_FIXED )
+        instance.append(  "( assert ( = x" + std::to_string( f ) + " x" + std::to_string( ( unsigned ) info ) + " ) )\n" );
+
+    else
     {
-        counter = 0;
-        assertRowLine = "( assert ( =>";
-        for ( auto const &otherElement : elements )
+        // For all elements (including eliminated), if an element is larger than all others, then f = element
+        for ( const auto &element : elements )
         {
-            if ( otherElement == element )
-                continue;
-
-            if ( counter < size - 2 )
+            counter = 0;
+            assertRowLine = "( assert ( =>";
+            for ( auto const &otherElement : elements )
             {
-                assertRowLine += " ( and";
-                ++counter;
+                if ( otherElement == element )
+                    continue;
+
+                if ( counter < size - 2 )
+                {
+                    assertRowLine += " ( and";
+                    ++counter;
+                }
+
+                assertRowLine += " ( >= x" + std::to_string( element ) + " x" + std::to_string( otherElement ) + " )";
             }
+            for ( unsigned i = 0; i < size - 2 ; ++i )
+                assertRowLine += String( " )" );
 
-            assertRowLine += " ( >= x" + std::to_string( element ) + " x" + std::to_string( otherElement ) + " )";
+            assertRowLine += " ( = x" + std::to_string( f ) + " x" + std::to_string( element ) + " )";
+
+
+            instance.append( assertRowLine + " ) )\n" );
         }
-        for ( unsigned i = 0; i < size - 2 ; ++i )
-            assertRowLine += String( " )" );
-
-        assertRowLine += " ( = x" + std::to_string( f ) + " x" + std::to_string( element ) + " )";
-
-
-        instance.append( assertRowLine + " ) )\n" );
     }
 }
 

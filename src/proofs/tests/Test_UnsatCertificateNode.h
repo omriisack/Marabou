@@ -85,14 +85,14 @@ public:
         auto explanation2 = std::shared_ptr<PLCLemma>( new PLCLemma( { 1 }, 1, -1, UPPER, UPPER, emptyVec, RELU ) );
         auto explanation3 = std::shared_ptr<PLCLemma>( new PLCLemma( { 1 }, 1, -4, UPPER, UPPER, emptyVec, RELU ) );
 
-        TS_ASSERT( root.getPLCExplanations().empty() );
+        TS_ASSERT(root.getPLCLemmas().empty() );
 
-        root.addPLCExplanation( explanation1 );
-        root.addPLCExplanation( explanation2 );
-        root.addPLCExplanation( explanation3 );
-        TS_ASSERT_EQUALS( root.getPLCExplanations().size(), 3U );
+        root.addPLCLemma(explanation1);
+        root.addPLCLemma(explanation2);
+        root.addPLCLemma(explanation3);
+        TS_ASSERT_EQUALS(root.getPLCLemmas().size(), 3U );
 
         root.deletePLCExplanations();
-        TS_ASSERT( root.getPLCExplanations().empty() );
+        TS_ASSERT(root.getPLCLemmas().empty() );
     }
 };

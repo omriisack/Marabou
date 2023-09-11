@@ -149,6 +149,8 @@ void MaxConstraint::notifyLowerBound( unsigned variable, double value )
         setLowerBound( variable, value );
     }
 
+    bool proofs = _boundManager && _boundManager->shouldProduceProofs();
+
     /*
       See if we can eliminate any cases.
     */
@@ -192,7 +194,7 @@ void MaxConstraint::notifyLowerBound( unsigned variable, double value )
 
     if ( isActive() && _boundManager )
     {
-        if ( _boundManager->shouldProduceProofs() )
+        if ( proofs )
             for ( const auto &element : _elements )
                 createElementTighteningRow( element );
 
@@ -201,7 +203,7 @@ void MaxConstraint::notifyLowerBound( unsigned variable, double value )
         List<Tightening> tightenings;
         getEntailedTightenings( tightenings );
 
-        if ( !_boundManager->shouldProduceProofs() )
+        if ( !proofs )
         {
             for ( const auto &tightening : tightenings )
             {
@@ -230,6 +232,9 @@ void MaxConstraint::notifyUpperBound( unsigned variable, double value )
 
         setUpperBound( variable, value );
     }
+
+    bool proofs = _boundManager && _boundManager->shouldProduceProofs();
+
     /*
       See if we can eliminate any cases.
     */
@@ -267,7 +272,7 @@ void MaxConstraint::notifyUpperBound( unsigned variable, double value )
 
     if ( isActive() && _boundManager )
     {
-        if ( _boundManager->shouldProduceProofs() )
+        if ( proofs )
             for ( const auto &element : _elements )
                 createElementTighteningRow( element );
 
@@ -275,7 +280,7 @@ void MaxConstraint::notifyUpperBound( unsigned variable, double value )
         // Can focus only on the newly learned bound and possible consequences.
         List<Tightening> tightenings;
         getEntailedTightenings( tightenings );
-        if ( !_boundManager->shouldProduceProofs() )
+        if ( !proofs )
         {
             for ( const auto &tightening : tightenings )
             {
@@ -720,6 +725,9 @@ String MaxConstraint::serializeToString() const
 
 void MaxConstraint::eliminateCase( unsigned variable )
 {
+    if ( _boundManager && _boundManager->shouldProduceProofs() )
+        return;
+
     if ( _cdInfeasibleCases )
     {
         markInfeasible( variableToPhase( variable ) );
@@ -742,7 +750,7 @@ void MaxConstraint::eliminateCase( unsigned variable )
             _elementToTighteningRow.erase( variable );
         }
 
-        if ( _elementToTableauAux.exists(variable) )
+        if ( _elementToTableauAux.exists( variable ) )
             _elementToTableauAux.erase( variable );
     }
 }

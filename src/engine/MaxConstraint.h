@@ -227,6 +227,28 @@ public:
         return _maxValueOfEliminatedPhases;
     }
 
+    inline unsigned getAuxToElement( unsigned element )
+    {
+        return _auxToElement[element];
+    }
+
+    /*
+       Conversion functions between variables and PhaseStatus.
+    */
+    inline PhaseStatus variableToPhase( unsigned variable ) const
+    {
+        return ( variable == MAX_PHASE_ELIMINATED )
+               ? MAX_PHASE_ELIMINATED
+               : static_cast<PhaseStatus>( variable + MAX_VARIABLE_TO_PHASE_OFFSET );
+    }
+
+    inline unsigned phaseToVariable( PhaseStatus phase ) const
+    {
+        return ( phase == MAX_PHASE_ELIMINATED )
+               ? MAX_PHASE_ELIMINATED
+               : static_cast<unsigned>( phase ) - MAX_VARIABLE_TO_PHASE_OFFSET;
+    }
+
  private:
     unsigned _f;
     Set<unsigned> _elements;
@@ -238,6 +260,7 @@ public:
     Map<unsigned, unsigned> _elementToTableauAux;
     Map<unsigned, std::shared_ptr<TableauRow>> _elementToTighteningRow;
     Set<unsigned> _eliminatedElements;
+    Set<unsigned> _proofEliminatedElements;
 
     bool _obsolete;
 
@@ -260,22 +283,6 @@ public:
     */
     PiecewiseLinearCaseSplit getSplit( unsigned argMax ) const;
 
-    /*
-       Conversion functions between variables and PhaseStatus.
-    */
-    inline PhaseStatus variableToPhase( unsigned variable ) const
-    {
-        return ( variable == MAX_PHASE_ELIMINATED )
-                 ? MAX_PHASE_ELIMINATED
-                 : static_cast<PhaseStatus>( variable + MAX_VARIABLE_TO_PHASE_OFFSET );
-    }
-
-    inline unsigned phaseToVariable( PhaseStatus phase ) const
-    {
-        return ( phase == MAX_PHASE_ELIMINATED )
-                 ? MAX_PHASE_ELIMINATED
-                 : static_cast<unsigned>( phase ) - MAX_VARIABLE_TO_PHASE_OFFSET;
-    }
 
     /*
       Eliminate the case corresponding to the given input variable to Max.

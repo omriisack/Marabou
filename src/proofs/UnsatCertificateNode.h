@@ -65,14 +65,14 @@ public:
     const List<UnsatCertificateNode*> &getChildren() const;
 
     /*
-      Returns the list of PLC explanations of the node
+      Returns the list of PLC lemmas of the node
     */
-    const List<std::shared_ptr<PLCLemma>> &getPLCExplanations() const;
+    const List<std::shared_ptr<PLCLemma>> &getPLCLemmas() const;
 
     /*
       Adds an PLC explanation to the list
     */
-    void addPLCExplanation( std::shared_ptr<PLCLemma> &explanation );
+    void addPLCLemma(std::shared_ptr<PLCLemma> &explanation );
 
     /*
       Returns a pointer to a child by a head split, or NULL if not found
