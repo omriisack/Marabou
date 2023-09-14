@@ -736,17 +736,17 @@ double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &
         constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
         return 0;
     }
-    if ( affectedVar == neg && causingVar == b && causingVarBound == UPPER && !FloatUtils::isPositive( explainedBound - epsilon ) && bound == 0 )
+    else if ( affectedVar == neg && causingVar == b && causingVarBound == UPPER && !FloatUtils::isPositive( explainedBound - epsilon ) && bound == 0 )
     {
         constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
         return 0;
     }
-    if ( affectedVar == neg && causingVar == pos && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
+    else if ( affectedVar == neg && causingVar == pos && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
     {
         constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
         return 0;
     }
-    if ( affectedVar == pos && causingVar == neg && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
+    else if ( affectedVar == pos && causingVar == neg && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
     {
         constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
         return 0;
