@@ -142,7 +142,7 @@ void AbsoluteValueConstraint::notifyLowerBound( unsigned variable, double bound 
 
         if ( variable == _b )
         {
-            if ( FloatUtils::lt( bound, 0 ) && !phaseFixed() )
+            if ( FloatUtils::lt( bound, 0 ) && ( !proofs || !phaseFixed() ) )
             {
                 double fUpperBound = FloatUtils::max( -bound, getUpperBound( _b ) ) ;
                 if ( proofs )
@@ -209,7 +209,7 @@ void AbsoluteValueConstraint::notifyUpperBound( unsigned variable, double bound 
 
         if ( variable == _b )
         {
-            if ( FloatUtils::gt( bound, 0 ) && !phaseFixed() )
+            if ( FloatUtils::gt( bound, 0 ) && ( !proofs || !phaseFixed() ) )
             {
                 double fUpperBound = FloatUtils::max( bound, -getLowerBound( _b ) ) ;
                 if ( proofs )
