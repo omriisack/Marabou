@@ -29,7 +29,19 @@ double UNSATCertificateUtils::computeBound( unsigned var,
     double temp;
 
     if ( !explanation )
-        return isUpper ? groundUpperBounds[var]  : groundLowerBounds[var];
+        return isUpper ? groundUpperBounds[var] : groundLowerBounds[var];
+
+    bool allZeros = true;
+
+    for ( unsigned i = 0; i < numberOfRows; ++i )
+        if ( !FloatUtils::isZero( explanation[i] ) )
+        {
+            allZeros = false;
+            break;
+        }
+
+    if ( allZeros )
+        return isUpper ? groundUpperBounds[var] : groundLowerBounds[var];
 
     Vector<double> explanationRowCombination( numberOfVariables, 0 );
     // Create linear combination of original rows implied from explanation

@@ -22,7 +22,7 @@ PLCLemma::PLCLemma( const List<unsigned> &causingVars,
                     const Vector<Vector<double>> &explanations,
                     PiecewiseLinearFunctionType constraintType )
     : _causingVars( causingVars )
-    ,_affectedVar( affectedVar )
+    , _affectedVar( affectedVar )
     , _bound( bound )
     , _causingVarBound( causingVarBound )
     , _affectedVarBound( affectedVarBound )
@@ -33,23 +33,42 @@ PLCLemma::PLCLemma( const List<unsigned> &causingVars,
         _explanations = NULL;
     else
     {
-        unsigned numOfExplanations = explanations.size();
-        unsigned proofSize = explanations[0].size();
+        bool allEmpty = true;
+        unsigned proofSize = 0;
 
-        ASSERT( numOfExplanations == causingVars.size() );
+        for ( const auto &expl : explanations )
+            if ( !expl.empty() )
+            {
+                proofSize = expl.size();
+                allEmpty = false;
+                break;
+            }
 
-        if ( _constraintType == RELU || _constraintType == SIGN )
-            ASSERT( numOfExplanations == 1);
+        if ( allEmpty )
+            _explanations = NULL;
+        else
+        {
+            unsigned numOfExplanations = explanations.size();
 
-        if ( _constraintType == ABSOLUTE_VALUE )
-            ASSERT( numOfExplanations == 2);
+            ASSERT( numOfExplanations == causingVars.size() && proofSize );
 
-        _explanations = new double[numOfExplanations * explanations[0].size()];
+            if ( _constraintType == RELU || _constraintType == SIGN )
+            {
+                ASSERT( numOfExplanations == 1 );
+            }
 
-        for ( unsigned i = 0; i < numOfExplanations; ++i )
-            for ( unsigned j = 0; j < proofSize; ++j )
-                _explanations[i * proofSize + j] = explanations[i][j];
+            if ( _constraintType == ABSOLUTE_VALUE )
+            {
+                ASSERT( numOfExplanations == 2 || numOfExplanations == 1 );
+            }
 
+            _explanations = new double[numOfExplanations * proofSize];
+
+            for ( unsigned i = 0; i < numOfExplanations; ++i )
+                for ( unsigned j = 0; j < proofSize; ++j )
+                    _explanations[i * proofSize + j] = explanations[i][j];
+
+        }
     }
 }
 

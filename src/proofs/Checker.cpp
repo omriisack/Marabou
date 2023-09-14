@@ -198,7 +198,7 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
                 continue;
 
             participatingVars = constraint->getParticipatingVariables();
-            if (constraint->getType() == MAX)
+            if ( constraint->getType() == MAX )
             {
                 MaxConstraint *maxConstraint = ( MaxConstraint * ) constraint;
                 for ( auto const &element : maxConstraint->getEliminatedElements() )
@@ -222,7 +222,7 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
         else if ( constraintType == SIGN )
             explainedBound = checkSignLemma( *plcLemma, *matchedConstraint, epsilon );
         else if ( constraintType == ABSOLUTE_VALUE )
-            explainedBound = checkAbsLemma( *plcLemma, *matchedConstraint );
+            explainedBound = checkAbsLemma( *plcLemma, *matchedConstraint, epsilon );
         else if ( constraintType == MAX )
             explainedBound = checkMaxLemma( *plcLemma, *matchedConstraint );
         else
@@ -604,7 +604,6 @@ double Checker::checkReluLemma( const PLCLemma &expl, PiecewiseLinearConstraint 
     else if ( causingVar == aux && causingVarBound == UPPER && affectedVar == b && affectedVarBound == LOWER )
         return -explainedBound;
 
-    //TODO debug
     return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
 }
 
@@ -663,48 +662,95 @@ double Checker::checkSignLemma( const PLCLemma &expl, PiecewiseLinearConstraint 
     return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
 }
 
-double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint )
+double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon )
 {
-    ASSERT( constraint.getType() == ABSOLUTE_VALUE && expl.getConstraintType() == ABSOLUTE_VALUE  );
-    ASSERT( expl.getCausingVars().size() == 2 );
+    ASSERT( constraint.getType() == ABSOLUTE_VALUE && expl.getConstraintType() == ABSOLUTE_VALUE );
+    ASSERT( expl.getCausingVars().size() == 2 || expl.getCausingVars().size() == 1 );
 
     BoundType causingVarBound = expl.getCausingVarBound();
     BoundType affectedVarBound = expl.getAffectedVarBound();
     unsigned affectedVar = expl.getAffectedVar();
     double bound = expl.getBound();
-
-    unsigned upperCausingVar = expl.getCausingVars().front();
-    unsigned lowerCausingVar = expl.getCausingVars().back();
-
-    ASSERT( expl.getCausingVars().front() == expl.getCausingVars().back() );
-
-    const double *upperExplanation = expl.getExplanations();
-    const double *lowerExplanation = expl.getExplanations() + _proofSize;
-
-    double explainedUpperBound = UNSATCertificateUtils::computeBound( upperCausingVar,  UPPER, upperExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
-    double explainedLowerBound = UNSATCertificateUtils::computeBound( lowerCausingVar, LOWER, lowerExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
-
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
     ASSERT(constraintVars.size() == 4 );
 
     Vector<unsigned> conVec( constraintVars.begin(), constraintVars.end() );
-    unsigned b = conVec[0] ;
+    unsigned b = conVec[0];
     unsigned f = conVec[1];
+    unsigned pos = conVec[2];
+    unsigned neg = conVec[3];
 
     // Make sure the explanation is explained using an absolute value bound tightening. Cases are matching each rule in AbsolutValueConstraint.cpp
-    // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
+    // We allow explained bound to be tighter than the ones recorded (since an explanation can explain tighter bounds)
 
-    //f is always the affected var
-    if ( affectedVar != f )
-        return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
+    if ( expl.getCausingVars().size() == 2 )
+    {
+        unsigned firstCausingVar = expl.getCausingVars().front();
+        unsigned secondCausingVar = expl.getCausingVars().back();
 
+        const double *firstExplanation = expl.getExplanations();
+        const double *secondExplanation = expl.getExplanations() + _proofSize;
 
-    // Ub of f can be tightened by both ub and -lb of b
-    if ( upperCausingVar == b && affectedVarBound == UPPER && bound > 0 )
-        return FloatUtils::max( explainedUpperBound, -explainedLowerBound );
+        // Case of a non-phase fixing lemma
+        if ( firstCausingVar == secondCausingVar )
+        {
+            double explainedUpperBound = UNSATCertificateUtils::computeBound( firstCausingVar, UPPER, firstExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+            double explainedLowerBound = UNSATCertificateUtils::computeBound( secondCausingVar, LOWER, secondExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
 
-    //TODO debug
-    printf("ABS: var is %d bound type is %d explained upper bound is %.5lf, explained lower bound is %.5lf real bound is %.5lf\n", upperCausingVar, causingVarBound,  explainedUpperBound, explainedLowerBound, bound );
+            // b is always the causing var, affecting the ub of f
+            if ( affectedVar == f && firstCausingVar == b && affectedVarBound == UPPER && bound > 0 )
+                return FloatUtils::max( explainedUpperBound, -explainedLowerBound );
+
+            return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
+        }
+        // Cases of a phase-fixing lemma
+        else
+        {
+            ASSERT( firstCausingVar == b && secondCausingVar == f );
+            double explainedBBound = UNSATCertificateUtils::computeBound( firstCausingVar, causingVarBound == UPPER, firstExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+            double explainedFBound = UNSATCertificateUtils::computeBound( secondCausingVar, LOWER, secondExplanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+
+            if ( affectedVar == neg && causingVarBound == UPPER && explainedFBound > explainedBBound - epsilon && bound == 0 )
+            {
+                constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
+                return 0;
+            }
+            else if ( affectedVar == pos && causingVarBound == LOWER && explainedFBound > -explainedBBound  - epsilon && bound == 0 )
+            {
+                constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
+                return 0;
+            }
+
+            return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
+        }
+    }
+
+    // Cases of a phase-fixing lemma
+    const double *explanation = expl.getExplanations();
+    unsigned causingVar = expl.getCausingVars().front();
+
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar, causingVarBound == UPPER, explanation, _initialTableau, _groundUpperBounds.data(), _groundLowerBounds.data(), _proofSize, _groundUpperBounds.size() );
+
+    if ( affectedVar == pos && causingVar == b && causingVarBound == LOWER && !FloatUtils::isNegative( explainedBound + epsilon ) && bound == 0 )
+    {
+        constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
+        return 0;
+    }
+    if ( affectedVar == neg && causingVar == b && causingVarBound == UPPER && !FloatUtils::isPositive( explainedBound - epsilon ) && bound == 0 )
+    {
+        constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
+        return 0;
+    }
+    if ( affectedVar == neg && causingVar == pos && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
+    {
+        constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
+        return 0;
+    }
+    if ( affectedVar == pos && causingVar == neg && causingVarBound == LOWER && FloatUtils::isPositive( explainedBound + epsilon ) && bound == 0 )
+    {
+        constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
+        return 0;
+    }
 
     return affectedVarBound == UPPER ? FloatUtils::infinity() : FloatUtils::negativeInfinity();
 }

@@ -84,7 +84,7 @@ private:
     /*
      Return a change in the ground bounds caused by a Absolute Value constraint.
     */
-    double checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint );
+    double checkAbsLemma(const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
 
     /*
      Return a change in the ground bounds caused by a Max constraint.

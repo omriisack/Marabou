@@ -146,7 +146,7 @@ void AbsoluteValueConstraint::notifyLowerBound( unsigned variable, double bound 
             {
                 double fUpperBound = FloatUtils::max( -bound, getUpperBound( _b ) ) ;
                 if ( proofs )
-                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, fUpperBound == -bound ? LOWER : UPPER, getType() );
+                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, UPPER, getType() );
                 else
                     _boundManager->tightenUpperBound( _f, fUpperBound );
 
@@ -211,9 +211,9 @@ void AbsoluteValueConstraint::notifyUpperBound( unsigned variable, double bound 
         {
             if ( FloatUtils::gt( bound, 0 ) )
             {
-                double fUpperBound =  FloatUtils::max( bound, -getLowerBound( _b ) ) ;
+                double fUpperBound = FloatUtils::max( bound, -getLowerBound( _b ) ) ;
                 if ( proofs )
-                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, fUpperBound == bound ? UPPER : LOWER, getType() );
+                    _boundManager->addLemmaExplanation( _f, fUpperBound, UPPER, { variable, variable }, UPPER, getType() );
                 else
                     _boundManager->tightenUpperBound( _f, fUpperBound );
 
@@ -777,10 +777,24 @@ String AbsoluteValueConstraint::serializeToString() const
 
 void AbsoluteValueConstraint::fixPhaseIfNeeded()
 {
+
+    if ( phaseFixed() )
+        return;
+
+    bool proofs = _boundManager && _boundManager->shouldProduceProofs();
+
+    if ( proofs )
+    {
+        createPosTighteningRow();
+        createNegTighteningRow();
+    }
+
     // Option 1: b's range is strictly positive
     if ( existsLowerBound( _b ) && getLowerBound( _b ) >= 0 )
     {
         setPhaseStatus( ABS_PHASE_POSITIVE );
+        if ( proofs )
+            _boundManager->addLemmaExplanation( _posAux, 0, UPPER, { _b },  LOWER, getType() );
         return;
     }
 
@@ -788,6 +802,8 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
     if ( existsUpperBound( _b ) && getUpperBound( _b ) <= 0 )
     {
         setPhaseStatus( ABS_PHASE_NEGATIVE );
+        if ( proofs )
+            _boundManager->addLemmaExplanation( _negAux, 0, UPPER, { _b },  UPPER, getType() );
         return;
     }
 
@@ -799,6 +815,8 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
     if ( existsUpperBound( _b ) && getLowerBound( _f ) > getUpperBound( _b ) )
     {
         setPhaseStatus( ABS_PHASE_NEGATIVE );
+        if ( proofs )
+            _boundManager->addLemmaExplanation( _negAux, 0, UPPER, { _b, _f },  UPPER, getType() );
         return;
     }
 
@@ -807,6 +825,8 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
     if ( existsLowerBound( _b ) && getLowerBound( _f ) > -getLowerBound( _b ) )
     {
         setPhaseStatus( ABS_PHASE_POSITIVE );
+        if ( proofs )
+            _boundManager->addLemmaExplanation( _posAux, 0, UPPER, { _b, _f },  LOWER, getType() );
         return;
     }
 
@@ -823,6 +843,8 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         if ( existsLowerBound( _posAux ) && FloatUtils::isPositive( getLowerBound( _posAux ) ) )
         {
             setPhaseStatus( ABS_PHASE_NEGATIVE );
+            if ( proofs )
+                _boundManager->addLemmaExplanation( _negAux, 0, UPPER, { _posAux },  LOWER, getType() );
             return;
         }
 
@@ -837,6 +859,8 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         if ( existsLowerBound( _negAux ) && FloatUtils::isPositive( getLowerBound( _negAux ) ) )
         {
             setPhaseStatus( ABS_PHASE_POSITIVE );
+            if ( proofs )
+                _boundManager->addLemmaExplanation( _posAux, 0, UPPER, { _negAux },  LOWER, getType() );
             return;
         }
     }

@@ -431,22 +431,29 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
         }
         else if ( constraintType == ABSOLUTE_VALUE )
         {
-            ASSERT( causingVars.size() == 2 );
-            ASSERT( causingVars.front() == causingVars.back() );
+            if ( causingVars.size() == 1 )
+            {
+                getExplanation( causingVars.front(), causingVarBound, explanation );
+                allExplanations.append( explanation );
+            }
+            else
+            {
+                // Add zero vectors to maintain consistency of explanations size
+                getExplanation( causingVars.front(), causingVarBound == UPPER, explanation );
+                allExplanations.append( explanation.empty() ? Vector<double>( _tableau->getM(), 0  ) : explanation );
+                explanation.clear();
 
-            getExplanation( causingVars.front(), UPPER, explanation );
-            allExplanations.append( explanation );
-            explanation.clear();
-
-            getExplanation( causingVars.back(), LOWER, explanation );
-            allExplanations.append( explanation );
+                getExplanation( causingVars.back(), LOWER, explanation );
+                allExplanations.append( explanation.empty() ? Vector<double>( _tableau->getM(), 0 ) : explanation );
+            }
         }
         else if ( constraintType == MAX )
         {
             for ( const auto &element : causingVars )
             {
+                // Add zero vectors to maintain consistency of explanations size
                 getExplanation( element, UPPER, explanation );
-                allExplanations.append( explanation );
+                allExplanations.append( explanation.empty() ? Vector<double>( _tableau->getM(), 0 ) : explanation );
                 explanation.clear();
             }
         }
@@ -454,7 +461,7 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
             throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED );
 
         std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>( causingVars, var, value, causingVarBound, affectedVarBound, allExplanations, constraintType );
-        _engine->getUNSATCertificateCurrentPointer()->addPLCLemma(PLCExpl);
+        _engine->getUNSATCertificateCurrentPointer()->addPLCLemma(PLCExpl );
         affectedVarBound == UPPER ? _engine->updateGroundUpperBound( var, value ) : _engine->updateGroundLowerBound( var, value );
         resetExplanation( var, affectedVarBound );
     }
