@@ -1401,19 +1401,18 @@ bool Engine::processInputQuery( InputQuery &inputQuery, bool preprocess )
 
         if ( _produceUNSATProofs )
         {
-            bool containsUnsupportedConstraints = false;
             for ( auto &plConstraint : _preprocessedQuery->getPiecewiseLinearConstraints() )
             {
                 if ( !UNSATCertificateUtils::getSupportedActivations().exists( plConstraint->getType() ) )
                 {
-                    containsUnsupportedConstraints = true;
                     _produceUNSATProofs = false;
                     Options::get()->setBool( Options::PRODUCE_PROOFS, false );
+                    String activationType = plConstraint->serializeToString().tokenize(",").back();
+                    ENGINE_LOG( "Turning off proof production since activation %s is not yet supported\n", activationType.ascii() );
+                    break;
                 }
             }
 
-            if ( containsUnsupportedConstraints )
-                ENGINE_LOG( "Turning off proof production since activations are not yet supported\n" );
 
         }
 
@@ -3529,7 +3528,8 @@ bool Engine::certifyUNSATCertificate()
     {
         if ( !UNSATCertificateUtils::getSupportedActivations().exists( constraint->getType() ) )
         {
-            printf( "Certification Error! Network contains activation function that is not yet supported by Marabou certification.\n" );
+            String activationType = constraint->serializeToString().tokenize(",").back();
+            printf( "Certification Error! Network contains activation function %s, that is not yet supported by Marabou certification.\n", activationType.ascii() );
             return false;
         }
     }

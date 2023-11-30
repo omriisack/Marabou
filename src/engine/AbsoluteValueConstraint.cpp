@@ -777,7 +777,6 @@ String AbsoluteValueConstraint::serializeToString() const
 
 void AbsoluteValueConstraint::fixPhaseIfNeeded()
 {
-
     if ( phaseFixed() )
         return;
 
@@ -794,7 +793,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
     {
         setPhaseStatus( ABS_PHASE_POSITIVE );
         if ( proofs )
-            _boundManager->addLemmaExplanation( _posAux, 0, UPPER, { _b },  LOWER, getType() );
+            _boundManager->addLemmaExplanation( _posAux, 0, UPPER, { _b }, LOWER, getType() );
         return;
     }
 
@@ -803,7 +802,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
     {
         setPhaseStatus( ABS_PHASE_NEGATIVE );
         if ( proofs )
-            _boundManager->addLemmaExplanation( _negAux, 0, UPPER, { _b },  UPPER, getType() );
+            _boundManager->addLemmaExplanation( _negAux, 0, UPPER, { _b }, UPPER, getType() );
         return;
     }
 
@@ -918,4 +917,16 @@ const List<unsigned> AbsoluteValueConstraint::getNativeAuxVars() const
     if ( _auxVarsInUse )
         return { _posAux, _negAux };
     return {};
+}
+
+void AbsoluteValueConstraint::addTableauAuxVar( unsigned tableauAuxVar, unsigned constraintAuxVar )
+{
+    ASSERT( constraintAuxVar == _negAux || constraintAuxVar == _posAux );
+    if ( _tableauAuxVars.size() == 2 )
+        return;
+
+    if ( constraintAuxVar == _negAux )
+        _tableauAuxVars.append( tableauAuxVar );
+    else
+        _tableauAuxVars.appendHead( tableauAuxVar );
 }

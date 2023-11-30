@@ -395,7 +395,6 @@ void SignConstraint::notifyLowerBound( unsigned variable, double bound )
     {
         setPhaseStatus( PhaseStatus::SIGN_PHASE_POSITIVE );
 
-
         if ( _boundManager != nullptr )
         {
             if ( _boundManager->shouldProduceProofs() )
@@ -654,4 +653,9 @@ void SignConstraint::updateScoreBasedOnPolarity()
 bool SignConstraint::supportPolarity() const
 {
     return true;
+}
+
+// No aux vars in Sign constraint, so the function is suppressed
+void SignConstraint::addTableauAuxVar( unsigned /* tableauAuxVar */, unsigned /* constraintAuxVar */ )
+{
 }

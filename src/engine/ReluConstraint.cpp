@@ -1063,6 +1063,14 @@ const List<unsigned> ReluConstraint::getNativeAuxVars() const
     return {};
 }
 
+void ReluConstraint::addTableauAuxVar( unsigned tableauAuxVar, unsigned constraintAuxVar )
+{
+    ASSERT( _tableauAuxVars.empty() );
+
+    if ( constraintAuxVar == _aux )
+        _tableauAuxVars.append( tableauAuxVar );
+}
+
 //
 // Local Variables:
 // compile-command: "make -C ../.. "

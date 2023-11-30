@@ -438,6 +438,8 @@ bool BoundManager::addLemmaExplanation( unsigned var, double value, BoundType af
             }
             else
             {
+                // Case of lemma of the type _f = max(upperBound(b), -lowerBound(b)).
+                // Two explanations are stored so the checker could check that f has the maximal value of the two
                 // Add zero vectors to maintain consistency of explanations size
                 getExplanation( causingVars.front(), causingVarBound == UPPER, explanation );
                 allExplanations.append( explanation.empty() ? Vector<double>( _tableau->getM(), 0  ) : explanation );

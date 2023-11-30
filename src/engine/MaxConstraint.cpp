@@ -780,8 +780,7 @@ bool MaxConstraint::haveOutOfBoundVariables() const
 
 void MaxConstraint::createElementTighteningRow( unsigned element )
 {
-
-    // Create the row only when needed and when not already create
+    // Create the row only when needed and when not already created
     if ( !_boundManager->getBoundExplainer() || _elementToTighteningRow[element] != NULL )
         return;
 
