@@ -926,7 +926,13 @@ void AbsoluteValueConstraint::addTableauAuxVar( unsigned tableauAuxVar, unsigned
         return;
 
     if ( constraintAuxVar == _negAux )
+    {
         _tableauAuxVars.append( tableauAuxVar );
+        ASSERT( _tableauAuxVars.back() == tableauAuxVar );
+    }
     else
+    {
         _tableauAuxVars.appendHead( tableauAuxVar );
+        ASSERT( _tableauAuxVars.front() == tableauAuxVar );
+    }
 }
