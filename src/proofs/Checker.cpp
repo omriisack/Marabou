@@ -723,7 +723,7 @@ double Checker::checkAbsLemma( const PLCLemma &expl, PiecewiseLinearConstraint &
                 constraint.setPhaseStatus( ABS_PHASE_NEGATIVE );
                 return 0;
             }
-            else if ( affectedVar == pos && causingVarBound == LOWER && explainedFBound > -explainedBBound  - epsilon && bound == 0 )
+            else if ( affectedVar == pos && causingVarBound == LOWER && explainedFBound > -explainedBBound - epsilon && bound == 0 )
             {
                 constraint.setPhaseStatus( ABS_PHASE_POSITIVE );
                 return 0;
