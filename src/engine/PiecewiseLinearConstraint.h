@@ -454,8 +454,7 @@ public:
     }
 
     /*
-      Add a variable to the list of aux vars designated in the Tableau
-      second argument is used for MaxConstraints
+      Add a variable to the list of aux vars designated in the Tableau, add connect it to the constraintAuxVariable
     */
     virtual void addTableauAuxVar( unsigned tableauAuxVar, unsigned  constraintAuxVar ) = 0;
 

@@ -2007,7 +2007,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: lower bound set to %.3lf", variable, bound._value ).ascii() );
             if ( _produceUNSATProofs && FloatUtils::gt( bound._value, _boundManager.getLowerBound( bound._variable ) ) )
             {
-                _boundManager.resetExplanation( variable, LOWER );
+                _boundManager.resetExplanation( variable, BoundType::LOWER );
                 updateGroundLowerBound( variable, bound._value );
                 _boundManager.tightenLowerBound( variable, bound._value );
             }
@@ -2019,7 +2019,7 @@ void Engine::applySplit( const PiecewiseLinearCaseSplit &split )
             ENGINE_LOG( Stringf( "x%u: upper bound set to %.3lf", variable, bound._value ).ascii() );
             if ( _produceUNSATProofs && FloatUtils::lt( bound._value, _boundManager.getUpperBound( bound._variable ) ) )
             {
-                _boundManager.resetExplanation( variable, UPPER );
+                _boundManager.resetExplanation( variable, BoundType::UPPER );
                 updateGroundUpperBound( variable, bound._value );
                 _boundManager.tightenUpperBound( variable, bound._value );
             }
@@ -3377,7 +3377,7 @@ bool Engine::validateAllBounds( double epsilon ) const
     bool res = true;
 
     for ( unsigned var = 0; var < _tableau->getN(); ++var )
-        if ( !validateBounds( var, epsilon, UPPER ) || !validateBounds( var, epsilon, LOWER ) )
+        if ( !validateBounds( var, epsilon, BoundType::UPPER ) || !validateBounds( var, epsilon, BoundType::LOWER ) )
             res = false;
 
     return res;
@@ -3413,12 +3413,12 @@ unsigned Engine::explainFailureWithTableau()
             _tableau->getTableauRow( i, &boundUpdateRow );
             basicVar = boundUpdateRow._lhs;
 
-            if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, LOWER ), _boundManager.getUpperBound( basicVar ) )
-                 && explainAndCheckContradiction( basicVar, LOWER, &boundUpdateRow ) )
+            if ( FloatUtils::gt( _boundManager.computeRowBound( boundUpdateRow, BoundType::LOWER ), _boundManager.getUpperBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, BoundType::LOWER, &boundUpdateRow ) )
                 return basicVar;
 
-            if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, UPPER ), _boundManager.getLowerBound( basicVar ) )
-                 && explainAndCheckContradiction( basicVar, UPPER, &boundUpdateRow ) )
+            if ( FloatUtils::lt( _boundManager.computeRowBound( boundUpdateRow, BoundType::UPPER ), _boundManager.getLowerBound( basicVar ) )
+                 && explainAndCheckContradiction( basicVar, BoundType::UPPER, &boundUpdateRow ) )
                 return basicVar;
         }
     }
@@ -3448,9 +3448,9 @@ unsigned Engine::explainFailureWithCostFunction()
         curUpper = ( curCost < 0 );
 
         // Check the basic variable has no slack
-        if ( !( !curUpper && FloatUtils::gt( _boundManager.computeSparseRowBound( *costRow, LOWER, curBasicVar ),
+        if ( !( !curUpper && FloatUtils::gt( _boundManager.computeSparseRowBound( *costRow, BoundType::LOWER, curBasicVar ),
                                          _boundManager.getUpperBound( curBasicVar ) ) ) &&
-             !( curUpper && FloatUtils::lt( _boundManager.computeSparseRowBound( *costRow, UPPER, curBasicVar ),
+             !( curUpper && FloatUtils::lt( _boundManager.computeSparseRowBound( *costRow, BoundType::UPPER, curBasicVar ),
                                          _boundManager.getLowerBound( curBasicVar ) ) ) )
 
             continue;
@@ -3598,11 +3598,11 @@ const Vector<double> Engine::computeContradiction( unsigned infeasibleVar ) cons
     Vector<double> upperBoundExplanation( 0 );
     Vector<double> lowerBoundExplanation( 0 );
 
-    if ( !_boundManager.isExplanationTrivial( infeasibleVar, UPPER ) )
-        _boundManager.getExplanation( infeasibleVar, UPPER, upperBoundExplanation );
+    if ( !_boundManager.isExplanationTrivial( infeasibleVar, BoundType::UPPER ) )
+        _boundManager.getExplanation( infeasibleVar, BoundType::UPPER, upperBoundExplanation );
 
-    if( !_boundManager.isExplanationTrivial( infeasibleVar, LOWER ) )
-        _boundManager.getExplanation( infeasibleVar, LOWER, lowerBoundExplanation );
+    if( !_boundManager.isExplanationTrivial( infeasibleVar, BoundType::LOWER ) )
+        _boundManager.getExplanation( infeasibleVar, BoundType::LOWER, lowerBoundExplanation );
 
     if ( upperBoundExplanation.empty() && lowerBoundExplanation.empty() )
         return Vector<double>( 0 );
