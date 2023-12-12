@@ -3321,8 +3321,15 @@ bool Engine::certifyInfeasibility( unsigned var ) const
 
     if ( contradiction.empty() )
         return FloatUtils::isNegative( _groundBoundManager.getUpperBound( var ) - _groundBoundManager.getLowerBound( var ) );
+
     SparseUnsortedList sparseContradiction = SparseUnsortedList();
+
     contradiction.empty() ? sparseContradiction.initializeToEmpty() : sparseContradiction.initialize( contradiction.data(), contradiction.size() );
+
+    // In case contradiction is a vector of zeros
+    if ( sparseContradiction.empty() )
+        return FloatUtils::isNegative( _groundBoundManager.getUpperBound( var ) - _groundBoundManager.getLowerBound( var ) );
+
     double derivedBound = UNSATCertificateUtils::computeCombinationUpperBound( sparseContradiction, _tableau->getSparseA(),
                                                                                _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(), _tableau->getN() );
     return FloatUtils::isNegative( derivedBound );
@@ -3339,6 +3346,10 @@ double Engine::explainBound( unsigned var, bool isUpper ) const
 
     SparseUnsortedList explanation = SparseUnsortedList( explanationVec.size() );
     explanationVec.empty() ? explanation.initializeToEmpty() : explanation.initialize( explanationVec.data(), explanationVec.size() );
+
+    if ( explanation.empty() )
+        return isUpper ? _groundBoundManager.getUpperBound( var ) : _groundBoundManager.getLowerBound( var );
+
     return UNSATCertificateUtils::computeBound( var, isUpper, explanation, _tableau->getSparseA(),
                                                 _groundBoundManager.getUpperBounds(), _groundBoundManager.getLowerBounds(),
                                                 _tableau->getN() );
