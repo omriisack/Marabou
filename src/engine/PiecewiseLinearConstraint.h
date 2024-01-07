@@ -469,7 +469,7 @@ public:
     /*
       Get the tableau auxiliary vars
     */
-    virtual const List<unsigned> getTableauAuxVars() const
+    virtual const List<unsigned> &getTableauAuxVars() const
     {
         return _tableauAuxVars;
     }
