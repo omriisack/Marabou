@@ -1,16 +1,16 @@
 /*********************                                                        */
 /*! \file SmtLibWriter.h
- ** \verbatim
- ** Top contributors (to current version):
- **   Omri Isac, Guy Katz
- ** This file is part of the Marabou project.
- ** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
- ** in the top-level source directory) and their institutional affiliations.
- ** All rights reserved. See the file COPYING in the top-level source
- ** directory for licensing information.\endverbatim
- **
- ** [[ Add lengthier description here ]]
- **/
+** \verbatim
+** Top contributors (to current version):
+**   Omri Isac, Guy Katz
+** This file is part of the Marabou project.
+** Copyright (c) 2017-2022 by the authors listed in the file AUTHORS
+** in the top-level source directory) and their institutional affiliations.
+** All rights reserved. See the file COPYING in the top-level source
+** directory for licensing information.\endverbatim
+**
+** [[ Add lengthier description here ]]
+**/
 
 #ifndef __SmtLibWriter_h__
 #define __SmtLibWriter_h__

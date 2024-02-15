@@ -61,6 +61,7 @@ protected:
     Super _super;
 };
 
+std::ostream &operator<<( std::ostream &stream, const String &string );
 
 #ifdef CXXTEST_RUNNING
 #include <cxxtest/ValueTraits.h>
