@@ -31,32 +31,32 @@
 #include "IEngine.h"
 #include "InputQuery.h"
 #include "JsonWriter.h"
-#include "LinearExpression.h"
 #include "LPSolverType.h"
-#include "Map.h"
+#include "LinearExpression.h"
 #include "MILPEncoder.h"
+#include "Map.h"
 #include "Options.h"
 #include "PrecisionRestorer.h"
 #include "Preprocessor.h"
 #include "SignalHandler.h"
 #include "SmtCore.h"
+#include "SmtLibWriter.h"
 #include "SnCDivideStrategy.h"
 #include "SparseUnsortedList.h"
 #include "Statistics.h"
 #include "SumOfInfeasibilitiesManager.h"
 #include "SymbolicBoundTighteningType.h"
-#include "SmtLibWriter.h"
 #include "UnsatCertificateNode.h"
 
-#include <context/context.h>
 #include <atomic>
+#include <context/context.h>
 
 
 #ifdef _WIN32
 #undef ERROR
 #endif
 
-#define ENGINE_LOG(x, ...) LOG(GlobalConfiguration::ENGINE_LOGGING, "Engine: %s\n", x)
+#define ENGINE_LOG( x, ... ) LOG( GlobalConfiguration::ENGINE_LOGGING, "Engine: %s\n", x )
 
 class EngineState;
 class InputQuery;
@@ -66,11 +66,13 @@ class String;
 
 using CVC4::context::Context;
 
-class Engine : public IEngine, public SignalHandler::Signalable
+class Engine
+    : public IEngine
+    , public SignalHandler::Signalable
 {
 public:
     enum {
-          MICROSECONDS_TO_SECONDS = 1000000,
+        MICROSECONDS_TO_SECONDS = 1000000,
     };
 
     Engine();
@@ -100,7 +102,7 @@ public:
     bool processInputQuery( InputQuery &inputQuery );
     bool processInputQuery( InputQuery &inputQuery, bool preprocess );
 
-    InputQuery prepareSnCInputQuery( );
+    InputQuery prepareSnCInputQuery();
     void exportInputQueryWithError( String errorMessage );
 
     /*
@@ -117,7 +119,7 @@ public:
       If the query is feasiable and has been successfully solved, this
       method can be used to extract the solution.
      */
-    void extractSolution( InputQuery &inputQuery );
+    void extractSolution( InputQuery &inputQuery, Preprocessor *preprocessor = nullptr );
 
     /*
       Methods for storing and restoring the state of the engine.
@@ -130,7 +132,7 @@ public:
       Preprocessor access.
     */
     bool preprocessingEnabled() const;
-    const Preprocessor *getPreprocessor();
+    Preprocessor *getPreprocessor();
 
     /*
       A request from the user to terminate
@@ -258,7 +260,7 @@ public:
     void updateGroundLowerBound( unsigned var, double value );
 
     /*
-	  Return all ground bounds as a vector
+      Return all ground bounds as a vector
     */
     double getGroundBound( unsigned var, bool isUpper ) const;
 
@@ -270,7 +272,7 @@ public:
     /*
      Set the current pointer of the UNSAT certificate
     */
-	void setUNSATCertificateCurrentPointer( UnsatCertificateNode *node );
+    void setUNSATCertificateCurrentPointer( UnsatCertificateNode *node );
 
     /*
       Get the pointer to the root of the UNSAT certificate
@@ -278,8 +280,8 @@ public:
     const UnsatCertificateNode *getUNSATCertificateRoot() const;
 
     /*
-	  Certify the UNSAT certificate
-	*/
+      Certify the UNSAT certificate
+    */
     bool certifyUNSATCertificate();
 
     /*
@@ -296,8 +298,8 @@ public:
       Propagate bound tightenings stored in the BoundManager
     */
     void propagateBoundManagerTightenings();
-private:
 
+private:
     enum BasisRestorationRequired {
         RESTORATION_NOT_NEEDED = 0,
         STRONG_RESTORATION_NEEDED = 1,
@@ -346,9 +348,9 @@ private:
     List<PiecewiseLinearConstraint *> _plConstraints;
 
     /*
-      The existing transcendental constraints.
+      The existing nonlinear constraints.
     */
-    List<TranscendentalConstraint *> _tsConstraints;
+    List<NonlinearConstraint *> _nlConstraints;
 
     /*
       Piecewise linear constraints that are currently violated.
@@ -569,6 +571,11 @@ private:
     bool allPlConstraintsHold();
 
     /*
+      Return true iff all nonlinear constraints hold.
+    */
+    bool allNonlinearConstraintsHold();
+
+    /*
       Select a currently-violated LP constraint for fixing
     */
     void selectViolatedPlConstraint();
@@ -670,7 +677,7 @@ private:
       Perform a round of symbolic bound tightening, taking into
       account the current state of the piecewise linear constraints.
     */
-    void performSymbolicBoundTightening( InputQuery *inputQuery = nullptr );
+    unsigned performSymbolicBoundTightening( InputQuery *inputQuery = nullptr );
 
     /*
       Perform a simulation which calculates concrete values of each layer with
@@ -704,14 +711,19 @@ private:
     void printInputBounds( const InputQuery &inputQuery ) const;
     void storeEquationsInDegradationChecker();
     void removeRedundantEquations( const double *constraintMatrix );
-    void selectInitialVariablesForBasis( const double *constraintMatrix, List<unsigned> &initialBasis, List<unsigned> &basicRows );
+    void selectInitialVariablesForBasis( const double *constraintMatrix,
+                                         List<unsigned> &initialBasis,
+                                         List<unsigned> &basicRows );
     void initializeTableau( const double *constraintMatrix, const List<unsigned> &initialBasis );
     void initializeBoundsAndConstraintWatchersInTableau( unsigned numberOfVariables );
     void initializeNetworkLevelReasoning();
     double *createConstraintMatrix();
     void addAuxiliaryVariables();
-    void augmentInitialBasisIfNeeded( List<unsigned> &initialBasis, const List<unsigned> &basicRows );
+    void augmentInitialBasisIfNeeded( List<unsigned> &initialBasis,
+                                      const List<unsigned> &basicRows );
     void performMILPSolverBoundedTightening( InputQuery *inputQuery = nullptr );
+
+    void performAdditionalBackwardAnalysisIfNeeded();
 
     /*
       Call MILP bound tightening for a single layer.
@@ -749,11 +761,6 @@ private:
       Solve the input query with a MILP solver (Gurobi)
     */
     bool solveWithMILPEncoding( unsigned timeoutInSeconds );
-
-    /*
-      Extract the satisfying assignment from the MILP solver
-    */
-    void extractSolutionFromGurobi( InputQuery &inputQuery );
 
     /*
       Perform SoI-based stochastic local search
@@ -795,7 +802,10 @@ private:
     /*
       Get Context reference
     */
-    Context &getContext() { return _context; }
+    Context &getContext()
+    {
+        return _context;
+    }
 
     /*
        Checks whether the current bounds are consistent. Exposed for the SmtCore.
@@ -815,7 +825,7 @@ private:
     bool _produceUNSATProofs;
     BoundManager _groundBoundManager;
     UnsatCertificateNode *_UNSATCertificate;
-    CVC4::context::CDO<UnsatCertificateNode*> *_UNSATCertificateCurrentPointer;
+    CVC4::context::CDO<UnsatCertificateNode *> *_UNSATCertificateCurrentPointer;
 
     /*
       Returns true iff there is a variable with bounds that can explain infeasibility of the tableau
@@ -825,7 +835,7 @@ private:
     /*
       Returns the value of a variable bound, as explained by the BoundExplainer
     */
-    double explainBound( unsigned var,  bool isUpper ) const;
+    double explainBound( unsigned var, bool isUpper ) const;
 
     /*
      Returns true iff both bounds are epsilon close to their explained bounds
@@ -843,7 +853,8 @@ private:
     void explainSimplexFailure();
 
     /*
-      Sanity check for ground bounds, returns true iff all bounds are at least as tight as their ground bounds
+      Sanity check for ground bounds, returns true iff all bounds are at least as tight as their
+      ground bounds
     */
     bool checkGroundBounds() const;
 
@@ -858,8 +869,8 @@ private:
     unsigned explainFailureWithCostFunction();
 
     /*
-      Updates an explanation of a bound according to a row, and checks for an explained contradiction.
-      If a contradiction can be deduced, return true. Else, revert and return false
+      Updates an explanation of a bound according to a row, and checks for an explained
+      contradiction. If a contradiction can be deduced, return true. Else, revert and return false
     */
     bool explainAndCheckContradiction( unsigned var, bool isUpper, const TableauRow *row );
     bool explainAndCheckContradiction( unsigned var, bool isUpper, const SparseUnsortedList *row );
