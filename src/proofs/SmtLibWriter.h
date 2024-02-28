@@ -77,6 +77,12 @@ public:
                                           List<String> &instance );
 
     /*
+     Adds a line representing a LeakyReLU constraint, in SMTLIB format, to the SMTLIB instance
+    */
+    static void
+    addLeakyReLUConstraint( unsigned b, unsigned f, double slope, const PhaseStatus status, List<String> &instance );
+
+    /*
       Adds a line representing a Tableau Row, in SMTLIB format, to the SMTLIB instance
     */
     static void addTableauRow( const SparseUnsortedList &row, List<String> &instance );

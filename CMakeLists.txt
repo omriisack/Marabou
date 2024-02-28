@@ -91,7 +91,7 @@ else()
 endif()
 
 set(Boost_USE_DEBUG_RUNTIME FALSE)
-find_package(Boost 1.80.0 COMPONENTS program_options timer chrono thread)
+find_package(Boost 1.67.0 COMPONENTS program_options timer chrono thread)
 # Find boost
 if (NOT ${Boost_FOUND})
   # bash file that downloads and install boost 1_80_0, the name need to match

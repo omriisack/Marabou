@@ -216,6 +216,16 @@ public:
     */
     bool shouldProduceProofs() const;
 
+    /*
+     Adds a lemma to the UNSATCertificateNode object
+    */
+    bool addLemmaExplanationAndTightenBound( unsigned var,
+                                             double value,
+                                             Tightening::BoundType affectedVarBound,
+                                             const List<unsigned> &causingVars,
+                                             Tightening::BoundType causingVarBound,
+                                             PiecewiseLinearFunctionType constraintType );
+
 private:
     CVC4::context::Context &_context;
     unsigned _size;
@@ -252,15 +262,6 @@ private:
     bool tightenLowerBound( unsigned variable, double value, const SparseUnsortedList &row );
     bool tightenUpperBound( unsigned variable, double value, const SparseUnsortedList &row );
 
-    /*
-      Adds a lemma to the UNSATCertificateNode object
-     */
-    bool addLemmaExplanationAndTightenBound( unsigned var,
-                                             double value,
-                                             BoundType affectedVarBound,
-                                             const List<unsigned> &causingVars,
-                                             BoundType causingVarBound,
-                                             PiecewiseLinearFunctionType constraintType );
 
     /*
       Explainer of all bounds

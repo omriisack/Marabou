@@ -149,9 +149,9 @@ void AbsoluteValueConstraint::notifyLowerBound( unsigned variable, double bound 
                 if ( proofs && !phaseFixed() )
                     _boundManager->addLemmaExplanationAndTightenBound( _f,
                                                                        fUpperBound,
-                                                                       BoundType::UPPER,
+                                                                       Tightening::UB,
                                                                        { variable, variable },
-                                                                       BoundType::UPPER,
+                                                                       Tightening::UB,
                                                                        getType() );
                 else if ( proofs && phaseFixed() )
                 {
@@ -229,9 +229,9 @@ void AbsoluteValueConstraint::notifyUpperBound( unsigned variable, double bound 
                 if ( proofs && !phaseFixed() )
                     _boundManager->addLemmaExplanationAndTightenBound( _f,
                                                                        fUpperBound,
-                                                                       BoundType::UPPER,
+                                                                       Tightening::UB,
                                                                        { variable, variable },
-                                                                       BoundType::UPPER,
+                                                                       Tightening::UB,
                                                                        getType() );
                 else if ( proofs && phaseFixed() )
                 {
@@ -826,7 +826,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         setPhaseStatus( ABS_PHASE_POSITIVE );
         if ( proofs )
             _boundManager->addLemmaExplanationAndTightenBound(
-                _posAux, 0, BoundType::UPPER, { _b }, BoundType::LOWER, getType() );
+                _posAux, 0, Tightening::UB, { _b }, Tightening::LB, getType() );
         return;
     }
 
@@ -836,7 +836,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         setPhaseStatus( ABS_PHASE_NEGATIVE );
         if ( proofs )
             _boundManager->addLemmaExplanationAndTightenBound(
-                _negAux, 0, BoundType::UPPER, { _b }, BoundType::UPPER, getType() );
+                _negAux, 0, Tightening::UB, { _b }, Tightening::UB, getType() );
         return;
     }
 
@@ -850,7 +850,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         setPhaseStatus( ABS_PHASE_NEGATIVE );
         if ( proofs )
             _boundManager->addLemmaExplanationAndTightenBound(
-                _negAux, 0, BoundType::UPPER, { _b, _f }, BoundType::UPPER, getType() );
+                _negAux, 0, Tightening::UB, { _b, _f }, Tightening::UB, getType() );
         return;
     }
 
@@ -861,7 +861,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
         setPhaseStatus( ABS_PHASE_POSITIVE );
         if ( proofs )
             _boundManager->addLemmaExplanationAndTightenBound(
-                _posAux, 0, BoundType::UPPER, { _b, _f }, BoundType::LOWER, getType() );
+                _posAux, 0, Tightening::UB, { _b, _f }, Tightening::LB, getType() );
         return;
     }
 
@@ -880,7 +880,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
             setPhaseStatus( ABS_PHASE_NEGATIVE );
             if ( proofs )
                 _boundManager->addLemmaExplanationAndTightenBound(
-                    _negAux, 0, BoundType::UPPER, { _posAux }, BoundType::LOWER, getType() );
+                    _negAux, 0, Tightening::UB, { _posAux }, Tightening::LB, getType() );
             return;
         }
 
@@ -897,7 +897,7 @@ void AbsoluteValueConstraint::fixPhaseIfNeeded()
             setPhaseStatus( ABS_PHASE_POSITIVE );
             if ( proofs )
                 _boundManager->addLemmaExplanationAndTightenBound(
-                    _posAux, 0, BoundType::UPPER, { _negAux }, BoundType::LOWER, getType() );
+                    _posAux, 0, Tightening::UB, { _negAux }, Tightening::LB, getType() );
             return;
         }
     }
