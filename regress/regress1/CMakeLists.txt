@@ -1,6 +1,6 @@
 
-marabou_add_coav_test(1 "reluBenchmark1.30941200256s_UNSAT.nnet" unsat) 
-marabou_add_coav_test(1 "reluBenchmark0.94518494606s_SAT.nnet" sat) 
+marabou_add_coav_test(1 "reluBenchmark1.30941200256s_UNSAT.nnet" unsat)
+marabou_add_coav_test(1 "reluBenchmark0.94518494606s_SAT.nnet" sat)
 marabou_add_acasxu_test(1 "ACASXU_experimental_v2a_1_8" "3" sat)
 marabou_add_acasxu_test(1 "ACASXU_experimental_v2a_2_9" "3" unsat)
 marabou_add_acasxu_test(1 "ACASXU_experimental_v2a_1_6" "3" unsat)
@@ -167,3 +167,9 @@ marabou_add_input_query_test(1 deep_6_index_5566.ipq unsat "--prove-unsat" "ipq"
 marabou_add_input_query_test(1 deep_6_index_5567.ipq unsat "--prove-unsat" "ipq")
 marabou_add_input_query_test(1 deep_6_index_5525.ipq unsat "--prove-unsat" "ipq")
 marabou_add_input_query_test(1 deep_6_index_7779.ipq unsat "--prove-unsat" "ipq")
+
+# Leaky ReLU
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind85_unsat.ipq unsat "ipq")
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind48_unsat.ipq unsat "ipq")
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind85_unsat.ipq unsat "--prove-unsat" "ipq")
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind48_unsat.ipq unsat "--prove-unsat" "ipq")
