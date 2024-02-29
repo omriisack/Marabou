@@ -213,9 +213,8 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
     {
         PiecewiseLinearConstraint *matchedConstraint = NULL;
         Tightening::BoundType affectedVarBound = plcLemma->getAffectedVarBound();
-        double explainedBound = affectedVarBound == Tightening::UB
-                                  ? FloatUtils::infinity()
-                                  : FloatUtils::negativeInfinity();
+        double explainedBound = affectedVarBound == Tightening::UB ? FloatUtils::infinity()
+                                                                   : FloatUtils::negativeInfinity();
         const List<unsigned> causingVars = plcLemma->getCausingVars();
         unsigned affectedVar = plcLemma->getAffectedVar();
         List<unsigned> participatingVars;
@@ -243,11 +242,14 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             {
                 if ( !causingVars.empty() )
                     matchedConstraint = constraint;
-                // In this case, lemmas can only be accepted if their bounds (precisely) are a part of a constraint split
+                // In this case, lemmas can only be accepted if their bounds (precisely) are a part
+                // of a constraint split
                 else
                     for ( const auto &caseSplit : constraint->getCaseSplits() )
                         for ( const auto &bound : caseSplit.getBoundTightenings() )
-                            if ( bound._variable == affectedVar && FloatUtils::areEqual( bound._value, plcLemma->getBound() ) && bound._type == affectedVarBound )
+                            if ( bound._variable == affectedVar &&
+                                 FloatUtils::areEqual( bound._value, plcLemma->getBound() ) &&
+                                 bound._type == affectedVarBound )
                                 matchedConstraint = constraint;
             }
         }
@@ -282,7 +284,7 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             temp[affectedVar] = explainedBound;
             ASSERT( !_upperBoundChanges.empty() && !_lowerBoundChanges.empty() );
             affectedVarBound == Tightening::UB ? _upperBoundChanges.top().insert( affectedVar )
-                                                 : _lowerBoundChanges.top().insert( affectedVar );
+                                               : _lowerBoundChanges.top().insert( affectedVar );
         }
     }
     return true;
@@ -393,12 +395,13 @@ void Checker::writeToFile()
         else if ( constraint->getType() == DISJUNCTION )
             SmtLibWriter::addDisjunctionConstraint(
                 ( (DisjunctionConstraint *)constraint )->getFeasibleDisjuncts(), leafInstance );
-        else if (constraint->getType() == LEAKY_RELU )
+        else if ( constraint->getType() == LEAKY_RELU )
         {
             b = conVars[0];
             f = conVars[1];
-            double slope = ( (LeakyReluConstraint *) constraint )->getSlope();
-            SmtLibWriter::addLeakyReLUConstraint( b, f, slope ,constraint->getPhaseStatus(), leafInstance );
+            double slope = ( (LeakyReluConstraint *)constraint )->getSlope();
+            SmtLibWriter::addLeakyReLUConstraint(
+                b, f, slope, constraint->getPhaseStatus(), leafInstance );
         }
     }
 
@@ -464,16 +467,18 @@ Checker::getCorrespondingReluConstraint( const List<PiecewiseLinearCaseSplit> &s
     // Check that f = b + aux corresponds to a problem constraints
     for ( auto &constraint : _problemConstraints )
     {
-        if (constraint->getType() == RELU )
+        if ( constraint->getType() == RELU )
         {
             auto constraintVars = constraint->getParticipatingVariables();
             unsigned b = constraintVars.front();
             unsigned aux = constraintVars.back();
             constraintVars.popBack();
-            unsigned f =  constraintVars.back();
-            if ( inactiveSplit.exists( Tightening( b, 0.0, Tightening::UB ) ) && inactiveSplit.exists( Tightening( f, 0.0, Tightening::UB ) )
-                 && activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
-                 ( activeSplit.size() == 1 || activeSplit.exists( Tightening( aux, 0.0, Tightening::UB ) ) ) )
+            unsigned f = constraintVars.back();
+            if ( inactiveSplit.exists( Tightening( b, 0.0, Tightening::UB ) ) &&
+                 inactiveSplit.exists( Tightening( f, 0.0, Tightening::UB ) ) &&
+                 activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
+                 ( activeSplit.size() == 1 ||
+                   activeSplit.exists( Tightening( aux, 0.0, Tightening::UB ) ) ) )
                 return constraint;
         }
     }
@@ -520,7 +525,8 @@ Checker::getCorrespondingSignConstraint( const List<PiecewiseLinearCaseSplit> &s
     for ( auto &constraint : _problemConstraints )
     {
         auto constraintVars = constraint->getParticipatingVariables();
-        if ( constraint->getType() == SIGN && constraintVars.back() == b && constraintVars.front() == f )
+        if ( constraint->getType() == SIGN && constraintVars.back() == b &&
+             constraintVars.front() == f )
             return constraint;
     }
 
@@ -567,8 +573,8 @@ Checker::getCorrespondingAbsConstraint( const List<PiecewiseLinearCaseSplit> &sp
     for ( auto &constraint : _problemConstraints )
     {
         auto constraintVars = constraint->getParticipatingVariables();
-        if ( constraint->getType() == ABSOLUTE_VALUE && constraintVars.front() == b && constraintVars.back() == negAux &&
-             constraintVars.exists( posAux ) )
+        if ( constraint->getType() == ABSOLUTE_VALUE && constraintVars.front() == b &&
+             constraintVars.back() == negAux && constraintVars.exists( posAux ) )
             return constraint;
     }
 
@@ -655,33 +661,37 @@ Checker::getCorrespondingLeakyReluConstraint( const List<PiecewiseLinearCaseSpli
 
     // Find the LB tightening, its var is b
     auto &activeSplit = firstSplitTightenings.front()._type == Tightening::LB
-                        ? firstSplitTightenings
-                        : secondSplitTightenings;
+                          ? firstSplitTightenings
+                          : secondSplitTightenings;
     auto &inactiveSplit = firstSplitTightenings.front()._type == Tightening::LB
-                          ? secondSplitTightenings
-                          : firstSplitTightenings;
+                            ? secondSplitTightenings
+                            : firstSplitTightenings;
 
     // Aux var may or may not be used in either splits, but sizes are always the same
-    if ( !( activeSplit.size() == 3 && inactiveSplit.size() == 3 ) && !( activeSplit.size() == 2 && inactiveSplit.size() == 2 ) )
+    if ( !( activeSplit.size() == 3 && inactiveSplit.size() == 3 ) &&
+         !( activeSplit.size() == 2 && inactiveSplit.size() == 2 ) )
         return NULL;
 
     // Return the constraint for which f = LeakyRelu(b)
     for ( auto &constraint : _problemConstraints )
     {
-        if (constraint->getType() == LEAKY_RELU )
-            {
-                auto constraintVars = constraint->getParticipatingVariables();
-                unsigned b = constraintVars.front();
-                unsigned inactiveAux = constraintVars.back();
-                constraintVars.popBack();
-                unsigned activeAux = constraintVars.back();
-                constraintVars.popBack();
-                unsigned f =  constraintVars.back();
-                if ( inactiveSplit.exists( Tightening( b, 0.0, Tightening::UB ) ) && inactiveSplit.exists( Tightening( f, 0.0, Tightening::UB ) )
-                     && inactiveSplit.exists( Tightening( inactiveAux, 0.0, Tightening::UB ) ) && activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
-                     activeSplit.exists( Tightening( f, 0.0, Tightening::LB ) ) && activeSplit.exists( Tightening( activeAux, 0.0, Tightening::UB ) ) )
-                    return constraint;
-            }
+        if ( constraint->getType() == LEAKY_RELU )
+        {
+            auto constraintVars = constraint->getParticipatingVariables();
+            unsigned b = constraintVars.front();
+            unsigned inactiveAux = constraintVars.back();
+            constraintVars.popBack();
+            unsigned activeAux = constraintVars.back();
+            constraintVars.popBack();
+            unsigned f = constraintVars.back();
+            if ( inactiveSplit.exists( Tightening( b, 0.0, Tightening::UB ) ) &&
+                 inactiveSplit.exists( Tightening( f, 0.0, Tightening::UB ) ) &&
+                 inactiveSplit.exists( Tightening( inactiveAux, 0.0, Tightening::UB ) ) &&
+                 activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
+                 activeSplit.exists( Tightening( f, 0.0, Tightening::LB ) ) &&
+                 activeSplit.exists( Tightening( activeAux, 0.0, Tightening::UB ) ) )
+                return constraint;
+        }
     }
 
     return NULL;
@@ -702,14 +712,13 @@ double Checker::checkReluLemma( const PLCLemma &expl,
     Tightening::BoundType affectedVarBound = expl.getAffectedVarBound();
     ASSERT( explanations.size() == 1 );
 
-    double explainedBound =
-        UNSATCertificateUtils::computeBound( causingVar,
-                                             causingVarBound == Tightening::UB,
-                                             explanations.back(),
-                                             _initialTableau,
-                                             _groundUpperBounds.data(),
-                                             _groundLowerBounds.data(),
-                                             _groundUpperBounds.size() );
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar,
+                                                                 causingVarBound == Tightening::UB,
+                                                                 explanations.back(),
+                                                                 _initialTableau,
+                                                                 _groundUpperBounds.data(),
+                                                                 _groundLowerBounds.data(),
+                                                                 _groundUpperBounds.size() );
 
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
     ASSERT( constraintVars.size() == 3 );
@@ -720,11 +729,15 @@ double Checker::checkReluLemma( const PLCLemma &expl,
     unsigned aux = conVec[2];
 
     // If explanation is phase fixing, mark it
-    if ( ( affectedVarBound == Tightening::LB && affectedVar == f && FloatUtils::isPositive( bound ) ) ||
-         ( affectedVarBound == Tightening::UB && affectedVar == aux && FloatUtils::isZero( bound ) ) )
+    if ( ( affectedVarBound == Tightening::LB && affectedVar == f &&
+           FloatUtils::isPositive( bound ) ) ||
+         ( affectedVarBound == Tightening::UB && affectedVar == aux &&
+           FloatUtils::isZero( bound ) ) )
         constraint.setPhaseStatus( RELU_PHASE_ACTIVE );
-    else if ( ( affectedVarBound == Tightening::LB && affectedVar == aux && FloatUtils::isPositive( bound ) ) ||
-              ( affectedVarBound == Tightening::UB && affectedVar == f && FloatUtils::isZero( bound ) ) )
+    else if ( ( affectedVarBound == Tightening::LB && affectedVar == aux &&
+                FloatUtils::isPositive( bound ) ) ||
+              ( affectedVarBound == Tightening::UB && affectedVar == f &&
+                FloatUtils::isZero( bound ) ) )
         constraint.setPhaseStatus( RELU_PHASE_INACTIVE );
 
     // Make sure the explanation is explained using a ReLU bound tightening. Cases are matching each
@@ -733,8 +746,7 @@ double Checker::checkReluLemma( const PLCLemma &expl,
 
     // If lb of b is non negative, then ub of aux is 0
     if ( causingVar == b && causingVarBound == Tightening::LB && affectedVar == aux &&
-         affectedVarBound == Tightening::UB &&
-         !FloatUtils::isNegative( explainedBound + epsilon ) )
+         affectedVarBound == Tightening::UB && !FloatUtils::isNegative( explainedBound + epsilon ) )
         return 0;
 
     // If lb of f is positive, then ub if aux is 0
@@ -791,7 +803,7 @@ double Checker::checkReluLemma( const PLCLemma &expl,
         return -explainedBound;
 
     return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                : FloatUtils::negativeInfinity();
+                                              : FloatUtils::negativeInfinity();
 }
 
 double Checker::checkSignLemma( const PLCLemma &expl,
@@ -809,14 +821,13 @@ double Checker::checkSignLemma( const PLCLemma &expl,
     Tightening::BoundType affectedVarBound = expl.getAffectedVarBound();
     ASSERT( explanations.size() == 1 );
 
-    double explainedBound =
-        UNSATCertificateUtils::computeBound( causingVar,
-                                             causingVarBound == Tightening::UB,
-                                             explanations.front(),
-                                             _initialTableau,
-                                             _groundUpperBounds.data(),
-                                             _groundLowerBounds.data(),
-                                             _groundUpperBounds.size() );
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar,
+                                                                 causingVarBound == Tightening::UB,
+                                                                 explanations.front(),
+                                                                 _initialTableau,
+                                                                 _groundUpperBounds.data(),
+                                                                 _groundLowerBounds.data(),
+                                                                 _groundUpperBounds.size() );
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
     ASSERT( constraintVars.size() == 2 );
 
@@ -876,7 +887,7 @@ double Checker::checkSignLemma( const PLCLemma &expl,
         return -1;
 
     return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                : FloatUtils::negativeInfinity();
+                                              : FloatUtils::negativeInfinity();
 }
 
 double Checker::checkAbsLemma( const PLCLemma &expl,
@@ -937,7 +948,7 @@ double Checker::checkAbsLemma( const PLCLemma &expl,
                 return FloatUtils::max( explainedUpperBound, -explainedLowerBound );
 
             return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                        : FloatUtils::negativeInfinity();
+                                                      : FloatUtils::negativeInfinity();
         }
         // Cases of a phase-fixing lemma
         else
@@ -974,7 +985,7 @@ double Checker::checkAbsLemma( const PLCLemma &expl,
             }
 
             return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                        : FloatUtils::negativeInfinity();
+                                                      : FloatUtils::negativeInfinity();
         }
     }
 
@@ -982,14 +993,13 @@ double Checker::checkAbsLemma( const PLCLemma &expl,
     const List<SparseUnsortedList> &explanation = expl.getExplanations();
     unsigned causingVar = expl.getCausingVars().front();
 
-    double explainedBound =
-        UNSATCertificateUtils::computeBound( causingVar,
-                                             causingVarBound == Tightening::UB,
-                                             explanation.front(),
-                                             _initialTableau,
-                                             _groundUpperBounds.data(),
-                                             _groundLowerBounds.data(),
-                                             _groundUpperBounds.size() );
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar,
+                                                                 causingVarBound == Tightening::UB,
+                                                                 explanation.front(),
+                                                                 _initialTableau,
+                                                                 _groundUpperBounds.data(),
+                                                                 _groundLowerBounds.data(),
+                                                                 _groundUpperBounds.size() );
 
     if ( affectedVar == pos && causingVar == b && causingVarBound == Tightening::LB &&
          !FloatUtils::isNegative( explainedBound + epsilon ) && bound == 0 )
@@ -1017,7 +1027,7 @@ double Checker::checkAbsLemma( const PLCLemma &expl,
     }
 
     return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                : FloatUtils::negativeInfinity();
+                                              : FloatUtils::negativeInfinity();
 }
 
 double Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint )
@@ -1032,7 +1042,7 @@ double Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &
     Tightening::BoundType causingVarBound = expl.getCausingVarBound();
     Tightening::BoundType affectedVarBound = expl.getAffectedVarBound();
     double explainedBound = affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                                 : FloatUtils::negativeInfinity();
+                                                               : FloatUtils::negativeInfinity();
 
     unsigned f = maxConstraint->getF();
 
@@ -1068,15 +1078,16 @@ double Checker::checkMaxLemma( const PLCLemma &expl, PiecewiseLinearConstraint &
         return maxBound;
 
     return affectedVarBound == Tightening::UB ? FloatUtils::infinity()
-                                                : FloatUtils::negativeInfinity();
+                                              : FloatUtils::negativeInfinity();
 }
 
 
 double Checker::checkLeakyReluLemma( const PLCLemma &expl,
-                                PiecewiseLinearConstraint &constraint,
-                                double epsilon )
+                                     PiecewiseLinearConstraint &constraint,
+                                     double epsilon )
 {
-    ASSERT( constraint.getType() == LEAKY_RELU && expl.getConstraintType() == LEAKY_RELU && epsilon > 0 );
+    ASSERT( constraint.getType() == LEAKY_RELU && expl.getConstraintType() == LEAKY_RELU &&
+            epsilon > 0 );
     ASSERT( expl.getCausingVars().size() == 1 );
 
     unsigned causingVar = expl.getCausingVars().front();
@@ -1087,14 +1098,13 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
     Tightening::BoundType affectedVarBound = expl.getAffectedVarBound();
     ASSERT( explanations.size() == 1 );
 
-    double explainedBound =
-            UNSATCertificateUtils::computeBound( causingVar,
-                                                 causingVarBound == Tightening::UB,
-                                                 explanations.back(),
-                                                 _initialTableau,
-                                                 _groundUpperBounds.data(),
-                                                 _groundLowerBounds.data(),
-                                                 _groundUpperBounds.size() );
+    double explainedBound = UNSATCertificateUtils::computeBound( causingVar,
+                                                                 causingVarBound == Tightening::UB,
+                                                                 explanations.back(),
+                                                                 _initialTableau,
+                                                                 _groundUpperBounds.data(),
+                                                                 _groundLowerBounds.data(),
+                                                                 _groundUpperBounds.size() );
 
     List<unsigned> constraintVars = constraint.getParticipatingVariables();
     ASSERT( constraintVars.size() == 4 );
@@ -1105,42 +1115,54 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
     unsigned activeAux = conVec[2];
     unsigned inactiveAux = conVec[3];
 
-    double slope = ( ( LeakyReluConstraint * ) &constraint )->getSlope();
+    double slope = ( (LeakyReluConstraint *)&constraint )->getSlope();
 
     // If explanation is phase fixing, mark it
-    if ( ( affectedVarBound == Tightening::LB && affectedVar == f && !FloatUtils::isNegative( bound ) ) ||
-         ( affectedVarBound == Tightening::LB && affectedVar == b && !FloatUtils::isNegative( bound ) ) ||
-         ( affectedVarBound == Tightening::LB && affectedVar == inactiveAux && FloatUtils::isPositive( bound ) ) ||
-         ( affectedVarBound == Tightening::UB && affectedVar == activeAux && FloatUtils::isZero( bound ) ) )
+    if ( ( affectedVarBound == Tightening::LB && affectedVar == f &&
+           !FloatUtils::isNegative( bound ) ) ||
+         ( affectedVarBound == Tightening::LB && affectedVar == b &&
+           !FloatUtils::isNegative( bound ) ) ||
+         ( affectedVarBound == Tightening::LB && affectedVar == inactiveAux &&
+           FloatUtils::isPositive( bound ) ) ||
+         ( affectedVarBound == Tightening::UB && affectedVar == activeAux &&
+           FloatUtils::isZero( bound ) ) )
         constraint.setPhaseStatus( RELU_PHASE_ACTIVE );
-    else if ( ( affectedVarBound == Tightening::UB && affectedVar == f && FloatUtils::isNegative( bound ) ) ||
-              ( affectedVarBound == Tightening::UB && affectedVar == b && FloatUtils::isNegative( bound ) ) ||
-              ( affectedVarBound == Tightening::LB && affectedVar == activeAux && FloatUtils::isPositive( bound ) ) ||
-              ( affectedVarBound == Tightening::UB && affectedVar == inactiveAux && FloatUtils::isZero( bound ) ) )
+    else if ( ( affectedVarBound == Tightening::UB && affectedVar == f &&
+                FloatUtils::isNegative( bound ) ) ||
+              ( affectedVarBound == Tightening::UB && affectedVar == b &&
+                FloatUtils::isNegative( bound ) ) ||
+              ( affectedVarBound == Tightening::LB && affectedVar == activeAux &&
+                FloatUtils::isPositive( bound ) ) ||
+              ( affectedVarBound == Tightening::UB && affectedVar == inactiveAux &&
+                FloatUtils::isZero( bound ) ) )
         constraint.setPhaseStatus( RELU_PHASE_INACTIVE );
 
-    // Make sure the explanation is explained using a LeakyReLU bound tightening. Cases are matching each
-    // rule in ReluConstraint.cpp We allow explained bound to be tighter than the ones recorded
+    // Make sure the explanation is explained using a LeakyReLU bound tightening. Cases are matching
+    // each rule in ReluConstraint.cpp We allow explained bound to be tighter than the ones recorded
     // (since an explanation can explain tighter bounds), and an epsilon sized error is tolerated.
 
     // If lb of b or f is positive, then ub of active aux is 0
-    if ( ( causingVar == b || causingVar == f ) && causingVarBound == Tightening::LB && affectedVar == activeAux &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
+    if ( ( causingVar == b || causingVar == f ) && causingVarBound == Tightening::LB &&
+         affectedVar == activeAux && affectedVarBound == Tightening::UB &&
+         FloatUtils::isPositive( explainedBound + epsilon ) )
         return 0;
 
     // If lb of f is negative, then lb of b is bound / slope
     if ( causingVar == f && causingVarBound == Tightening::LB && affectedVar == b &&
-         affectedVarBound == Tightening::LB && FloatUtils::isNegative( bound ) && FloatUtils::gte( explainedBound + epsilon, bound * slope ) )
+         affectedVarBound == Tightening::LB && FloatUtils::isNegative( bound ) &&
+         FloatUtils::gte( explainedBound + epsilon, bound * slope ) )
         return explainedBound / slope;
 
     // If lb of active aux is positive, then ub of inactive aux is 0
-    if ( causingVar == activeAux && causingVarBound == Tightening::LB && affectedVar == inactiveAux &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
+    if ( causingVar == activeAux && causingVarBound == Tightening::LB &&
+         affectedVar == inactiveAux && affectedVarBound == Tightening::UB &&
+         FloatUtils::isPositive( explainedBound + epsilon ) )
         return 0;
 
     // ... and vice versa
-    if ( causingVar == inactiveAux && causingVarBound == Tightening::LB && affectedVar == activeAux &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
+    if ( causingVar == inactiveAux && causingVarBound == Tightening::LB &&
+         affectedVar == activeAux && affectedVarBound == Tightening::UB &&
+         FloatUtils::isPositive( explainedBound + epsilon ) )
         return 0;
 
     // Active and inactive aux may fix phase, and thus the bounds of f
@@ -1154,17 +1176,20 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
 
     // If ub of f is positive, propagate to b
     if ( causingVar == f && causingVarBound == Tightening::UB && affectedVar == b &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) && FloatUtils::lte(explainedBound - epsilon, bound ) )
+         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) &&
+         FloatUtils::lte( explainedBound - epsilon, bound ) )
         return explainedBound;
 
     // ... and vice versa
     if ( causingVar == b && causingVarBound == Tightening::UB && affectedVar == f &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) && FloatUtils::lte(explainedBound - epsilon, bound ) )
+         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) &&
+         FloatUtils::lte( explainedBound - epsilon, bound ) )
         return explainedBound;
 
     // If ub of f or b is negative, then ub of inactive aux is 0
-    if ( ( causingVar == b || causingVar == f ) && causingVarBound == Tightening::UB && affectedVar == inactiveAux &&
-         affectedVarBound == Tightening::UB && FloatUtils::isNegative( explainedBound - epsilon ) )
+    if ( ( causingVar == b || causingVar == f ) && causingVarBound == Tightening::UB &&
+         affectedVar == inactiveAux && affectedVarBound == Tightening::UB &&
+         FloatUtils::isNegative( explainedBound - epsilon ) )
         return 0;
 
     return affectedVarBound == Tightening::UB ? FloatUtils::infinity()

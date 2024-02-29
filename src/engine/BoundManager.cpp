@@ -428,7 +428,7 @@ bool BoundManager::addLemmaExplanationAndTightenBound( unsigned var,
     Vector<SparseUnsortedList> allExplanations( 0 );
 
     bool tightened = affectedVarBound == Tightening::UB ? tightenUpperBound( var, value )
-                                                          : tightenLowerBound( var, value );
+                                                        : tightenLowerBound( var, value );
 
     if ( tightened )
     {
@@ -466,7 +466,6 @@ bool BoundManager::addLemmaExplanationAndTightenBound( unsigned var,
                 allExplanations.append( getExplanation( element, Tightening::UB ) );
         else
             throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED );
-
     }
 
     if ( tightened || causingVars.empty() )

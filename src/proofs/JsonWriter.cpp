@@ -257,8 +257,8 @@ void JsonWriter::writePLCLemmas( const List<std::shared_ptr<PLCLemma>> &PLCExpla
         instance.append( String( "{" ) );
         instance.append( String( AFFECTED_VAR ) + std::to_string( lemma->getAffectedVar() ) +
                          String( ", " ) );
-        affectedBoundType =
-            lemma->getAffectedVarBound() == Tightening::UB ? String( UPPER_BOUND ) : String( LOWER_BOUND );
+        affectedBoundType = lemma->getAffectedVarBound() == Tightening::UB ? String( UPPER_BOUND )
+                                                                           : String( LOWER_BOUND );
         instance.append( String( AFFECTED_BOUND ) + affectedBoundType + String( ", " ) );
         instance.append( String( BOUND ) + convertDoubleToString( lemma->getBound() ) );
 
@@ -282,8 +282,9 @@ void JsonWriter::writePLCLemmas( const List<std::shared_ptr<PLCLemma>> &PLCExpla
                 instance.append( " ]\n" );
             }
 
-            causingBoundType = lemma->getCausingVarBound() == Tightening::UB ? String( UPPER_BOUND )
-                                                                    : String( LOWER_BOUND );
+            causingBoundType = lemma->getCausingVarBound() == Tightening::UB
+                                 ? String( UPPER_BOUND )
+                                 : String( LOWER_BOUND );
             instance.append( String( CAUSING_BOUND ) + causingBoundType + String( ", " ) );
             instance.append( String( CONSTRAINT ) + std::to_string( lemma->getConstraintType() ) +
                              String( ",\n" ) );

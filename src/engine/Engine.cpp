@@ -2193,12 +2193,17 @@ bool Engine::applyValidConstraintCaseSplit( PiecewiseLinearConstraint *constrain
         _smtCore.recordImpliedValidSplit( validSplit );
         applySplit( validSplit );
 
-        // In case of multi-phase constraints, these bounds are not explicitly learned as bound lemmas elsewhere
+        // In case of multi-phase constraints, these bounds are not explicitly learned as bound
+        // lemmas elsewhere
         if ( _produceUNSATProofs )
             if ( constraint->getType() == DISJUNCTION )
                 for ( auto &bound : validSplit.getBoundTightenings() )
-                    _boundManager.addLemmaExplanationAndTightenBound( bound._variable, bound._value, bound._type,
-                                                                      List<unsigned>(), bound._type, constraint->getType() );
+                    _boundManager.addLemmaExplanationAndTightenBound( bound._variable,
+                                                                      bound._value,
+                                                                      bound._type,
+                                                                      List<unsigned>(),
+                                                                      bound._type,
+                                                                      constraint->getType() );
 
         if ( _soiManager )
             _soiManager->removeCostComponentFromHeuristicCost( constraint );
