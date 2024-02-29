@@ -169,7 +169,7 @@ marabou_add_input_query_test(1 deep_6_index_5525.ipq unsat "--prove-unsat" "ipq"
 marabou_add_input_query_test(1 deep_6_index_7779.ipq unsat "--prove-unsat" "ipq")
 
 # Leaky ReLU
-marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind85_unsat.ipq unsat "ipq")
-marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind48_unsat.ipq unsat "ipq")
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind85_unsat.ipq unsat "" "ipq")
+marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind48_unsat.ipq unsat "" "ipq")
 marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind85_unsat.ipq unsat "--prove-unsat" "ipq")
 marabou_add_input_query_test(1 mnist5x20_leaky_relu_eps0.02_ind48_unsat.ipq unsat "--prove-unsat" "ipq")
