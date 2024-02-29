@@ -1083,6 +1083,7 @@ void ReluConstraint::createTighteningRow()
     _tighteningRow->_row[0] = TableauRow::Entry( _b, 1 );
     _tighteningRow->_row[1] = TableauRow::Entry( _aux, 1 );
     _tighteningRow->_row[2] = TableauRow::Entry( _tableauAuxVars.back(), 1 );
+    _tighteningRow->_scalar = 0;
 }
 
 const List<unsigned> ReluConstraint::getNativeAuxVars() const

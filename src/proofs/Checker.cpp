@@ -256,9 +256,7 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             return false;
 
         PiecewiseLinearFunctionType constraintType = matchedConstraint->getType();
-        if ( causingVars.empty() )
-            explainedBound = plcLemma->getBound();
-        else if ( constraintType == RELU )
+        if ( constraintType == RELU )
             explainedBound = checkReluLemma( *plcLemma, *matchedConstraint, epsilon );
         else if ( constraintType == SIGN )
             explainedBound = checkSignLemma( *plcLemma, *matchedConstraint, epsilon );
@@ -268,6 +266,8 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             explainedBound = checkMaxLemma( *plcLemma, *matchedConstraint );
         else if ( constraintType == LEAKY_RELU )
             explainedBound = checkLeakyReluLemma( *plcLemma, *matchedConstraint, epsilon );
+        else if ( causingVars.empty() && constraintType == DISJUNCTION )
+            explainedBound = plcLemma->getBound();
         else
             return false;
 
@@ -1130,8 +1130,8 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
 
     // If lb of f is negative, then lb of b is bound / slope
     if ( causingVar == f && causingVarBound == Tightening::LB && affectedVar == b &&
-         affectedVarBound == Tightening::LB && FloatUtils::isNegative( bound ) )
-        return FloatUtils::max( 0, explainedBound ) / slope;
+         affectedVarBound == Tightening::LB && FloatUtils::isNegative( bound ) && FloatUtils::gte( explainedBound + epsilon, bound * slope ) )
+        return explainedBound / slope;
 
     // If lb of active aux is positive, then ub of inactive aux is 0
     if ( causingVar == activeAux && causingVarBound == Tightening::LB && affectedVar == inactiveAux &&
@@ -1143,15 +1143,24 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
          affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
         return 0;
 
-    // If ub of f is positive, propagate to be
+    // Active and inactive aux may fix phase, and thus the bounds of f
+    if ( causingVar == inactiveAux && causingVarBound == Tightening::LB && affectedVar == f &&
+         affectedVarBound == Tightening::LB && FloatUtils::isPositive( explainedBound + epsilon ) )
+        return 0;
+
+    if ( causingVar == activeAux && causingVarBound == Tightening::LB && affectedVar == f &&
+         affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
+        return 0;
+
+    // If ub of f is positive, propagate to b
     if ( causingVar == f && causingVarBound == Tightening::UB && affectedVar == b &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) )
-        return FloatUtils::max(0, explainedBound );
+         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) && FloatUtils::lte(explainedBound - epsilon, bound ) )
+        return explainedBound;
 
     // ... and vice versa
     if ( causingVar == b && causingVarBound == Tightening::UB && affectedVar == f &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) )
-        return FloatUtils::max( 0, explainedBound );
+         affectedVarBound == Tightening::UB && FloatUtils::isPositive( bound ) && FloatUtils::lte(explainedBound - epsilon, bound ) )
+        return explainedBound;
 
     // If ub of f or b is negative, then ub of inactive aux is 0
     if ( ( causingVar == b || causingVar == f ) && causingVarBound == Tightening::UB && affectedVar == inactiveAux &&

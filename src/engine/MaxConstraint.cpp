@@ -720,6 +720,7 @@ void MaxConstraint::createElementTighteningRow( unsigned element )
     _elementToTighteningRow[element]->_row[1] = TableauRow::Entry( _elementToAux[element], 1 );
     _elementToTighteningRow[element]->_row[2] =
         TableauRow::Entry( _elementToTableauAux[element], 1 );
+    _elementToTighteningRow[element]->_scalar = 0;
 }
 
 const List<unsigned> MaxConstraint::getNativeAuxVars() const
