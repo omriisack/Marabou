@@ -269,17 +269,17 @@ private:
 
     void addTableauAuxVar( unsigned tableauAuxVar, unsigned constraintAuxVar ) override;
 
-    const List<unsigned>getNativeAuxVars() const override;
+    const List<unsigned> getNativeAuxVars() const override;
 
     /*
-     Create a the tableau row used for explaining bound tightening caused by the constraint's active phase
-     stored in _activeTighteningRow
+     Create a the tableau row used for explaining bound tightening caused by the constraint's active
+     phase stored in _activeTighteningRow
     */
     void createActiveTighteningRow();
 
     /*
-      Create a the tableau row used for explaining bound tightening caused by the constraint's inactive phase
-      stored in _inactiveTighteningRow
+      Create a the tableau row used for explaining bound tightening caused by the constraint's
+      inactive phase stored in _inactiveTighteningRow
     */
     void createInactiveTighteningRow();
 };
