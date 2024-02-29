@@ -100,8 +100,9 @@ private:
     /*
       Return a change in the ground bounds caused by a ReLU constraint.
     */
-    double
-    checkLeakyReluLemma( const PLCLemma &expl, PiecewiseLinearConstraint &constraint, double epsilon );
+    double checkLeakyReluLemma( const PLCLemma &expl,
+                                PiecewiseLinearConstraint &constraint,
+                                double epsilon );
     /*
       Checks a contradiction
     */
