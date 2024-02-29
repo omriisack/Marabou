@@ -934,6 +934,7 @@ void AbsoluteValueConstraint::createPosTighteningRow()
     _posTighteningRow->_row[0] = TableauRow::Entry( _b, 1 );
     _posTighteningRow->_row[1] = TableauRow::Entry( _posAux, 1 );
     _posTighteningRow->_row[2] = TableauRow::Entry( _tableauAuxVars.front(), 1 );
+    _posTighteningRow->_scalar = 0;
 }
 
 void AbsoluteValueConstraint::createNegTighteningRow()
@@ -950,6 +951,7 @@ void AbsoluteValueConstraint::createNegTighteningRow()
     _negTighteningRow->_row[0] = TableauRow::Entry( _b, -1 );
     _negTighteningRow->_row[1] = TableauRow::Entry( _negAux, 1 );
     _negTighteningRow->_row[2] = TableauRow::Entry( _tableauAuxVars.back(), 1 );
+    _negTighteningRow->_scalar = 0;
 }
 
 const List<unsigned> AbsoluteValueConstraint::getNativeAuxVars() const
