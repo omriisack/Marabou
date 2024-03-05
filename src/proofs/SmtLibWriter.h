@@ -16,6 +16,7 @@
 #define __SmtLibWriter_h__
 
 #include "File.h"
+#include <iomanip>
 #include "List.h"
 #include "MString.h"
 #include "PiecewiseLinearConstraint.h"

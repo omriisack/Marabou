@@ -432,12 +432,7 @@ bool BoundManager::addLemmaExplanationAndTightenBound( unsigned var,
 
     if ( tightened )
     {
-        if ( causingVars.empty() )
-        {
-            // Case of lemmas learned by applying an implied case split,
-            // lemmas should be learned from phases and not bounds
-        }
-        else if ( constraintType == RELU || constraintType == SIGN || constraintType == LEAKY_RELU )
+       if ( constraintType == RELU || constraintType == SIGN || constraintType == LEAKY_RELU )
         {
             ASSERT( causingVars.size() == 1 );
             allExplanations.append( getExplanation( causingVars.front(), causingVarBound ) );
@@ -466,10 +461,7 @@ bool BoundManager::addLemmaExplanationAndTightenBound( unsigned var,
                 allExplanations.append( getExplanation( element, Tightening::UB ) );
         else
             throw MarabouError( MarabouError::FEATURE_NOT_YET_SUPPORTED );
-    }
 
-    if ( tightened || causingVars.empty() )
-    {
         std::shared_ptr<PLCLemma> PLCExpl = std::make_shared<PLCLemma>( causingVars,
                                                                         var,
                                                                         value,

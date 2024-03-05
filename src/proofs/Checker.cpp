@@ -268,8 +268,6 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             explainedBound = checkMaxLemma( *plcLemma, *matchedConstraint );
         else if ( constraintType == LEAKY_RELU )
             explainedBound = checkLeakyReluLemma( *plcLemma, *matchedConstraint, epsilon );
-        else if ( causingVars.empty() && constraintType == DISJUNCTION )
-            explainedBound = plcLemma->getBound();
         else
             return false;
 
@@ -1163,15 +1161,6 @@ double Checker::checkLeakyReluLemma( const PLCLemma &expl,
     if ( causingVar == inactiveAux && causingVarBound == Tightening::LB &&
          affectedVar == activeAux && affectedVarBound == Tightening::UB &&
          FloatUtils::isPositive( explainedBound + epsilon ) )
-        return 0;
-
-    // Active and inactive aux may fix phase, and thus the bounds of f
-    if ( causingVar == inactiveAux && causingVarBound == Tightening::LB && affectedVar == f &&
-         affectedVarBound == Tightening::LB && FloatUtils::isPositive( explainedBound + epsilon ) )
-        return 0;
-
-    if ( causingVar == activeAux && causingVarBound == Tightening::LB && affectedVar == f &&
-         affectedVarBound == Tightening::UB && FloatUtils::isPositive( explainedBound + epsilon ) )
         return 0;
 
     // If ub of f is positive, propagate to b

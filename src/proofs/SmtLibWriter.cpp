@@ -14,8 +14,6 @@
 
 #include "SmtLibWriter.h"
 
-#include <iomanip>
-
 const unsigned SmtLibWriter::SMTLIBWRITER_PRECISION =
     (unsigned)std::log10( 1 / GlobalConfiguration::DEFAULT_EPSILON_FOR_COMPARISONS );
 
