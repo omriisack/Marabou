@@ -26,6 +26,8 @@
 #include "UnsatCertificateNode.h"
 #include "Vector.h"
 
+#include <iomanip>
+
 /*
   A class responsible for writing Marabou proof instances into JSON format
 */

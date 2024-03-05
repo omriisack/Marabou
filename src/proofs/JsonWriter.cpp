@@ -14,7 +14,6 @@
 
 #include "JsonWriter.h"
 
-#include <iomanip>
 
 const char JsonWriter::AFFECTED_VAR[] = "\"affVar\" : ";
 const char JsonWriter::AFFECTED_BOUND[] = "\"affBound\" : ";
