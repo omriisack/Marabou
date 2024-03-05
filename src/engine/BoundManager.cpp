@@ -432,6 +432,7 @@ bool BoundManager::addLemmaExplanationAndTightenBound( unsigned var,
 
     if ( tightened )
     {
+
        if ( constraintType == RELU || constraintType == SIGN || constraintType == LEAKY_RELU )
         {
             ASSERT( causingVars.size() == 1 );
