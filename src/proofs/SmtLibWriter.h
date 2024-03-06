@@ -15,7 +15,6 @@
 #ifndef __SmtLibWriter_h__
 #define __SmtLibWriter_h__
 
-#include <iomanip>
 #include "File.h"
 #include "List.h"
 #include "MString.h"
