@@ -239,25 +239,14 @@ bool Checker::checkAllPLCExplanations( const UnsatCertificateNode *node, double 
             }
 
             if ( participatingVars.exists( affectedVar ) )
-            {
-                if ( !causingVars.empty() )
-                    matchedConstraint = constraint;
-                // In this case, lemmas can only be accepted if their bounds (precisely) are a part
-                // of a constraint split
-                else
-                    for ( const auto &caseSplit : constraint->getCaseSplits() )
-                        for ( const auto &bound : caseSplit.getBoundTightenings() )
-                            if ( bound._variable == affectedVar &&
-                                 FloatUtils::areEqual( bound._value, plcLemma->getBound() ) &&
-                                 bound._type == affectedVarBound )
-                                matchedConstraint = constraint;
-            }
+                matchedConstraint = constraint;
         }
 
         if ( !matchedConstraint )
             return false;
 
         PiecewiseLinearFunctionType constraintType = matchedConstraint->getType();
+
         if ( constraintType == RELU )
             explainedBound = checkReluLemma( *plcLemma, *matchedConstraint, epsilon );
         else if ( constraintType == SIGN )
@@ -477,11 +466,11 @@ Checker::getCorrespondingReluConstraint( const List<PiecewiseLinearCaseSplit> &s
                  activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
                  ( activeSplit.size() == 1 ||
                    activeSplit.exists( Tightening( aux, 0.0, Tightening::UB ) ) ) )
+                // Return the constraint for which f=relu(b)
                 return constraint;
         }
     }
 
-    // Return the constraint for which f=relu(b)
     return NULL;
 }
 
@@ -525,10 +514,10 @@ Checker::getCorrespondingSignConstraint( const List<PiecewiseLinearCaseSplit> &s
         auto constraintVars = constraint->getParticipatingVariables();
         if ( constraint->getType() == SIGN && constraintVars.back() == b &&
              constraintVars.front() == f )
+            // Return the constraint for which f=sign(b)
             return constraint;
     }
 
-    // Return the constraint for which f=sign(b)
     return NULL;
 }
 
@@ -573,10 +562,10 @@ Checker::getCorrespondingAbsConstraint( const List<PiecewiseLinearCaseSplit> &sp
         auto constraintVars = constraint->getParticipatingVariables();
         if ( constraint->getType() == ABSOLUTE_VALUE && constraintVars.front() == b &&
              constraintVars.back() == negAux && constraintVars.exists( posAux ) )
+            // Return the constraint for which f=abs(b)
             return constraint;
     }
 
-    // Return the constraint for which f=abs(b)
     return NULL;
 }
 
@@ -670,7 +659,7 @@ Checker::getCorrespondingLeakyReluConstraint( const List<PiecewiseLinearCaseSpli
          !( activeSplit.size() == 2 && inactiveSplit.size() == 2 ) )
         return NULL;
 
-    // Return the constraint for which f = LeakyRelu(b)
+    // Check that f=LeakyRelu(b) corresponds to a problem constraints
     for ( auto &constraint : _problemConstraints )
     {
         if ( constraint->getType() == LEAKY_RELU )
@@ -684,10 +673,14 @@ Checker::getCorrespondingLeakyReluConstraint( const List<PiecewiseLinearCaseSpli
             unsigned f = constraintVars.back();
             if ( inactiveSplit.exists( Tightening( b, 0.0, Tightening::UB ) ) &&
                  inactiveSplit.exists( Tightening( f, 0.0, Tightening::UB ) ) &&
-                 inactiveSplit.exists( Tightening( inactiveAux, 0.0, Tightening::UB ) ) &&
+                 ( inactiveSplit.size() == 2 ||
+                   inactiveSplit.exists( Tightening( inactiveAux, 0.0, Tightening::UB ) ) ) &&
                  activeSplit.exists( Tightening( b, 0.0, Tightening::LB ) ) &&
                  activeSplit.exists( Tightening( f, 0.0, Tightening::LB ) ) &&
-                 activeSplit.exists( Tightening( activeAux, 0.0, Tightening::UB ) ) )
+                 ( activeSplit.size() == 2 ||
+                   activeSplit.exists( Tightening( activeAux, 0.0, Tightening::UB ) ) ) )
+
+                // Return the constraint for which f = LeakyRelu(b)
                 return constraint;
         }
     }

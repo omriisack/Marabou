@@ -23,6 +23,8 @@
 #include "SparseUnsortedList.h"
 #include "Vector.h"
 
+#include <iomanip>
+
 /*
  * A class responsible for writing instances of LP+PLC into SMTLIB format
  */

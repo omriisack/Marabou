@@ -217,7 +217,7 @@ void LeakyReluConstraint::notifyLowerBound( unsigned variable, double bound )
         }
 
         // A positive lower bound for activeAux means we're inactive: _inactiveAux <= 0
-        else if ( _auxVarsInUse && variable == _activeAux && FloatUtils::isPositive( bound ) )
+        else if ( _auxVarsInUse && variable == _activeAux && bound > 0 )
         {
             // Inactive phase
             if ( proofs )
@@ -228,7 +228,7 @@ void LeakyReluConstraint::notifyLowerBound( unsigned variable, double bound )
         }
 
         // A positive lower bound for inactiveAux means we're active: _activeAux <= 0
-        else if ( _auxVarsInUse && variable == _inactiveAux && FloatUtils::isPositive( bound ) )
+        else if ( _auxVarsInUse && variable == _inactiveAux && bound > 0 )
         {
             // Active phase
             if ( proofs )
@@ -273,9 +273,9 @@ void LeakyReluConstraint::notifyUpperBound( unsigned variable, double bound )
                     _boundManager->addLemmaExplanationAndTightenBound(
                         partner, bound, Tightening::UB, { variable }, Tightening::UB, getType() );
                 else
-                    _boundManager->tightenUpperBound( partner, bound, *_activeTighteningRow );
+                    _boundManager->tightenUpperBound( partner, bound );
             }
-            else if ( variable == _b && FloatUtils::isNegative( bound ) )
+            else if ( variable == _b )
             {
                 // A negative upper bound of b implies inactive phase
                 if ( proofs && _auxVarsInUse )
@@ -284,9 +284,9 @@ void LeakyReluConstraint::notifyUpperBound( unsigned variable, double bound )
 
                 _boundManager->tightenUpperBound( _f, _slope * bound, *_inactiveTighteningRow );
             }
-            else if ( variable == _f && FloatUtils::isNegative( bound ) )
+            else if ( variable == _f )
             {
-                // A negative upper bound of b implies inactive phase
+                // A negative upper bound of f implies inactive phase as well
                 if ( proofs && _auxVarsInUse )
                     _boundManager->addLemmaExplanationAndTightenBound(
                         _inactiveAux, 0, Tightening::UB, { _f }, Tightening::UB, getType() );
