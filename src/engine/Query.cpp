@@ -585,7 +585,8 @@ void Query::saveQueryAsSmtLib( const String &fileName ) const
 {
     if ( !_nlConstraints.empty() )
     {
-        printf("SMTLIB conversion does not support nonlinear constraints yet. Aborting Conversion.\n");
+        printf( "SMTLIB conversion does not support nonlinear constraints yet. Aborting "
+                "Conversion.\n" );
         return;
     }
 
