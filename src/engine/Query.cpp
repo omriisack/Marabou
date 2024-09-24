@@ -592,13 +592,14 @@ void Query::saveQueryAsSmtLib( const String &fileName ) const
 
     List<Equation> equations;
 
-    Vector<double> upperBounds( _numberOfVariables, 0  );
-    Vector<double> lowerBounds( _numberOfVariables, 0  );
+    Vector<double> upperBounds( _numberOfVariables, 0 );
+    Vector<double> lowerBounds( _numberOfVariables, 0 );
 
     for ( unsigned i = 0; i < _numberOfVariables; ++i )
     {
         upperBounds[i] = _upperBounds.exists( i ) ? _upperBounds[i] : FloatUtils::infinity();
-        lowerBounds[i] = _lowerBounds.exists( i ) ? _lowerBounds[i] : FloatUtils::negativeInfinity();
+        lowerBounds[i] =
+            _lowerBounds.exists( i ) ? _lowerBounds[i] : FloatUtils::negativeInfinity();
     }
 
     SmtLibWriter::writeToSmtLibFile( fileName,
