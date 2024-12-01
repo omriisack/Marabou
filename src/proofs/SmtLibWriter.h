@@ -95,7 +95,7 @@ public:
     /*
      Adds a line representing an equation , in SMTLIB format, to the SMTLIB instance
    */
-    static void addEquation( const Equation &eq, List<String> &instance, bool assert );
+    static void addEquation( const Equation &eq, List<String> &instance, bool assertEquations );
 
     /*
       Adds lines representing the ground upper bounds, in SMTLIB format, to the SMTLIB instance
@@ -121,6 +121,7 @@ public:
       Returns a string representing the value of a double
      */
     static String signedValue( double val );
+
     /*
       A wrapper function calling all previous functions
     */
