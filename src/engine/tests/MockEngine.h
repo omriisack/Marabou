@@ -92,8 +92,8 @@ public:
         }
     }
 
-    void postContextPopHook(){};
-    void preContextPushHook(){};
+    void postContextPopHook() {};
+    void preContextPushHook() {};
 
     mutable EngineState *lastStoredState;
     void storeState( EngineState &state, TableauStateStorageLevel /*level*/ ) const
@@ -211,7 +211,7 @@ public:
         return _snc;
     }
 
-    void applyAllBoundTightenings(){};
+    void applyAllBoundTightenings() {};
 
     bool applyAllValidConstraintCaseSplits()
     {
@@ -285,6 +285,10 @@ public:
     bool shouldProduceProofs() const
     {
         return true;
+    }
+
+    void addPLCLemma( std::shared_ptr<PLCLemma> & /*explanation*/ )
+    {
     }
 };
 
